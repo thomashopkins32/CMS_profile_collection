@@ -69,6 +69,85 @@ def io_atten(pos,inout,q=0):
     else:
         print('Attenuator position must be an integer between 1 and 8')
 
+from math import (exp, log)
+
+def get_atten_trans():
+    E = getE(q=1)		# Current E [keV]
+    
+    if E < 6.0 or E > 18.0:
+        print('Transmission data not available at the current X-ray enegy.')
+
+    else:
+        N = []
+        for i in np.arange(8):
+            N.append(caget('XF:11BMB-OP{Fltr:' + str(int(i)+1) + '}Pos-Sts'))
+
+        N_Al = N[0] + 2*N[1] + 4*N[2] + 8*N[3]
+        N_Nb = N[4] + 2*N[5] + 4*N[6] + 8*N[7]
+
+        d_Nb = 0.1	# Thickness [mm] of one Nb foil 
+        d_Al = 0.25	# Thickness [mm] of one Al foil 
+
+        # Absorption length [mm] based on fits to LBL CXRO data for 6 < E < 19 keV
+        l_Nb = 1.4476e-3 - 5.6011e-4 * E + 1.0401e-4 * E*E + 8.7961e-6 * E*E*E
+        l_Al = 5.2293e-3 - 1.3491e-3 * E + 1.7833e-4 * E*E + 1.4001e-4 * E*E*E
+
+        # transmission factors
+        tr_Nb = exp(-N_Nb*d_Nb/l_Nb) 
+        tr_Al = exp(-N_Al*d_Al/l_Al) 
+        tr_tot = tr_Nb*tr_Al
+
+        print('%dx 0.25mm Al (%.1e) and %dx 0.10mm Nb (%.1e)' % (N_Al, tr_Al, N_Nb, tr_Nb))
+        print('Combined transmission is %.1e' % tr_tot)
+
+        return(tr_tot)
+
+def set_atten_trans(tr):
+    E = getE(q=1)		# Current E [keV]
+    
+    if E < 6.0 or E > 18.0:
+        print('Transmission data not available at the current X-ray enegy.')
+
+    elif tr > 1.0 or tr < 1.0e-10:
+        print('Requested attenuator transmission is not valid.')
+
+    else:
+        d_Nb = 0.1	# Thickness [mm] of one Nb foil 
+        d_Al = 0.25	# Thickness [mm] of one Al foil 
+
+        # Absorption length [mm] based on fits to LBL CXRO data for 6 < E < 19 keV
+        l_Nb = 1.4476e-3 - 5.6011e-4 * E + 1.0401e-4 * E*E + 8.7961e-6 * E*E*E
+        l_Al = 5.2293e-3 - 1.3491e-3 * E + 1.7833e-4 * E*E + 1.4001e-4 * E*E*E
+ 
+        d_l_Nb = d_Nb/l_Nb 
+        d_l_Al = d_Al/l_Al 
+
+        # Number of foils to be inserted (picks a set that gives smallest deviation from requested transmission)
+        dev=[]
+        for i in np.arange(16):
+            for j in np.arange(16):
+                dev_ij = abs(tr - exp(-i*d_l_Nb)*exp(-j*d_l_Al))
+                dev.append(dev_ij)
+                if (dev_ij == min(dev)):
+                    N_Nb = i			# number of Nb foils selected
+                    N_Al = j			# number of Al foils selected
+
+        N=[]
+        state = N_Al
+        for i in np.arange(4):
+            N.append(state % 2)
+            state = int(state/2)
+
+        state = N_Nb
+        for i in np.arange(4):
+            N.append(state % 2)
+            state = int(state/2)
+
+        for i in np.arange(8):
+            io_atten(i+1,N[i],q=1)
+
+        sleep(1.); return(get_atten_trans())
+
 
 ### 1-stage valves
 def single_valve(cmd,pv_r,pv_op,pv_cl,ss1,quiet):
