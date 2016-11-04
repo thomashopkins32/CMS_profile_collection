@@ -17,15 +17,26 @@ def moveE(eng):
     '''Moves mono_bragg correspong to the specified E(keV)'''
     wavelen = hc_over_e/eng		        ## in [Ang]
     bragg = asin(wavelen/(2.*dmm_dsp))*180./pi	## in [deg]
+    roll2 = -0.02617 - 0.010134*eng		## in [deg], based on linear fitting
+
     print('mono_bragg will move to %.4g deg' % bragg)
+    print('mono_roll2 will move to %.4g deg' % roll2)
     yn = input('Are you sure? (y/n): ')
     if yn == 'y' or yn == 'Y':
         mov(mono_bragg, bragg)
-        print('mono_bragg was moved')
+        mov(mono_roll2, roll2)
+        print('mono_bragg and mono_roll2 were moved')
     else:
         print('No move was made')
     getE()
 
+def moveE_force(eng):
+    '''Moves mono_bragg correspong to the specified E(keV)'''
+    wavelen = hc_over_e/eng		        ## in [Ang]
+    bragg = asin(wavelen/(2.*dmm_dsp))*180./pi	## in [deg]
+    roll2 = -0.02617 - 0.010134*eng		## in [deg], based on linear fitting
+    mov(mono_bragg, bragg)
+    mov(mono_roll2, roll2)
     
 ##### toroidal mirror utilities #####
 mir_us_to_ds = 1.0669		## kinematic support pivot_to_pivot distance along Z in [m]
