@@ -87,16 +87,23 @@ smy = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:Z}Mtr', name='smy')
 sth = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:theta}Mtr', name='sth')
 schi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:chi}Mtr', name='schi')
 sphi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:phi}Mtr', name='sphi')
+srot = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Srot}Mtr', name='srot')
+strans = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Strans}Mtr', name='strans')
 
-## stages for sample camera
+## stages for on-axis sample camera mirror/lens
 camx = EpicsMotor('XF:11BMB-ES{Cam:OnAxis-Ax:X1}Mtr', name='camx')
 camy = EpicsMotor('XF:11BMB-ES{Cam:OnAxis-Ax:Y1}Mtr', name='camy')
+
+## stages for off-axis sample camera
+cam2x = EpicsMotor('XF:11BMB-ES{Cam:OnAxis-Ax:X2}Mtr', name='cam2x')
+cam2z = EpicsMotor('XF:11BMB-ES{Cam:OnAxis-Ax:Y2}Mtr', name='cam2z')
 
 ## stages for sample exchanger
 armz = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Z}Mtr', name='armz')
 armx = EpicsMotor('XF:11BMB-ES{SM:1-Ax:X}Mtr', name='armx')
 armphi = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Yaw}Mtr', name='armphi')
 army = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Y}Mtr', name='army')
+armr = EpicsMotor('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr', name='armr')
 
 ## stages for detectors
 DETx = EpicsMotor('XF:11BMB-ES{Det:Stg-Ax:X}Mtr', name='DETx')
@@ -105,5 +112,10 @@ WAXSx = EpicsMotor('XF:11BMB-ES{Det:WAXS-Ax:X}Mtr', name='WAXSx')
 
 SAXSx = EpicsMotor('XF:11BMB-ES{Det:SAXS-Ax:X}Mtr', name='SAXSx')
 SAXSy = EpicsMotor('XF:11BMB-ES{Det:SAXS-Ax:Y}Mtr', name='SAXSy')
+
+## stages for beamstops
+bsx = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:X}Mtr', name='bsx')
+bsy = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:Y}Mtr', name='bsy')
+bsphi = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:phi}Mtr', name='bsphi')
 
 
