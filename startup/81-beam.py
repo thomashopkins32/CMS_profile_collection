@@ -38,6 +38,71 @@
 #from ophyd.commands import * # For mov, movr
 
 
+
+class BeamlineDetector(object):
+    
+    def __init__(self, detector, **md):
+        
+        self.detector = detector
+        
+        self.md = md
+        
+    
+    def get_md(self, prefix='detector_', **md):
+        '''Returns a dictionary of the current metadata.
+        The 'prefix' argument is prepended to all the md keys, which allows the
+        metadata to be grouped with other metadata in a clear way. (Especially,
+        to make it explicit that this metadata came from the beamline.)'''
+        
+        md_return = self.md.copy()
+    
+        # Include the user-specified metadata
+        md_return.update(md)
+
+        # Add an optional prefix
+        if prefix is not None:
+            md_return = { '{:s}{:s}'.format(prefix, key) : value for key, value in md_return.items() }
+    
+        return md_return
+            
+            
+class CMS_SAXS_Detector(BeamlineDetector):
+
+    def setCalibration(self, direct_beam, distance, detector_position=None, pixel_size=0.172):
+        
+        self.direct_beam = direct_beam
+        self.distance = distance
+        if detector_position is None:
+            self.detector_position = [SAXSx.user_readback.value, SAXSy.user_readback.value]
+        else:
+            self.detector_position = detector_position
+        self.pixel_size = pixel_size
+        
+    
+    def get_md(self, prefix='detector_SAXS_', **md):
+        
+        md_return = self.md.copy()
+    
+        x0, y0 = self.direct_beam
+        position_defined_x, position_defined_y = self.detector_position
+        position_current_x, position_current_y = SAXSx.user_readback.value, SAXSy.user_readback.value
+        
+        
+        md_return['name'] = self.detector.name
+        md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
+        md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
+        md_return['distance_m'] = self.distance
+    
+        # Include the user-specified metadata
+        md_return.update(md)
+
+        # Add an optional prefix
+        if prefix is not None:
+            md_return = { '{:s}{:s}'.format(prefix, key) : value for key, value in md_return.items() }
+    
+        return md_return
+
+
 class BeamlineElement(object):
     '''Defines a component of the beamline that (may) intersect the x-ray beam.'''
     
@@ -66,11 +131,16 @@ class BeamlineElement(object):
         return "out"
 
     
-    def transmission(self, verbosity=0):
+    def transmission(self, t=None, verbosity=0):
         """
         Returns the predicted transmission of this beamline element, based on 
         its current state.
         """
+        
+        if t is not None:
+            print("WARNING: To change transmission, use 'setTransmission'.")
+            print("WARNING: Beam transmission was not changed.")
+            return
         
         tr_tot = 1.0
         
@@ -704,7 +774,7 @@ class CMSBeam(object):
             mov(mono_bragg, Bragg_deg)
             
             if verbosity>=1:
-                print('mono_bragg moved from {.4f} deg to {.4f} deg'.format(Bragg_deg_initial, Bragg_deg))
+                print('mono_bragg moved from {:.4f} deg to {:.4f} deg'.format(Bragg_deg_initial, Bragg_deg))
         
         elif verbosity>=1:
             print('No move was made.')
@@ -911,9 +981,145 @@ class CMSBeam(object):
         else:
             if verbosity>=4:
                 print('Beam off (shutter already closed).')
+                
+    def blade1_is_on(self, verbosity=3):
+        '''Returns true if the beam is on (experimental shutter open).'''
+        
+        blade1 = caget('XF:11BMB-OP{PSh:2}Pos:1-Sts')
+        
+        if blade1==1:
+            if verbosity>=4:
+                print('Beam on (shutter open).')
             
-    
-    
+            return True
+        
+        else:
+            if verbosity>=4:
+                print('Beam off (shutter closed).')
+            
+            return False
+
+    def blade2_is_on(self, verbosity=3):
+        '''Returns true if the beam is on (experimental shutter open).'''
+        
+        blade2 = caget('XF:11BMB-OP{PSh:2}Pos:2-Sts')
+        
+        if blade2==1:
+            if verbosity>=4:
+                print('Beam on (shutter open).')
+            
+            return True
+        
+        else:
+            if verbosity>=4:
+                print('Beam off (shutter closed).')
+            
+            return False
+                
+    def _test_on(self, verbosity=3, wait_time=0.005, wait_time_2=0.1,poling_period=0.10, retry_time=2.0, max_retries=5):
+        '''Turn on the beam (open experimental shutter).'''
+ 
+        print('1')
+        print(sam.clock())
+        if self.is_on(verbosity=0):
+            if verbosity>=4:
+                print('Beam on (shutter already open.)')
+                
+        else:
+            
+            itry = 0
+            while (not self.blade1_is_on(verbosity=0)) and itry<max_retries:
+            
+                # Trigger the shutter to toggle state
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
+                sleep(wait_time)
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+                sleep(wait_time)
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
+                sleep(wait_time)
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+                sleep(wait_time)
+                
+                # Give the system a chance to update
+                start_time = time.time()
+                
+                print('2')
+                print(sam.clock())
+                
+                sleep(wait_time_2)
+                
+                while (not self.blade1_is_on(verbosity=0)) and (time.time()-start_time)<retry_time:
+                    if verbosity>=5:
+                        print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
+                    sleep(poling_period)
+                    print('3')
+                    print(sam.clock())
+                
+                itry += 1
+                
+
+            if verbosity>=4:
+                if self.blade1_is_on(verbosity=0):
+                    print('Beam on (shutter opened).')
+                else:
+                    print("Beam off (shutter didn't open).")
+        print('4')
+        print(sam.clock())
+        
+        
+    def _test_off(self, verbosity=3, wait_time=0.005, poling_period=0.10, retry_time=2.0, max_retries=5):
+        '''Turn off the beam (close experimental shutter).'''
+        
+        print('1')
+        print(sam.clock())
+        
+        if self.is_on(verbosity=0):
+            
+            itry = 0
+            while self.blade1_is_on(verbosity=0) and itry<max_retries:
+                # Trigger the shutter to toggle state
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
+                sleep(wait_time)
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+                sleep(wait_time)
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
+                sleep(wait_time)
+                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+                sleep(wait_time)
+
+                # Give the system a chance to update
+                start_time = time.time()
+                
+                print('2')
+                print(sam.clock())
+                
+                while self.blade1_is_on(verbosity=0) and (time.time()-start_time)<retry_time:
+                    if verbosity>=5:
+                        print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
+                    sleep(poling_period)
+                    print('3')
+                    print(sam.clock())
+                
+                itry += 1
+
+
+
+            if verbosity>=4:
+                if self.blade1_is_on(verbosity=0):
+                    print("Beam on (shutter didn't close).")
+                else:
+                    print('Beam off (shutter closed).')
+            print('4')
+            print(sam.clock())
+                
+        else:
+            if verbosity>=4:
+                print('Beam off (shutter already closed).')    
+
+        print('5')
+        print(sam.clock())
+
+
     # Attenuator/Filter Box
     ########################################
 
@@ -1049,7 +1255,7 @@ class CMSBeam(object):
             print('  final:      {} T = {:.6g}'.format(filters_final, self.calc_transmission_filters(filters_final, verbosity=0)))
 
         
-    def setTransmission(self, transmission, verbosity=3):
+    def setTransmission(self, transmission, retries=3, tolerance=0.5, verbosity=3):
         """
         Sets the transmission through the attenuator/filter box.
         Because the filter box has a discrete set of foils, it is impossible to
@@ -1114,6 +1320,16 @@ class CMSBeam(object):
                 state = int(state/2)
 
             self.set_attenuation_filters(N, verbosity=verbosity)
+            
+        
+        # Check that transmission was actually correctly changed
+        if abs(self.transmission(verbosity=0)-transmission)/transmission > tolerance:
+            if retries>0:
+                # Try again
+                return self.setTransmission(transmission, retries=retries-1, tolerance=tolerance, verbosity=verbosity)
+            
+            else:
+                print("WARNING: transmission didn't update correctly (request: {}; actual: {})".format(transmission, self.transmission(verbosity=0)))
 
         
         return self.transmission(verbosity=verbosity)
@@ -1343,6 +1559,8 @@ class CMS_Beamline(Beamline):
         super().__init__(**kwargs)
         
         self.beam = beam
+        self.SAXS = CMS_SAXS_Detector(pilatus300)
+        #self.WAXS = CMS_WAXS_Detector()
         
         from epics import PV
         
@@ -1350,7 +1568,7 @@ class CMS_Beamline(Beamline):
         
     
     
-    def modeAlignment(self, verbosity=3):
+    def modeAlignment_bim6(self, verbosity=3):
         
         self.current_mode = 'undefined'
         
@@ -1359,20 +1577,22 @@ class CMS_Beamline(Beamline):
         
         
         self.beam.off()
+        #self.beam.setTransmission(1e-4)
         self.beam.setTransmission(5e-4)
         
         #mov( [DETx, DETy], [0, 0] )
         self.beam.bim6.insert()
         
         caput('XF:11BMB-BI{IM:2}EM180:Acquire', 1) # Turn on bim6
+        detselect(bim6, suffix='')
         
         self.current_mode = 'alignment'
         
         self.beam.bim6.reading()
+
         
         
-        
-    def modeMeasurement(self, verbosity=3):
+    def modeMeasurement_bim6(self, verbosity=3):
         
         self.current_mode = 'undefined'
         
@@ -1383,6 +1603,10 @@ class CMS_Beamline(Beamline):
         self.beam.bim6.retract()
         
         caput('XF:11BMB-BI{IM:2}EM180:Acquire', 0) # Turn off bim6
+        detselect(pilatus300)
+        
+        #if RE.state is not 'idle':
+        #    RE.abort()
         
         self.current_mode = 'measurement'
         
@@ -1390,8 +1614,63 @@ class CMS_Beamline(Beamline):
         if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
             print('Warning: Sample chamber gate valve (large, downstream) is not open.')
             
+
+    def modeAlignment(self, verbosity=3):
+        
+        self.current_mode = 'undefined'
+        
+        # TODO: Check what mode (TSAXS, GISAXS) and respond accordingly
+        # TODO: Check if gate valves are open and flux is okay (warn user)
+        # TODO: Check list: change attenuator for different energy, change the bsx position with beamcenter accordingly
         
         
+        self.beam.off()
+        self.beam.setTransmission(1e-8)  #1e-6 for 13.5kev, 1e-8 for 17kev
+        while beam.transmission() > 3e-8:
+            sleep(0.5)
+            self.beam.setTransmission(1e-8)
+            
+        mov(bsx, -10.95)
+        detselect(pilatus300, suffix='_stats4_total')
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.6)
+        
+        #TODO: Update ROI based on current SAXSx, SAXSy and the md in cms object
+        
+        self.current_mode = 'alignment'
+        
+        #self.beam.bim6.reading()
+
+
+    def modeMeasurement(self, verbosity=3):   
+        
+        self.current_mode = 'undefined'
+        
+        self.beam.off()
+        
+        mov(bsx, -15.95)
+        if abs(bsx.user_readback.value - -15.95)>0.1:
+            print('WARNING: Beamstop did not return to correct position!')
+            return
+        
+        self.beam.setTransmission(1)
+        
+        detselect(pilatus300)
+        #detselect([pilatus300, psccd])
+        
+        #if RE.state is not 'idle':
+        #    RE.abort()
+
+       
+        self.current_mode = 'measurement'
+        
+        # Check if gate valves are open
+        if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
+            print('Warning: Sample chamber gate valve (large, downstream) is not open.')
+            
+
+
+   
         
     def modeBeamstopAlignment(self, verbosity=3):
         '''Places bim6 (dsmon) as a temporary beamstop.'''
@@ -1400,7 +1679,127 @@ class CMS_Beamline(Beamline):
         
         
         
+    def beamstopCircular(self, verbosity=3):
+        
+        self.beam.setTransmission(1e-6)
+        
+        mov(bsx, 0)
+        mov(bsphi, -12.0)
+        mov(bsx, -15.9148)
+        mov(bsy, -15.47)
+        
+        # TODO: Capture image and confirm that it's okay?
+        if verbosity>=1:
+            print("WARNING: This routine merely puts the beamstop in the ~approximately~ correct position. You must confirm that the beam is being blocked correctly.")
+            
+        self.beam.transmission(verbosity=verbosity)
+
+
+    def beamstopLinear(self, verbosity=3):
+        
+        self.beam.setTransmission(1e-6)
+        
+        mov(bsx, 0)
+        mov(bsphi, -223.4)
+        mov(bsx, -16.14)
+        mov(bsy, 17)
+        
+        # TODO: Capture image and confirm that it's okay?
+        if verbosity>=1:
+            print("WARNING: This routine merely puts the beamstop in the ~approximately~ correct position. You must confirm that the beam is being blocked correctly.")
+            
+        self.beam.transmission(verbosity=verbosity)
+            
+        
+        
+    def _actuate_open(self, pv, max_tries=5, wait_time=1.0, verbosity=2):
+        
+        tries = 1
+        if verbosity>=4:
+            print('  Opening {} (try # {:d})'.format(pv, tries))
+        caput(pv+'Cmd:Opn-Cmd', 1)
+        sleep(wait_time)
+        
+        
+        while caget(pv+'Pos-Sts')!= 1 and tries<max_tries:
+            tries += 1
+            if verbosity>=4:
+                print('  Opening {} (try # {:d})'.format(pv, tries))
+            caput(pv+'Cmd:Opn-Cmd', 1)
+            sleep(wait_time)
+            
+        if verbosity>=1 and caget(pv+'Pos-Sts')!= 1:
+            print('ERROR, valve did not open ({})'.format(pv))
+
+    def _actuate_close(self, pv, max_tries=5, wait_time=1.0, verbosity=2):
+        
+        tries = 1
+        if verbosity>=4:
+            print('  Closing {} (try # {:d})'.format(pv, tries))
+        caput(pv+'Cmd:Cls-Cmd', 1)
+        sleep(wait_time)
+        
+        
+        while caget(pv+'Pos-Sts')!= 0 and tries<max_tries:
+            tries += 1
+            if verbosity>=4:
+                print('  Closing {} (try # {:d})'.format(pv, tries))
+            caput(pv+'Cmd:Cls-Cmd', 1)
+            sleep(wait_time)
+            
+        if verbosity>=1 and caget(pv+'Pos-Sts')!= 0:
+            print('ERROR, valve did not close ({})'.format(pv))
+        
+        
     def ventChamber(self, verbosity=3):
+        
+        #TODO: Remove the old (commented-out) caput lines
+        
+        # Close large gate valve (downstream side of sample chamber)
+        #caput('XF:11BMB-VA{Chm:Det-GV:1}Cmd:Cls-Cmd',1)
+        self._actuate_close('XF:11BMB-VA{Chm:Det-GV:1}', verbosity=verbosity)
+
+        # Close small gate valve (upstream side of sample chamber)
+        #caput('XF:11BMB-VA{Slt:4-GV:1}Cmd:Cls-Cmd',1)
+        #self._actuate_close('XF:11BMB-VA{Slt:4-GV:1}', verbosity=verbosity)
+
+        # Close valve connecting sample chamber to vacuum pump
+        #caput('XF:11BMB-VA{Chm:Det-IV:1}Cmd:Cls-Cmd',1)
+        self._actuate_close('XF:11BMB-VA{Chm:Det-IV:1}', verbosity=verbosity)
+        
+        # Soft-open the upstream vent-valve
+        #caput('XF:11BMB-VA{Chm:Smpl-VV:1}Cmd:Cls-Cmd', 1)
+        self._actuate_close('XF:11BMB-VA{Chm:Smpl-VV:1}', verbosity=verbosity)
+        sleep(1.0)
+        #caput('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}Cmd:Opn-Cmd', 1)
+        self._actuate_open('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}', verbosity=verbosity)
+        
+        
+        self.chamberPressure(range_high=100)
+        
+        # Fully open the upstream vent-vale
+        #caput('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}Cmd:Cls-Cmd', 1)
+        self._actuate_close('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}', verbosity=verbosity)
+        sleep(1.0)
+        #caput('XF:11BMB-VA{Chm:Smpl-VV:1}Cmd:Opn-Cmd', 1)
+        self._actuate_open('XF:11BMB-VA{Chm:Smpl-VV:1}', verbosity=verbosity)
+
+        # Fully open the downstream vent-vale
+        #caput('XF:11BMB-VA{Chm:Det-VV:1_Soft}Cmd:Cls-Cmd', 1)
+        self._actuate_close('XF:11BMB-VA{Chm:Det-VV:1_Soft}', verbosity=verbosity)
+        sleep(1.0)
+        #caput('XF:11BMB-VA{Chm:Det-VV:1}Cmd:Opn-Cmd', 1)
+        self._actuate_open('XF:11BMB-VA{Chm:Det-VV:1}', verbosity=verbosity)
+        
+        self.chamberPressure(range_high=1000)
+        
+        if verbosity>=1:
+            print('Sample chamber is ready to be opened.')
+        
+            
+        
+    def _old_ventChamber(self, verbosity=3):
+        # TODO: deprecate and delete
         
         
         # Close large gate valve (downstream side of sample chamber)
@@ -1438,7 +1837,7 @@ class CMS_Beamline(Beamline):
         if verbosity>=1:
             print('Sample chamber is ready to be opened.')
         
-        
+    
         
     def chamberPressure(self, range_low=None, range_high=None, readout_period=1.0, verbosity=3):
         '''Monitors the pressure in the sample chamber, printing the current value.
@@ -1461,8 +1860,8 @@ class CMS_Beamline(Beamline):
                 P_atm = P_mbar*0.000986923
                 P_torr = P_mbar*0.750062
                 P_kPa = P_mbar*0.1
-                P_psi = P_mbar = 0.0145038
-
+                P_psi = 0.0145038
+                
                 if verbosity>=4:
                     print('Sample chamber pressure: {:8.2f} mbar = {:5.3f} atm = {:7.3f} torr = {:4.1g} kPa     \r'.format(P_mbar, P_atm, P_torr, P_kPa), end='', flush=True)
                 elif verbosity>=2:
@@ -1475,8 +1874,60 @@ class CMS_Beamline(Beamline):
                 monitor = False
                 
         
+    def pumpChamber(self, max_tries=8, verbosity=3):
         
-    def pumpChamber(self, readout_delay=0.2):
+        
+        # Close vent-valves
+        #caput('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}Cmd:Cls-Cmd', 1)
+        #caput('XF:11BMB-VA{Chm:Smpl-VV:1}Cmd:Cls-Cmd', 1)
+        #caput('XF:11BMB-VA{Chm:Det-VV:1_Soft}Cmd:Cls-Cmd', 1)
+        #caput('XF:11BMB-VA{Chm:Det-VV:1}Cmd:Cls-Cmd', 1)
+        self._actuate_close('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}', verbosity=verbosity)
+        self._actuate_close('XF:11BMB-VA{Chm:Smpl-VV:1}', verbosity=verbosity)
+        self._actuate_close('XF:11BMB-VA{Chm:Det-VV:1_Soft}', verbosity=verbosity)
+        self._actuate_close('XF:11BMB-VA{Chm:Det-VV:1}', verbosity=verbosity)
+        
+        # Turn on pump (if necessary)
+        tries = 1
+        while caget('XF:11BMB-VA{Chm:Det-Pmp:1}Sts:Enbl-Sts')==0 and tries<=max_tries:
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 0)
+            sleep(0.2)
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 1)
+            sleep(2.0)
+            tries += 1
+        
+        # Soft-open valve to pump
+        #caput('XF:11BMB-VA{Chm:Det-IV:1}Cmd:Cls-Cmd', 1)
+        self._actuate_close('XF:11BMB-VA{Chm:Det-IV:1}', verbosity=verbosity)
+        sleep(0.5)
+        #caput('XF:11BMB-VA{Chm:Det-IV:1_Soft}Cmd:Opn-Cmd', 1)
+        self._actuate_open('XF:11BMB-VA{Chm:Det-IV:1_Soft}', verbosity=verbosity)
+        
+        sleep(5.0)
+        # Check pump again
+        tries = 1
+        while caget('XF:11BMB-VA{Chm:Det-Pmp:1}Sts:Enbl-Sts')==0 and tries<=max_tries:
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 0)
+            sleep(0.2)
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 1)
+            sleep(2.0)
+            tries += 1
+        
+        
+        self.chamberPressure(range_low=500)
+
+        # Fully open valve to pump
+        #caput('XF:11BMB-VA{Chm:Det-IV:1_Soft}Cmd:Cls-Cmd', 1)
+        self._actuate_close('XF:11BMB-VA{Chm:Det-IV:1_Soft}', verbosity=verbosity)
+        sleep(0.5)
+        #caput('XF:11BMB-VA{Chm:Det-IV:1}Cmd:Opn-Cmd', 1)
+        self._actuate_open('XF:11BMB-VA{Chm:Det-IV:1}', verbosity=verbosity)
+        
+        self.chamberPressure(range_low=200)
+                
+        
+    def _old_pumpChamber(self, readout_delay=0.2):
+        # TODO: deprecate and delete
         
         
         # Close vent-valves
@@ -1538,8 +1989,8 @@ class CMS_Beamline(Beamline):
     def get_md(self, prefix=None, **md):
         
         md_current = self.md.copy()
-        md_current['calibration_energy_keV'] = self.beam.energy(verbosity=0)
-        md_current['calibration_wavelength_A'] = self.beam.wavelength(verbosity=0)
+        md_current['calibration_energy_keV'] = round(self.beam.energy(verbosity=0), 3)
+        md_current['calibration_wavelength_A'] = round(self.beam.wavelength(verbosity=0), 5)
         
         h, v = self.beam.size(verbosity=0)
         md_current['beam_size_x_mm'] = h
@@ -1549,6 +2000,17 @@ class CMS_Beamline(Beamline):
         md_current['beam_divergence_y_mrad'] = v
         
         md_current['beamline_mode'] = self.current_mode
+        
+        md_current['motor_SAXSx'] = SAXSx.user_readback.value
+        md_current['motor_SAXSy'] = SAXSy.user_readback.value
+        md_current['motor_DETx'] = DETx.user_readback.value
+        md_current['motor_DETy'] = DETy.user_readback.value
+        md_current['motor_WAXSx'] = WAXSx.user_readback.value
+        md_current['motor_smx'] = smx.user_readback.value
+        md_current['motor_smy'] = smy.user_readback.value
+        md_current['motor_sth'] = sth.user_readback.value
+        
+        md_current.update(self.SAXS.get_md(prefix='detector_SAXS_'))
         
         md_current.update(md)
         
@@ -1577,10 +2039,10 @@ class CMS_Beamline(Beamline):
             cycle = 2
         else:
             cycle = 3    
-        RE.md['experiment_cycle'] = '{:s}-{:d}'.format( time.strftime('%Y'), cycle )
+        RE.md['experiment_cycle'] = '{:s}_{:d}'.format( time.strftime('%Y'), cycle )
         
-        RE.md['calibration_energy_keV'] = self.beam.energy(verbosity=0)
-        RE.md['calibration_wavelength_A'] = self.beam.wavelength(verbosity=0)
+        RE.md['calibration_energy_keV'] = round(self.beam.energy(verbosity=0), 3)
+        RE.md['calibration_wavelength_A'] = round(self.beam.wavelength(verbosity=0), 5)
         
         # TODO:
         # RE.md['calibration_detector_distance_m'] =
@@ -1597,6 +2059,7 @@ class CMS_Beamline(Beamline):
             ['experiment_group', 'User group (e.g. PI)'] ,
             ['experiment_user', 'The specific user/person running the experiment'] ,
             ['experiment_project', 'Project name/code'] ,
+            ['experiment_alias_directory', 'Alias directory'] ,
             ['experiment_type', 'Type of experiments/measurements (SAXS, GIWAXS, etc.)'] ,
             ]
         
@@ -1712,12 +2175,139 @@ class CMS_Beamline(Beamline):
         self.log_motors(motor_list, verbosity=verbosity, **md)
         
        
-    # End class CMSBeam(object)
+    # End class CMS_Beamline(Beamline)
     ########################################
         
-        
 
-cms = CMS_Beamline()
+class CMS_Beamline_GISAXS(CMS_Beamline):
+    
+    
+    def modeAlignment(self, verbosity=3):
+        
+        if RE.state!='idle':
+            RE.abort()
+        
+        self.current_mode = 'undefined'
+        
+        # TODO: Check what mode (TSAXS, GISAXS) and respond accordingly
+        # TODO: Check if gate valves are open and flux is okay (warn user)
+        
+        
+        self.beam.off()
+        self.beam.setTransmission(1e-6)
+        while beam.transmission() > 2e-6:
+            sleep(0.5)
+            self.beam.setTransmission(1e-6)
+            
+        mov(bsx, -11.55)
+        
+        self.setReflectedBeamROI()
+        self.setDirectBeamROI()
+        detselect(pilatus300, suffix='_stats4_total')
+        
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.6)
+        
+        #TODO: Update ROI based on current SAXSx, SAXSy and the md in cms object
+        
+        self.current_mode = 'alignment'
+        
+        #self.beam.bim6.reading()
+
+
+    def modeMeasurement(self, verbosity=3):   
+
+        if RE.state!='idle':
+            RE.abort()
+        
+        self.current_mode = 'undefined'
+        
+        self.beam.off()
+        
+        mov(bsx, -16.55)
+        if abs(bsx.user_readback.value - -16.55)>0.1:
+            print('WARNING: Beamstop did not return to correct position!')
+            return
+        
+        self.beam.setTransmission(1)
+        
+        
+        #mov(DETy, -16)
+        #self.beam.bim6.retract()
+
+        
+        #caput('XF:11BMB-BI{IM:2}EM180:Acquire', 0) # Turn off bim6
+        detselect(pilatus300)
+        #detselect([pilatus300, psccd])
+        
+        
+        self.current_mode = 'measurement'
+        
+        # Check if gate valves are open
+        if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
+            print('Warning: Sample chamber gate valve (large, downstream) is not open.')
+        
+        
+    def setDirectBeamROI(self, size=[6,4], verbosity=3):
+        '''Update the ROI (stats4) for the direct beam on the Pilatus300k
+        detector. This (should) update correctly based on the current SAXSx, SAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). A size=[6,4] is reasonable.'''
+        
+        detector = self.SAXS
+
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_SAXS_x0_pix']
+        y0 = det_md['detector_SAXS_y0_pix']
+        
+        caput('XF:11BMB-ES{Det:SAXS}:ROI4:MinX', int(x0-size[0]/2))
+        caput('XF:11BMB-ES{Det:SAXS}:ROI4:SizeX', int(size[0]))
+        caput('XF:11BMB-ES{Det:SAXS}:ROI4:MinY', int(y0-size[1]/2))
+        caput('XF:11BMB-ES{Det:SAXS}:ROI4:SizeY', int(size[1]))
+        
+        detselect(pilatus300, suffix='_stats4_total')
+        
+        
+    def setReflectedBeamROI(self, total_angle=0.16, size=[6,2], verbosity=3):
+        '''Update the ROI (stats3) for the reflected beam on the Pilatus300k
+        detector. This (should) update correctly based on the current SAXSx, SAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). A size=[6,2] is reasonable.'''
+        
+        detector = self.SAXS
+
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_SAXS_x0_pix']
+        y0 = det_md['detector_SAXS_y0_pix']
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinX', int(x0-size[0]/2))
+        caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeX', int(size[0]))
+        caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinY', y_pos)
+        caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeY', int(size[1]))
+        
+        detselect(pilatus300, suffix='_stats3_total')
+            
+
+
+
+
+
+
+
+#cms = CMS_Beamline()
+cms = CMS_Beamline_GISAXS()
 
 def get_beamline():
     return cms

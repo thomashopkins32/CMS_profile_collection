@@ -16,11 +16,15 @@
 #  - Search for "TODO" below.
 #  - Ability to have a collection of simultaneous motions? (E.g. build up a set
 #  of deferred motions?)
+#  - Use internal naming scheme to control whether 'saxs'/'waxs' is put in the
+# filename
 ################################################################################
 
 
 import time
 import re
+import os
+import shutil
 
 
 
@@ -113,6 +117,7 @@ class CoordinateSystem(object):
             setattr(self, axis['name']+'setOrigin', axis_object.set_origin )
             setattr(self, axis['name']+'mark', axis_object.mark )
             
+            setattr(self, axis['name']+'search', axis_object.search )
             setattr(self, axis['name']+'scan', axis_object.scan )
             setattr(self, axis['name']+'c', axis_object.center )
             
@@ -189,6 +194,20 @@ class CoordinateSystem(object):
         replacements.update(self.hint_replacements)
         
         return self.multiple_string_replacements(text, replacements, word_boundaries=True)
+
+
+    # Control methods
+    ########################################
+    def setTemperature(self, temperature, verbosity=3):
+        if verbosity>=1:
+            print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+        
+        
+    def temperature(self, verbosity=3):
+        if verbosity>=1:
+            print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+            
+        return 0.0
 
         
     # Motion methods
@@ -403,6 +422,27 @@ class CoordinateSystem(object):
                 print("Keyword argument '{}' not understood (should be 'r' or 'abs').".format(command))
 
 
+    # State methods
+    ########################################
+    def save_state(self):
+        '''Outputs a string you can use to re-initialize this object back 
+        to its current state.'''
+        #TODO: Save to databroker?
+        
+        state = { 'origin': {} }
+        for axis_name, axis in self._axes.items():
+            state['origin'][axis_name] = axis.origin
+        
+        return state
+    
+
+    def restore_state(self, state):
+        '''Outputs a string you can use to re-initialize this object back 
+        to its current state.'''
+        
+        for axis_name, axis in self._axes.items():
+            axis.origin = state['origin'][axis_name]
+
 
     # End class CoordinateSystem(object)
     ########################################
@@ -435,9 +475,15 @@ class Axis(object):
         self._move_settle_max_time = 10.0
         self._move_settle_period = 0.05
         self._move_settle_tolerance = 0.01
+
+
+
+    # Coordinate transformations
+    ########################################
         
         
     def cur_to_base(self, position):
+        '''Convert from this coordinate system to the coordinate in the (immediate) base.'''
         
         base_position = self.get_origin() + self.scaling*position
         
@@ -445,10 +491,33 @@ class Axis(object):
     
     
     def base_to_cur(self, base_position):
+        '''Convert from this base position to the coordinate in the current system.'''
         
         position = (base_position - self.get_origin())/self.scaling
         
         return position
+    
+    
+    def cur_to_motor(self, position):
+        '''Convert from this coordinate system to the underlying motor.'''
+        
+        if self.motor is not None:
+            return self.cur_to_base(position)
+        
+        else:
+            base_position = self.cur_to_base(position)
+            return self.base_stage._axes[self.name].cur_to_motor(base_position)
+        
+    def motor_to_cur(self, motor_position):
+        '''Convert a motor position into the current coordinate system.'''
+        
+        if self.motor is not None:
+            return self.base_to_cur(motor_position)
+        
+        else:
+            base_position = self.base_stage._axes[self.name].motor_to_cur(motor_position)
+            return self.base_to_cur(base_position)
+        
             
             
     # Programmatically-defined methods
@@ -524,11 +593,12 @@ class Axis(object):
                 getattr(self.base_stage, self.name+'abs')(base_position, verbosity=0)
 
 
+            if self.stage:
+                stg = self.stage.name
+            else:
+                stg = '?'
+
             if verbosity>=2:
-                if self.stage:
-                    stg = self.stage.name
-                else:
-                    stg = '?'
                 
                 # Show a realtime output of position
                 start_time = time.time()
@@ -539,9 +609,9 @@ class Axis(object):
                     time.sleep(self._move_settle_period)
                     
                     
-            if verbosity>=1:
-                print( '{:s}.{:s} = {:5.3f} {:s}        '.format(stg, self.name, current_position, self.get_units()))
-
+            #if verbosity>=1:
+                #current_position = self.get_position(verbosity=0)
+                #print( '{:s}.{:s} = {:5.3f} {:s}        '.format(stg, self.name, current_position, self.get_units()))
 
                 
         elif verbosity>=1:
@@ -558,7 +628,7 @@ class Axis(object):
         
         target_position = self.get_position(verbosity=0) + move_amount
         
-        return self.move_absolute(target_position)
+        return self.move_absolute(target_position, verbosity=verbosity)
         
     
     def goto_origin(self):
@@ -594,6 +664,167 @@ class Axis(object):
         '''Redefines the position value of the current position.'''
         current_position = self.get_position(verbosity=0)
         self.origin = self.get_origin() + (current_position - new_position)*self.scaling
+
+
+    def search(self, step_size=1.0, min_step=0.05, intensity=None, target=0.5, detector=None, detector_suffix=None, polarity=+1, verbosity=3):
+        '''Moves this axis, searching for a target value.
+        
+        Parameters
+        ----------
+        step_size : float
+            The initial step size when moving the axis
+        min_step : float
+            The final (minimum) step size to try
+        intensity : float
+            The expected full-beam intensity readout
+        target : 0.0 to 1.0
+            The target ratio of full-beam intensity; 0.5 searches for half-max.
+            The target can also be 'max' to find a local maximum.
+        detector, detector_suffix
+            The beamline detector (and suffix, such as '_stats4_total') to trigger to measure intensity
+        polarity : +1 or -1
+            Positive motion assumes, e.g. a step-height 'up' (as the axis goes more positive)
+        '''
+        
+        if not get_beamline().beam.is_on():
+            print('WARNING: Experimental shutter is not open.')
+        
+        
+        if intensity is None:
+            intensity = RE.md['beam_intensity_expected']
+
+        
+        if detector is None:
+            detector = gs.DETS[0]
+        if detector_suffix is None:
+            value_name = gs.TABLE_COLS[0]
+        else:
+            value_name = detector.name + detector_suffix
+
+        # Check current value
+        RE(count([detector]))
+        value = detector.read()[value_name]['value']
+
+
+        if target is 'max':
+            
+            if verbosity>=5:
+                print("Performing search on axis '{}' target is 'max'".format(self.name))
+            
+            max_value = value
+            max_position = self.get_position(verbosity=0)
+            
+            
+            direction = +1*polarity
+            
+            while step_size>=min_step:
+                if verbosity>=4:
+                    print("        move {} by {} × {}".format(self.name, direction, step_size))
+                self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
+
+                prev_value = value
+                
+                RE(count([detector]))
+                value = detector.read()[value_name]['value']
+                if verbosity>=3:
+                    print("      {} = {:.3f} {}; value : {}".format(self.name, self.get_position(verbosity=0), self.units, value))
+                    
+                if value>max_value:
+                    max_value = value
+                    max_position = self.get_position(verbosity=0)
+                    
+                if value>prev_value:
+                    # Keep going in this direction...
+                    pass
+                else:
+                    # Switch directions!
+                    direction *= -1
+                    step_size *= 0.5
+                
+                
+        elif target is 'min':
+            
+            if verbosity>=5:
+                print("Performing search on axis '{}' target is 'min'".format(self.name))
+            
+            direction = +1*polarity
+            
+            while step_size>=min_step:
+                if verbosity>=4:
+                    print("        move {} by {} × {}".format(self.name, direction, step_size))
+                self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
+
+                prev_value = value
+                
+                RE(count([detector]))
+                value = detector.read()[value_name]['value']
+                if verbosity>=3:
+                    print("      {} = {:.3f} {}; value : {}".format(self.name, self.get_position(verbosity=0), self.units, value))
+                    
+                if value<prev_value:
+                    # Keep going in this direction...
+                    pass
+                else:
+                    # Switch directions!
+                    direction *= -1
+                    step_size *= 0.5
+                                
+                
+        
+        else:
+
+            target_rel = target
+            target = target_rel*intensity
+
+            if verbosity>=5:
+                print("Performing search on axis '{}' target {} × {} = {}".format(self.name, target_rel, intensity, target))
+            if verbosity>=4:
+                print("      value : {} ({:.1f}%)".format(value, 100.0*value/intensity))
+            
+            
+            # Determine initial motion direction
+            if value>target:
+                direction = -1*polarity
+            else:
+                direction = +1*polarity
+                
+            while step_size>=min_step:
+                
+                if verbosity>=4:
+                    print("        move {} by {} × {}".format(self.name, direction, step_size))
+                self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
+                
+                RE(count([detector]))
+                value = detector.read()[value_name]['value']
+                if verbosity>=3:
+                    print("      {} = {:.3f} {}; value : {} ({:.1f}%)".format(self.name, self.get_position(verbosity=0), self.units, value, 100.0*value/intensity))
+                    
+                # Determine direction
+                if value>target:
+                    new_direction = -1.0*polarity
+                else:
+                    new_direction = +1.0*polarity
+                    
+                if abs(direction-new_direction)<1e-4:
+                    # Same direction as we've been going...
+                    # ...keep moving this way
+                    pass
+                else:
+                    # Switch directions!
+                    direction *= -1
+                    step_size *= 0.5
+            
+            
+        
+        
+            
+            
+        
+            
+        
+            
+        
+        
     
     def scan(self):
         print('todo')
@@ -713,7 +944,7 @@ class Sample_Generic(CoordinateSystem):
             }
         self.md.update(md)
         
-        self.naming_scheme = ['name', 'extra', 'exposure_time']
+        self.naming_scheme = ['name', 'extra', 'exposure_time','id']
         self.naming_delimeter = '_'
         
 
@@ -812,6 +1043,9 @@ class Sample_Generic(CoordinateSystem):
         if attribute=='clock':
             return self.clock()
 
+        if attribute=='temperature':
+            return self.temperature(verbosity=0)
+
 
         if attribute in self.md:
             return self.md[attribute]
@@ -867,6 +1101,7 @@ class Sample_Generic(CoordinateSystem):
     
         # Add md that varies over time
         md_return['clock'] = self.clock()
+        md_return['temperature'] = self.temperature(verbosity=0)
     
         for axis_name, axis in self._axes.items():
             md_return[axis_name] = axis.get_position(verbosity=0)
@@ -895,7 +1130,7 @@ class Sample_Generic(CoordinateSystem):
     ########################################
     # These allow the user to control how data is named.
         
-    def naming(self, scheme=['name', 'extra', 'exposure_time'], delimeter='_'):
+    def naming(self, scheme=['name', 'extra', 'exposure_time','id'], delimeter='_'):
         '''This method allows one to define the naming convention that will be
         used when storing data for this sample. The "scheme" variable is an array
         that lists the various elements one wants to store in the filename.
@@ -920,6 +1155,9 @@ class Sample_Generic(CoordinateSystem):
 
         if attribute=='exposure_time':
             return '{:.2f}s'.format(self.get_attribute(attribute))
+
+        if attribute=='temperature':
+            return 'T{:.3f}C'.format(self.get_attribute(attribute))
 
         if attribute=='extra':
             # Note: Don't eliminate this check; it will not be properly handled
@@ -1007,6 +1245,16 @@ class Sample_Generic(CoordinateSystem):
                 text += '\n{}: {}'.format(key, value)
         
         logbook.log(text, logbooks=logbooks, tags=tags)        
+
+
+    # Control methods
+    ########################################
+    def setTemperature(self, temperature, verbosity=3):
+        return self.base_stage.setTemperature(temperature, verbosity=verbosity)
+        
+        
+    def temperature(self, verbosity=3):
+        return self.base_stage.temperature(verbosity=verbosity)
     
 
     
@@ -1030,7 +1278,7 @@ class Sample_Generic(CoordinateSystem):
         return md_current
 
     
-    def expose(self, exposure_time=None, verbosity=3, poling_period=0.1, **md):
+    def _expose_manual(self, exposure_time=None, verbosity=3, poling_period=0.1, **md):
         '''Internal function that is called to actually trigger a measurement.'''
         
         # TODO: Improve this (switch to Bluesky methods)
@@ -1048,6 +1296,7 @@ class Sample_Generic(CoordinateSystem):
         
         get_beamline().beam.on()
         
+        # Trigger acquisition manually
         caput('XF:11BMB-ES{Det:SAXS}:cam1:Acquire', 1)
         
         if verbosity>=2:
@@ -1064,15 +1313,189 @@ class Sample_Generic(CoordinateSystem):
         
         get_beamline().beam.off()
         
+
+    def expose(self, exposure_time=None, extra=None, verbosity=3, poling_period=0.1, **md):
+        '''Internal function that is called to actually trigger a measurement.'''
+        
+        if 'measure_type' not in md:
+            md['measure_type'] = 'expose'
+        #self.log('{} for {}.'.format(md['measure_type'], self.name), **md)
+
+
+        # Set exposure time
+        if exposure_time is not None:
+            for detector in gs.DETS:
+                detector.setExposureTime(exposure_time, verbosity=verbosity)
+        
+        
+        
+        # Do acquisition
+        get_beamline().beam.on()
+        
+        md['plan_header_override'] = md['measure_type']
+        start_time = time.time()
+        
+        uids = RE(count(gs.DETS, 1), **md)
+        
+        #get_beamline().beam.off()
+        #print('shutter is off')
+
+        # Wait for detectors to be ready
+        max_exposure_time = 0
+        for detector in gs.DETS:
+            if detector.name is 'pilatus300':
+                current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            elif detector.name is 'PhotonicSciences_CMS':
+                current_exposure_time = detector.exposure_time
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            else:
+                if verbosity>=1:
+                    print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
+            
+        if verbosity>=2:
+            status = 0
+            while (status==0) and (time.time()-start_time)<(max_exposure_time+20):
+                percentage = 100*(time.time()-start_time)/max_exposure_time
+                print( 'Exposing {:6.2f} s  ({:3.0f}%)      \r'.format((time.time()-start_time), percentage), end='')
+                time.sleep(poling_period)
+                
+                status = 1
+                for detector in gs.DETS:
+                    if detector.name is 'pilatus300':
+                        if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+                            status *= 0
+                    elif detector.name is 'PhotonicSciences_CMS':
+                        if not detector.detector_is_ready(verbosity=0):
+                            status *= 0
+            print('')
+                    
+                
+        else:
+            time.sleep(max_exposure_time)
+        
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+            print('Warning: Detector still not done acquiring.')
+        
+        get_beamline().beam.off()
+        
+        for detector in gs.DETS:
+            self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+
+
+    def handle_file(self, detector, extra=None, verbosity=3, subdirs=True, **md):
+    
+        subdir = ''
+        
+        if detector.name is 'pilatus300':
+            chars = caget('XF:11BMB-ES{Det:SAXS}:TIFF1:FullFileName_RBV')
+            filename = ''.join(chr(char) for char in chars)[:-1]
+            
+            # Alternate method to get the last filename
+            #filename = '{:s}/{:s}.tiff'.format( detector.tiff.file_path.get(), detector.tiff.file_name.get()  )
+
+            if verbosity>=3:
+                print('  Data saved to: {}'.format(filename))
+
+            if subdirs:
+                subdir = '/saxs/'
+
+            #if md['measure_type'] is not 'snap':
+            if True:
+                
+                self.set_attribute('exposure_time', caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'))
+                
+                # Create symlink
+                #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])
+                #savename = md['filename'][:-5]
+                
+                savename = self.get_savename(savename_extra=extra)
+                link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
+                
+                if os.path.isfile(link_name):
+                    i = 1
+                    while os.path.isfile('{}.{:d}'.format(link_name,i)):
+                        i += 1
+                    os.rename(link_name, '{}.{:d}'.format(link_name,i))
+                os.symlink(filename, link_name)
+                
+                if verbosity>=3:
+                    print('  Data linked as: {}'.format(link_name))
+            
+        elif detector.name is 'PhotonicSciences_CMS':
+            
+            self.set_attribute('exposure_time', detector.exposure_time)
+            
+            filename = '{:s}/{:s}.tif'.format( detector.file_path, detector.file_name )
+
+            if subdirs:
+                subdir = '/waxs/'
+
+            #savename = md['filename'][:-5]
+            savename = self.get_savename(savename_extra=extra)
+            savename = '{}/{}{}_{:04d}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
+            
+            shutil.copy(filename, savename)
+            if verbosity>=3:
+                print('  Data saved to: {}'.format(savename))
+
+        
+        else:
+            if verbosity>=1:
+                print("WARNING: Can't do file handling for detector '{}'.".format(detector.name))
+                return
+            
+
+
+        
+        
+        
         
     def snap(self, exposure_time=None, extra=None, measure_type='snap', verbosity=3, **md):
         '''Take a quick exposure (without saving data).'''
         
-        # TODO: Disable data saving when using 'snap'.
         self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)
-            
         
-    def measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, **md):
+        
+    def measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, **md):
+        '''Measure data by triggering the area detectors.
+        
+        Parameters
+        ----------
+        exposure_time : float
+            How long to collect data
+        extra : string, optional
+            Extra information about this particular measurement (which is typically
+            included in the savename/filename).
+        tiling : string
+            Controls the detector tiling mode.
+              None : regular measurement (single detector position)
+              'ygaps' : try to cover the vertical gaps in the Pilatus300k
+        '''           
+        
+        if tiling is 'ygaps':
+            
+            extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
+            md['detector_position'] = 'lower'
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, **md)
+            
+            movr(SAXSy, 5.16) # move detector up by 30 pixels; 30*0.172 = 5.16
+            extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
+            md['detector_position'] = 'upper'
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, **md)
+            
+            movr(SAXSy, -5.16)
+        
+        #if tiling is 'big':
+            # TODO: Use multiple images to fill the entire detector motion range
+        
+        else:
+            # Just do a normal measurement
+            self.measure_single(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)
+        
+                
+        
+    def measure_single(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, **md):
         '''Measure data by triggering the area detectors.
         
         Parameters
@@ -1086,28 +1509,186 @@ class Sample_Generic(CoordinateSystem):
         
         if exposure_time is not None:
             self.set_attribute('exposure_time', exposure_time)
-        else:
-            exposure_time = self.get_attribute('exposure_time')
+        #else:
+            #exposure_time = self.get_attribute('exposure_time')
             
         savename = self.get_savename(savename_extra=extra)
         
-        caput('XF:11BMB-ES{Det:SAXS}:cam1:FileName', savename)
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:FileName', savename)
         
         if verbosity>=2 and (get_beamline().current_mode != 'measurement'):
             print("WARNING: Beamline is not in measurement mode (mode is '{}')".format(get_beamline().current_mode))
+
+        if verbosity>=1 and len(gs.DETS)<1:
+            print("ERROR: No detectors defined in gs.DETS")
+            return
         
         md_current = self.get_md()
         md_current['sample_savename'] = savename
         md_current['measure_type'] = measure_type
         
         md_current.update(self.get_measurement_md())
-        md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
+        #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
+        md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
         md_current.update(md)
         
-        self.expose(exposure_time, verbosity=verbosity, **md_current)
+       
+        self.expose(exposure_time, extra=extra, verbosity=verbosity, **md_current)
+        
+        self.md['measurement_ID'] += 1
         
         
-    def measureSpots(self, num_spots=4, translation_amount=0.2, axis='y', exposure_time=None, extra=None, measure_type='measureSpots', **md):
+    def _test_time(self):
+        print(time.time())
+        time.time()
+        
+    
+    def _test_measure_single(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, **md):
+        '''Measure data by triggering the area detectors.
+        
+        Parameters
+        ----------
+        exposure_time : float
+            How long to collect data
+        extra : string, optional
+            Extra information about this particular measurement (which is typically
+            included in the savename/filename).
+        '''           
+        
+        print('1') #0s
+        print(time.time())
+        
+        if exposure_time is not None:
+            self.set_attribute('exposure_time', exposure_time)
+        #else:
+            #exposure_time = self.get_attribute('exposure_time')
+            
+        savename = self.get_savename(savename_extra=extra)
+        
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:FileName', savename)
+        
+        if verbosity>=2 and (get_beamline().current_mode != 'measurement'):
+            print("WARNING: Beamline is not in measurement mode (mode is '{}')".format(get_beamline().current_mode))
+
+        if verbosity>=1 and len(gs.DETS)<1:
+            print("ERROR: No detectors defined in gs.DETS")
+            return
+        
+        print('2') #0.0004s
+        print(time.time())       
+
+        md_current = self.get_md()
+        md_current['sample_savename'] = savename
+        md_current['measure_type'] = measure_type
+        
+        md_current.update(self.get_measurement_md())
+        #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
+        md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        md_current.update(md)
+        
+        print('3') #0.032s
+        print(time.time())
+        
+        self.expose(exposure_time, extra=extra, verbosity=verbosity, **md_current)
+
+        print('4') #5.04s
+        print(time.time())
+        
+        self.md['measurement_ID'] += 1
+        
+        print('5') #5.0401
+        print(time.time())
+        
+    def _test_expose(self, exposure_time=None, extra=None, verbosity=3, poling_period=0.1, **md):
+        '''Internal function that is called to actually trigger a measurement.'''
+        
+        if 'measure_type' not in md:
+            md['measure_type'] = 'expose'
+        #self.log('{} for {}.'.format(md['measure_type'], self.name), **md)
+
+
+        # Set exposure time
+        if exposure_time is not None:
+            for detector in gs.DETS:
+                detector.setExposureTime(exposure_time, verbosity=verbosity)
+        
+        print('1') #5e-5
+        print(self.clock())
+        
+        # Do acquisition
+        get_beamline().beam.on()
+
+        print('2') #3.0
+        print(self.clock())
+        
+        md['plan_header_override'] = md['measure_type']
+        start_time = time.time()
+        
+        uids = RE(count(gs.DETS, 1), **md)
+
+        print('3') #4.3172
+        print(self.clock())
+        
+        #get_beamline().beam.off()
+        #print('shutter is off')
+
+        # Wait for detectors to be ready
+        max_exposure_time = 0
+        for detector in gs.DETS:
+            if detector.name is 'pilatus300':
+                current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            elif detector.name is 'PhotonicSciences_CMS':
+                current_exposure_time = detector.exposure_time
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            else:
+                if verbosity>=1:
+                    print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
+        
+        print('4') #4.3193
+        print(self.clock())
+
+            
+        if verbosity>=2:
+            status = 0
+            while (status==0) and (time.time()-start_time)<(max_exposure_time+20):
+                percentage = 100*(time.time()-start_time)/max_exposure_time
+                print( 'Exposing {:6.2f} s  ({:3.0f}%)      \r'.format((time.time()-start_time), percentage), end='')
+                time.sleep(poling_period)
+                
+                status = 1
+                for detector in gs.DETS:
+                    if detector.name is 'pilatus300':
+                        if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+                            status *= 0
+                    elif detector.name is 'PhotonicSciences_CMS':
+                        if not detector.detector_is_ready(verbosity=0):
+                            status *= 0
+            print('')
+                    
+                
+        else:
+            time.sleep(max_exposure_time)
+        
+        print('5') #4.4193
+        print(self.clock())
+
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+            print('Warning: Detector still not done acquiring.')
+        
+        get_beamline().beam.off()
+
+        print('6') #4.9564
+        print(self.clock())
+        
+        for detector in gs.DETS:
+            self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+            
+        print('7') #4.9589
+        print(self.clock())
+
+        
+    def measureSpots(self, num_spots=4, translation_amount=0.2, axis='y', exposure_time=None, extra=None, measure_type='measureSpots', tiling=False, **md):
         '''Measure multiple spots on the sample.'''
         
         if 'spot_number' not in self.md:
@@ -1116,22 +1697,108 @@ class Sample_Generic(CoordinateSystem):
         
         for spot_num in range(num_spots):
         
-            self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
+            self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, tiling=tiling, **md)
             
             getattr(self, axis+'r')(translation_amount)
             self.md['spot_number'] += 1
+            print('{:d} of {:d} is done'.format(spot_num+1,num_spots))
         
+        
+    def measureTimeSeries(self, exposure_time=None, num_frames=10, wait_time=None, extra=None, measure_type='measureTimeSeries', verbosity=3, tiling=False, fix_name=True, **md):
+
+        if fix_name and ('clock' not in self.naming_scheme):
+            self.naming_scheme_hold = self.naming_scheme
+            self.naming_scheme = self.naming_scheme_hold.copy()
+            self.naming_scheme.insert(-1, 'clock')
+
+        
+        md['measure_series_num_frames'] = num_frames
+        
+        for i in range(num_frames):
+            
+            if verbosity>=3:
+                print('Measuring frame {:d}/{:d} ({:.1f}% complete).'.format(i+1, num_frames, 100.0*i/num_frames))
+                
+            md['measure_series_current_frame'] = i+1
+            self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, tiling=tiling, **md)
+            if wait_time is not None:
+                sleep(wait_time)
+    
+    def measureTimeSeriesAngles(self, exposure_time=None, num_frames=10, wait_time=None, extra=None, measure_type='measureTimeSeries', verbosity=3, tiling=False, fix_name=True, **md):
+
+        if fix_name and ('clock' not in self.naming_scheme):
+            self.naming_scheme_hold = self.naming_scheme
+            self.naming_scheme = self.naming_scheme_hold.copy()
+            self.naming_scheme.insert(-1, 'clock')
+
+        
+        md['measure_series_num_frames'] = num_frames
+        
+        for i in range(num_frames):
+            
+            if verbosity>=3:
+                print('Measuring frame {:d}/{:d} ({:.1f}% complete).'.format(i+1, num_frames, 100.0*i/num_frames))
+                
+            md['measure_series_current_frame'] = i+1
+            print('Angles in measure include: {}'.format(sam.incident_angles_default))
+            self.measureIncidentAngles(exposure_time=exposure_time, extra=extra, **md)
+            if wait_time is not None:
+                sleep(wait_time)
+            #if (i % 2 ==0):
+            #    self.xr(-1)
+            #else:
+            #    self.xr(1)
+            #self.pos()
+        
+        
+    def measureTemperature(self, temperature, exposure_time=None, wait_time=None, temperature_tolerance=0.4, extra=None, measure_type='measureTemperature', verbosity=3, tiling=False, poling_period=1.0, fix_name=True, **md):
+
+        # Set new temperature
+        self.setTemperature(temperature, verbosity=verbosity)
+        
+        # Wait until we reach the temperature
+        while abs(self.temperature(verbosity=0) - temperature)>temperature_tolerance:
+            if verbosity>=3:
+                print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, self.temperature(verbosity=0)), end='')
+            time.sleep(poling_period)
+            
+        # Allow for additional equilibration at this temperature
+        if wait_time is not None:
+            time.sleep(wait_time)
+            
+        # Measure
+        if fix_name and ('temperature' not in self.naming_scheme):
+            self.naming_scheme_hold = self.naming_scheme
+            self.naming_scheme = self.naming_scheme_hold.copy()
+            self.naming_scheme.insert(-1, 'temperature')
+            
+            
+        self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, tiling=tiling, **md)
+        
+        self.naming_scheme = self.naming_scheme_hold
+
+
+    def measureTemperatures(self, temperatures, exposure_time=None, wait_time=None, temperature_tolerance=0.4, extra=None, measure_type='measureTemperature', verbosity=3, tiling=False, poling_period=1.0, fix_name=True, **md):
+        
+        for temperature in temperatures:
+            self.measureTemperature(temperature, exposure_time=exposure_time, wait_time=wait_time, temperature_tolerance=temperature_tolerance, measure_type=measure_type, verbosity=verbosity, tiling=tiling, poling_period=poling_period, fix_name=fix_name, **md)
+
         
         
 
-    def do(self, step=0):
+    def do(self, step=0, verbosity=3, **md):
         '''Performs the "default action" for this sample. This usually means 
         aligning the sample, and taking data.
         
         The 'step' argument can optionally be given to jump to a particular
         step in the sequence.'''
         
+        if verbosity>=4:
+            print('  doing sample {}'.format(self.name))
+        
         if step<=1:
+            if verbosity>=5:
+                print('    step 1: goto origin')
             self.xo() # goto origin
             #self.gotoAlignedPosition()
             
@@ -1139,7 +1806,9 @@ class Sample_Generic(CoordinateSystem):
             #self.align()
             
         if step<=10:
-            self.measure()
+            if verbosity>=5:
+                print('    step 10: measuring')
+            self.measure(**md)
                 
         
 
@@ -1178,33 +1847,269 @@ class SampleGISAXS_Generic(Sample_Generic):
             self.measureIncidentAngle(angle, exposure_time=exposure_time, extra=extra, **md)
     
     
-    def align(self):
+    def _alignOld(self, step=0):
+        '''Align the sample with respect to the beam. GISAXS alignment involves
+        vertical translation to the beam center, and rocking theta to get the
+        sample plane parralel to the beam.
         
-        # TODO: Check what mode we are in, change if necessary...
-        # cms.modeAlignment()
+        The 'step' argument can optionally be given to jump to a particular
+        step in the sequence.'''
         
-        fit_scan(smy, 0.3, 17, fit='sigmoid_r')
-        fit_scan(sth, 1.2, 21, fit='gauss')
+        # TODO: Deprecate and delete
+        
+        if step<=0:
+            # TODO: Check what mode we are in, change if necessary...
+            # get_beamline().modeAlignment()
+            beam.on()
+        
+        # TODO: Improve implementation
+        if step<=2:
+            #fit_scan(smy, 2.6, 35, fit='HM')
+            fit_scan(smy, 2.6, 35, fit='sigmoid_r')
+        
+        
+        if step<=4:
+            #fit_scan(smy, 0.6, 17, fit='HM')
+            fit_scan(smy, 0.6, 17, fit='sigmoid_r')
+            fit_scan(sth, 1.2, 21, fit='max')
 
-        fit_scan(smy, 0.2, 17, fit='sigmoid_r')
-        fit_scan(sth, 0.8, 21, fit='gauss')
+        #if step<=6:
+        #    fit_scan(smy, 0.3, 17, fit='sigmoid_r')
+        #    fit_scan(sth, 1.2, 21, fit='COM')
+
+        if step<=8:
+            fit_scan(smy, 0.2, 17, fit='sigmoid_r')
+            fit_scan(sth, 0.8, 21, fit='gauss')
+        
+        if step<=9:
+            #self._testing_refl_pos()
+            #movr(sth,.1)
+            #fit_scan(sth, 0.2, 41, fit='gauss')
+            #fit_scan(smy, 0.2, 21, fit='gauss')
+            #movr(sth,-.1)
+            
+            
+            beam.off()
     
     
-    def do(self, step=0):
+    
+    def align(self, step=0, reflection_angle=0.08, verbosity=3):
+        '''Align the sample with respect to the beam. GISAXS alignment involves
+        vertical translation to the beam center, and rocking theta to get the
+        sample plane parralel to the beam. Finally, the angle is re-optimized
+        in reflection mode.
+        
+        The 'step' argument can optionally be given to jump to a particular
+        step in the sequence.'''
+
+        if verbosity>=4:
+            print('  Aligning {}'.format(self.name))
+        
+        if step<=0:
+            # Prepare for alignment
+            
+            if RE.state!='idle':
+                RE.abort()
+                
+            if get_beamline().current_mode!='alignment':
+                if verbosity>=2:
+                    print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
+                #get_beamline().modeAlignment()
+                
+                
+            get_beamline().setDirectBeamROI()
+            
+            beam.on()
+
+        
+        if step<=2:
+            if verbosity>=4:
+                print('    align: searching')
+                
+            # Estimate full-beam intensity
+            value = None
+            if True:
+                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
+                self.yr(-2)
+                detector = gs.DETS[0]
+                value_name = gs.TABLE_COLS[0]
+                RE(count([detector]))
+                value = detector.read()[value_name]['value']
+                self.yr(+2)
+            
+            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
+                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
+                
+            # Find the step-edge
+            self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
+            
+            # Find the peak
+            self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
+        
+        
+        if step<=4:
+            if verbosity>=4:
+                print('    align: fitting')
+
+            fit_scan(smy, 1.2, 21, fit='HMi')
+            fit_scan(sth, 1.5, 21, fit='max')
+            
+            
+        #if step<=5:
+        #    #fit_scan(smy, 0.6, 17, fit='sigmoid_r')
+        #    fit_edge(smy, 0.6, 17)
+        #    fit_scan(sth, 1.2, 21, fit='max')
+
+
+        if step<=8:
+            #fit_scan(smy, 0.3, 21, fit='sigmoid_r')
+            fit_edge(smy, 0.4, 21)
+            fit_scan(sth, 0.8, 21, fit='COM')
+            
+            self.setOrigin(['y', 'th'])
+        
+        
+        if step<=9 and reflection_angle is not None:
+            # Final alignment using reflected beam
+            if verbosity>=4:
+                print('    align: reflected beam')
+            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+            
+            self.thabs(reflection_angle)
+            
+            result = fit_scan(sth, 0.7, 41, fit='max')
+            sth_target = result.values['x_max']-reflection_angle
+            
+            if result.values['y_max']>10:
+                th_target = self._axes['th'].motor_to_cur(sth_target)
+                self.thsetOrigin(th_target)
+
+
+        if step<=10:
+            self.thabs(0.0)
+            beam.off()
+            
+            
+    def alignQuick(self, align_step=8, reflection_angle=0.08, verbosity=3):
+        
+        get_beamline().modeAlignment()
+        #self.yo()
+        self.tho()
+        beam.on()
+        self.align(step=align_step, reflection_angle=reflection_angle, verbosity=verbosity)
+        
+        
+
+    
+    def _testing_level(self, step=0,pos_x_left=-5, pos_x_right=5):
+        
+        #TODO: Move this code. (This should be a property of the GIBar object.)
+        
+        #level GIBar by checking bar height at pos_left and pos_right
+        print('checking the level of GIBar')
+        #if step<=1:
+        #    cms.modeAlignment()
+        #sam.xabs(pos_x_left)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')  #it's better not to move smy after scan but only the center position
+        #pos_y_left=smy.user_readback.value
+        
+        #
+        #sam.xabs(pos_x_right)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')
+        #pos_y_right=smy.user_readback.value
+
+        #offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
+        #movr(sch, offset_schi)
+        
+        
+        #double-check the chi offset
+        #sam.xabs(pos_x_left)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')  #it's better not to move smy after scan but only the center position
+        #pos_y_left=smy.user_readback.value
+        
+        #sam.xabs(pos_x_right)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')
+        #pos_y_right=smy.user_readback.value
+        
+        #offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
+
+        #if offset_schi<=0.1:
+            #print('schi offset is aligned successfully!')
+        #else:
+            #print('schi offset is WRONG. Please redo the level command')
+        pass
+        
+        
+    
+    def do(self, step=0, align_step=0, **md):
         
         if step<=1:
+            get_beamline().modeAlignment()
+            
+        if step<=2:
             self.xo() # goto origin
+
+
+        if step<=4:
+            self.yo()
+            self.tho()
         
         if step<=5:
-            self.align()
+            self.align(step=align_step)
+            #self.setOrigin(['y','th']) # This is done within align
+
+        #if step<=7:
+            #self.xr(0.2)
+
+        if step<=8:
+            get_beamline().modeMeasurement()
         
         if step<=10:
-            self.set_attribute('exposure_time', 5.0)
-            self.measureIncidentAngles(self.incident_angles_default)
+            #detselect([pilatus300, psccd])
+            for detector in gs.DETS:
+                detector.setExposureTime(self.md['exposure_time'])
+            self.measureIncidentAngles(self.incident_angles_default, **md)
+            self.thabs(0.0)
         
 
 
-
+class SampleCDSAXS_Generic(Sample_Generic):
+    
+    def __init__(self, name, base=None, **md):
+        
+        super().__init__(name=name, base=base, **md)
+        self.naming_scheme = ['name', 'extra', 'phi', 'exposure_time']
+        self.rot_angles_default = np.arange(-45, +45+1, +1)
+        #self.rot_angles_default = np.linspace(-45, +45, num=90, endpoint=True)
+        
+    def _set_axes_definitions(self):
+        '''Internal function which defines the axes for this stage. This is kept
+        as a separate function so that it can be over-ridden easily.'''
+        super()._set_axes_definitions()
+        
+        self._axes_definitions.append( {'name': 'phi',
+                            'motor': srot,
+                            'enabled': True,
+                            'scaling': +1.0,
+                            'units': 'deg',
+                            'hint': None,
+                            } )
+        
+    def measureAngle(self, angle, exposure_time=None, extra=None, measure_type='measure', **md):
+        
+        self.phiabs(angle)
+        
+        self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
+        
+        
+    def measureAngles(self, angles=None, exposure_time=None, extra=None, measure_type='measureAngles', **md):
+        
+        if angles is None:
+            angles = self.rot_angles_default
+        
+        for angle in angles:
+            self.measureAngle(angle, exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
+        
 
 
 
@@ -1260,6 +2165,9 @@ class Holder(Stage):
     ########################################
 
     def __init__(self, name='Holder', base=None, **kwargs):
+        
+        if base is None:
+            base = get_default_stage()
         
         super().__init__(name=name, base=base, **kwargs)
         
@@ -1452,6 +2360,9 @@ class Holder(Stage):
             for sample_number, sample in sorted(self._samples.items()):
                 if range in sample.name:
                     samples.append(sample)
+                    
+        elif type(range) is int:
+            samples.append(self._samples[range])
         
         else:
             if verbosity>=1:
@@ -1477,10 +2388,31 @@ class Holder(Stage):
         return sample
         
         
+    # Control methods
+    ########################################
+    def setTemperature(self, temperature, verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+        if verbosity>=2:
+            print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, temperature))
+        caput('XF:11BM-ES{Env:01-Out:1}T-SP', temperature+273.15)
+        
+        
+    def temperature(self, verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+            
+        current_temperature = caget('XF:11BM-ES{Env:01-Chan:A}T:C-I')
+        if verbosity>=3:
+            print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15 ) )
+            
+        return current_temperature
+        
+        
     # Action (measurement) methods
     ########################################
                            
-    def doSamples(self, range=None):
+    def doSamples(self, range=None, verbosity=3, **md):
         '''Activate the default action (typically measurement) for all the samples.
         
         If the optional range argument is provided (2-tuple), then only sample
@@ -1488,7 +2420,35 @@ class Holder(Stage):
         string, then all samples with names that match are returned.'''
         
         for sample in self.getSamples(range=range):
-            sample.do()
+            if verbosity>3:
+                print('Doing sample {}...'.format(sample.name))
+            sample.do(verbosity=verbosity, **md)
+            
+            
+    def doTemperature(self, temperature, wait_time=None, temperature_tolerance=0.4, range=None, verbosity=3, poling_period=2.0, **md):
+        
+        # Set new temperature
+        self.setTemperature(temperature, verbosity=verbosity)
+        
+        # Wait until we reach the temperature
+        while abs(self.temperature(verbosity=0) - temperature)>temperature_tolerance:
+            if verbosity>=3:
+                print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, self.temperature(verbosity=0)), end='')
+            time.sleep(poling_period)
+            
+            
+        # Allow for additional equilibration at this temperature
+        if wait_time is not None:
+            time.sleep(wait_time)
+            
+        self.doSamples(range=range, verbosity=verbosity, **md)
+            
+
+    def doTemperatures(self, temperatures, temperature, wait_time=None, temperature_tolerance=0.4, range=None, verbosity=3, **md):
+        
+        for temperature in temperatures:
+            
+            self.doTemperature(temperature, temperature, wait_time=wait_time, temperature_tolerance=temperature_tolerance, range=range, verbosity=verbosity, **md)
                 
 
 
@@ -1535,16 +2495,56 @@ class PositionalHolder(Holder):
         self.addSample(sample, sample_number=slot)
         sample.setOrigin( [self._positional_axis], [self.get_slot_position(slot)] )
 
-                
+
+    def addSampleSlotPosition(self, sample, slot, position):
+        '''Adds a sample to the specified "slot" (defined/numbered sample 
+        holding spot on this holder).'''
+        
+        self.addSample(sample, sample_number=slot)
+        sample.setOrigin( [self._positional_axis], [position] )
+        
+        
     def listSamplesPositions(self):
         '''Print a list of the current samples associated with this holder/
         bar.'''
         
         for sample_number, sample in self._samples.items():
-            pos = getattr(sample, self._positional_axis+'pos')(verbosity=0)
+            #pos = getattr(sample, self._positional_axis+'pos')(verbosity=0)
+            pos = sample.origin(verbosity=0)[self._positional_axis]
             print( '%s: %s (%s = %.3f)' % (str(sample_number), sample.name, self._positional_axis, pos) )
 
 
+class GIBar(PositionalHolder):
+    '''This class is a sample bar for grazing-incidence (GI) experiments.'''
+    
+    # Core methods
+    ########################################
+
+    def __init__(self, name='GIBar', base=None, **kwargs):
+        
+        super().__init__(name=name, base=base, **kwargs)
+        
+        self._positional_axis = 'x'
+        
+        # Set the x and y origin to be the center of slot 8
+        self.xsetOrigin(-71.89405)
+        self.ysetOrigin(10.37925)
+        
+        self.mark('right edge', x=+108.2)
+        self.mark('left edge', x=0)
+        self.mark('center', x=54.1, y=0)
+             
+             
+    def addSampleSlotPosition(self, sample, slot, position, account_substrate=True):
+        '''Adds a sample to the specified "slot" (defined/numbered sample 
+        holding spot on this holder).'''
+        
+        super().addSampleSlotPosition(sample, slot, position)
+        
+        # Adjust y-origin to account for substrate thickness
+        if account_substrate and 'substrate_thickness' in sample.md:
+            sample.ysetOrigin( -1.0*sample.md['substrate_thickness'] )
+                     
 
 class CapillaryHolder(PositionalHolder):
     '''This class is a sample holder that has 15 slots for capillaries.'''
@@ -1560,15 +2560,76 @@ class CapillaryHolder(PositionalHolder):
         
         self.x_spacing = 6.342 # 3.5 inches / 14 spaces
         
+        # slot  1; smx = +26.60
+        # slot  8; smx = -17.80
+        # slot 15; smx = -61.94
+        
         # Set the x and y origin to be the center of slot 8
-        self.xsetOrigin(0.00)
-        self.ysetOrigin(0.00)
+        self.xsetOrigin(-17.49410)
+        self.ysetOrigin(-2.36985)
+        
+        self.mark('right edge', x=+54.4)
+        self.mark('left edge', x=-54.4)
+        self.mark('bottom edge', y=-12.71)
+        self.mark('center', x=0, y=0)
                 
                 
     def get_slot_position(self, slot):
         '''Return the motor position for the requested slot number.'''
         
-        return self.x_spacing*(slot-8)
+        return +1*self.x_spacing*(slot-8)
+        
+        
+class CapillaryHolderHeated(CapillaryHolder):
+    
+    def update_sample_names(self):
+        
+        for sample in self.getSamples():
+            if 'temperature' not in sample.naming_scheme:
+                sample.naming_scheme.insert(-1, 'temperature')
+    
+    def doHeatCool(self, heat_temps, cool_temps, exposure_time=None, stabilization_time=120, temp_tolerance=0.5, step=1):
+        
+        if step<=1:
+            
+            for temperature in heat_temps:
+                try:
+                    self.setTemperature(temperature)
+                    
+                    while self.temperature(verbosity=0) < temperature-temp_tolerance:
+                        sleep(5)
+                    sleep(stabilization_time)
+                    
+                    for sample in self.getSamples():
+                        sample.gotoOrigin()
+                        sample.xr(-0.05)
+                        sample.measure(exposure_time)
+                        
+                except HTTPError:
+                    pass
+
+
+        if step<=5:
+            
+            for temperature in heat_temps:
+                try:
+                    self.setTemperature(temperature)
+                
+                    self.setTemperature(temperature)
+                
+                    while self.temperature(verbosity=0) > temperature+temp_tolerance:
+                        sleep(5)
+                    sleep(stabilization_time)
+
+                    for sample in self.getSamples():
+                        sample.gotoOrigin()
+                        sample.xr(0.1)
+                        sample.measure(exposure_time)
+                        
+                except HTTPError:
+                    pass
+        
+            
         
 
 stg = SampleStage()

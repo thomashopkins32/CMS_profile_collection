@@ -1,8 +1,15 @@
 def detselect(detector_object, suffix="_stats1_total"):
     """Switch the active detector and set some internal state"""
-    gs.DETS =[detector_object]
-    gs.PLOT_Y = detector_object.name + suffix
-    gs.TABLE_COLS = [gs.PLOT_Y] 
+
+    if isinstance(detector_object, (list, tuple)):
+        gs.DETS = detector_object
+        gs.PLOT_Y = detector_object[0].name + suffix
+        gs.TABLE_COLS = [gs.PLOT_Y] 
+
+    else:
+        gs.DETS =[detector_object]
+        gs.PLOT_Y = detector_object.name + suffix
+        gs.TABLE_COLS = [gs.PLOT_Y] 
 
 
 

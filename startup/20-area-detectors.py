@@ -56,6 +56,11 @@ class Pilatus(SingleTrigger, PilatusDetector):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/')
+    
+    
+    def setExposureTime(self, exposure_time, verbosity=3):
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
 #class StandardProsilicaWithTIFF(StandardProsilica):
