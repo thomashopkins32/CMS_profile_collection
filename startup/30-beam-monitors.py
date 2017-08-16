@@ -45,3 +45,80 @@ def get_bim3(q=0):
         print('   Flux - total: %.3e ph/s' % flux_h)
     return(flux_h)
 
+
+##### Following added in July 2017: Check first #####
+## Scintillation detector: FMB Oxford C400, channel 1
+def get_bim4(q=0):
+    '''Returns flux at scintillation detector in [cts/s] (q=1 for quiet)'''
+    bim4_sec = caget('XF:11BMB-BI{IM:4}:GET_PERIOD')
+    bim4_cts = caget('XF:11BMB-BI{IM:4}:C1_1')
+
+    ### Ratio between estimated beam flux to raw scintillator counts (see Olog entry on July 7, 2017)
+    # For unslitted, unattenuated beam, BIM4 yields 2.86E5 cts/sec for 1.85E11 ph/s at BIM3:
+    # 1.85E11 / 2.86E5 = 647000 (ph/s)/(cts/sec).
+    bim4_factor = 647000.
+
+    if bim4_sec != 0.0:
+        bim4_cps = bim4_cts/bim4_sec
+        bim4_flux = bim4_cps * bim4_factor
+    else:
+        bim4_cps = -1
+        bim4_flux = -1
+
+    if q==0:
+        print('BIM4 Scintillation Detector (Endstation)')
+        print('Raw count rate: %.3e ph/s' % bim4_cps)
+        print('Beam flux: %.3e ph/s' % bim4_flux)
+        if bim4_flux == -1:
+            print('Counting time seems to be set to zero. Check settigs on FMB Oxford C400.')
+
+    return(bim4_flux)
+
+
+## Dectris RIGI diamond diode BPM: FMB Oxford F460, channels 1-4
+def get_bim5(q=0):
+    '''Returns flux at 4-quadrant diamond diode BPM in [cts/s] (q=1 for quiet)'''
+
+    bim5_i0_dark = -3.8e-10	# dark current in A
+    bim5_i1_dark = 5.5e-10	# dark current in A
+    bim5_i2_dark = 2.3e-10	# dark current in A
+    bim5_i3_dark = 5.3e-10	# dark current in A
+    bim5_i0 = caget('XF:11BMB-BI{BPM:1}Cur:I0-I') - bim5_i0_dark    # upper left
+    bim5_i1 = caget('XF:11BMB-BI{BPM:1}Cur:I1-I') - bim5_i1_dark    # upper right
+    bim5_i2 = caget('XF:11BMB-BI{BPM:1}Cur:I2-I') - bim5_i2_dark    # lower left
+    bim5_i3 = caget('XF:11BMB-BI{BPM:1}Cur:I3-I') - bim5_i3_dark    # lower right
+
+    ### Ratio between estimated beam flux to raw TOTAL current for the 4 quadrants 
+    # (see Olog entry on July 7, 2017).
+    # For unslitted, unattenuated beam, BIM5 yields a TOTAL current of 4.8E-8 A at ~230 mA ring current, 
+    # corresponding to 1.38E11 ph/s at BIM3:
+    # 1.38E11 / 4.8E-8 = 0.29E19 (ph/s)/A.
+    # With dark current (total = 9.3e-10 A = 0.093e-8 A) taken into account, 
+    # 1.38E11 / 4.7E-8 = 0.294E19 (ph/s)/A.
+    bim5_curr_to_flux = 2.94E18
+
+    bim5_T = bim5_i0+bim5_i1
+    bim5_B = bim5_i2+bim5_i3
+    bim5_L = bim5_i0+bim5_i2
+    bim5_R = bim5_i1+bim5_i3
+
+    bim5_v = (bim5_T - bim5_B)/(bim5_T + bim5_B)
+    bim5_h = (bim5_R - bim5_L)/(bim5_R + bim5_L)
+    bim5_flux = bim5_curr_to_flux * (bim5_T + bim5_B)
+
+    if q==0:
+        print('BIM5 Diamond Diode BPM (Endstation)')
+        print('Vertical:')
+        print(' Signal Top: %.3e A' % bim5_T)
+        print(' Signal Bottom: %.3e A' % bim5_B)
+        print(' Offset [-1(B) to 1(T), 0 at center]: %.3f' % bim5_v)
+        print('Horizontal:')
+        print(' Signal Right: %.3e A' % bim5_R)
+        print(' Signal Left: %.3e A' % bim5_L)
+        print(' Offset [-1(L) to 1(R), 0 at center]: %.3f' % bim5_h)
+        print('Total Signal: %.3e A' % (bim5_T + bim5_B))
+        print('Total Flux: %.3e ph/s' % bim5_flux)
+
+    return(bim5_flux)
+
+

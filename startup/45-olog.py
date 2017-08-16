@@ -89,8 +89,17 @@ logbook = simple_olog_client
 #logbook_cb = logbook_cb_factory(configured_logbook_func)
 logbook_cb = logbook_cb_factory(configured_logbook_func, desc_dispatch=TEMPLATES)
 
+def logbook_cb_q(*args, **kwargs):
+    try:
+        logbook_cb(*args, **kwargs)
+    except:
+        import sys
+        print("WARNING: logbook_cb threw error: {}".format(sys.exc_info()[0]))
+
+
 # Comment this line to turn off automatic log entries from bluesky.
-RE.subscribe('start', logbook_cb)
+#RE.subscribe('start', logbook_cb)
+RE.subscribe('start', logbook_cb_q)
 
 
 

@@ -89,6 +89,10 @@ schi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:chi}Mtr', name='schi')
 sphi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:phi}Mtr', name='sphi')
 srot = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Srot}Mtr', name='srot')
 strans = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Strans}Mtr', name='strans')
+strans2 = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Strans2}Mtr', name='strans2')
+stilt = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Stilt}Mtr', name='stilt')
+stilt2 = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Stilt2}Mtr', name='stilt2')
+
 
 ## stages for on-axis sample camera mirror/lens
 camx = EpicsMotor('XF:11BMB-ES{Cam:OnAxis-Ax:X1}Mtr', name='camx')

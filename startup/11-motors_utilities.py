@@ -8,8 +8,8 @@ def wh_all():
     wh_pos(s4)
     wh_pos(s5)
     wh_pos([bim3y,fs3y,bim4y,bim5y])
-    wh_pos([smx,smy,sth,schi,sphi,srot,strans])
-    wh_pos([camx,camy])
+    wh_pos([smx,smy,sth,schi,sphi,srot,strans,strans2,stilt,stilt2])
+    wh_pos([camx,camy,cam2x,cam2z])
     wh_pos([DETx,DETy,WAXSx,SAXSx,SAXSy])
     wh_pos([bsx,bsy,bsphi])
     wh_pos([armz,armx,armphi,army,armr])
@@ -94,12 +94,17 @@ def wh_offsets():
     print('sphi:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{Chm:Smpl-Ax:phi}Mtr.OFF'),caget('XF:11BMB-ES{Chm:Smpl-Ax:phi}Mtr.DIR')))
     print('srot:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{SM:1-Ax:Srot}Mtr.OFF'),caget('XF:11BMB-ES{SM:1-Ax:Srot}Mtr.DIR')))
     print('strans:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{SM:1-Ax:Strans}Mtr.OFF'),caget('XF:11BMB-ES{SM:1-Ax:Strans}Mtr.DIR')))
+    print('strans2:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{SM:1-Ax:Strans2}Mtr.OFF'),caget('XF:11BMB-ES{SM:1-Ax:Strans2}Mtr.DIR')))
+    print('stilt:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{SM:1-Ax:Stilt}Mtr.OFF'),caget('XF:11BMB-ES{SM:1-Ax:Stilt}Mtr.DIR')))
+    print('stilt2:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{SM:1-Ax:Stilt2}Mtr.OFF'),caget('XF:11BMB-ES{SM:1-Ax:Stilt2}Mtr.DIR')))
 
 
     ## camera
     wh_pos([camx,camy])
     print('camx:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{Cam:OnAxis-Ax:X1}Mtr.OFF'),caget('XF:11BMB-ES{Cam:OnAxis-Ax:X1}Mtr.DIR')))
     print('camy:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{Cam:OnAxis-Ax:Y1}Mtr.OFF'),caget('XF:11BMB-ES{Cam:OnAxis-Ax:Y1}Mtr.OFF')))
+    print('cam2x:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{Cam:OnAxis-Ax:X2}Mtr.OFF'),caget('XF:11BMB-ES{Cam:OnAxis-Ax:X2}Mtr.DIR')))
+    print('cam2z:  offset = %f, direction = %d' % (caget('XF:11BMB-ES{Cam:OnAxis-Ax:Y2}Mtr.OFF'),caget('XF:11BMB-ES{Cam:OnAxis-Ax:Y2}Mtr.OFF')))
 
 
     ## detector stages

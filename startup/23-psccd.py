@@ -86,6 +86,7 @@ class PhotonicSciences_CMS(Device):
         import socket
         #self.sock = socket.socket()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(self.server_address)
         self.sock.connect((self.server_address, self.server_port))
         
         self.sock.settimeout(0.5)

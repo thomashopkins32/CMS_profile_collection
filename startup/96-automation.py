@@ -55,16 +55,22 @@ class SampleExchangeRobot(Stage):
         #self._position_hold = [ 0, -106.89986875, -94.04984999999999, 0, 90.0 ] # x, y, z, r, phi
         
         #tested without SmarAct stage. smx=50; smy=-2.37
-        self._position_sample_gripped = [ -99, -107, -93, 0.0, 90.5 ] # x, y, z, r, phi
-        self._position_hold = [ 0, -107, -93, 0, 90.5 ] # x, y, z, r, phi
+        #self._position_sample_gripped = [ -99, -107, -94, 0.0, 91 ] # x, y, z, r, phi
+        #self._position_hold = [ 0, -107, -94, 0, 91 ] # x, y, z, r, phi
 
+        #tested with the gripper with spring. smx=50; smy=-2.37
+        self._position_sample_gripped = [ -98, -103, -94.5, 0.0, 91 ] # x, y, z, r, phi
+        self._position_hold = [ 0, -103, -94.5, 0, 91 ] # x, y, z, r, phi
 
 
         #defacult position of gripper to pick up from Garage(1,1)
         #self._position_garage = [-96, -200, -129.5, 0.0, 0.0] # x, y, z, r, phi
         #self._position_garage = [ -97.5, -201.000121875, -129.9003625, -0.412427, 0.0 ] # x, y, z, r, phi
         #self._position_garage = [ -98.999675, -198, -130.000375, -0.621273, 0.0 ] # x, y, z, r, phi
-        self._position_garage = [ -99.50, -201, -128.5, 0.0, 0.5 ] # x, y, z, r, phi
+        #self._position_garage = [ -98, -200, -128, 0.0, 1 ] # x, y, z, r, phi
+
+        #tested with the gripper with spring. smx=50; smy=-2.37
+        self._position_garage = [ -96, -197.5, -127, 0.0, 1 ] # x, y, z, r, phi
 
         #default position for stage
         #self._position_stg_exchange = [+30.0, -2.37] # smx, smy
@@ -573,7 +579,7 @@ class SampleExchangeRobot(Stage):
         if self.zpos(verbosity=0)<-10:
             print("ERROR: z ({}) position unsafe.".format(self.zpos(verbosity=0)))
 
-        if abs(self.phipos(verbosity=0))>0.5:
+        if abs(self.phipos(verbosity=0))>1:
             print("ERROR: phi ({}) position unsafe.".format(self.phipos(verbosity=0)))
         
         x, y, z, r, phi = self._position_garage
@@ -667,6 +673,7 @@ class SampleExchangeRobot(Stage):
         
         # Lower so that the slot is aligned
         self.yr(-self._delta_y_slot, verbosity=verbosity)
+        self.zabs(-60)
         
        
 
@@ -696,15 +703,50 @@ class SampleExchangeRobot(Stage):
                     self.sequencePutSampleOntoStage(verbosity=verbosity)
                     
                     sleep(3)
-                    
+                                        
                     self.sequenceGetSampleFromStage(verbosity=verbosity)
                     self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)
                     
+
+    def run(self, cycles=1, verbosity=5):
+
+        if not self.checkSafe():
+            return
+        
+        #self.home()
         
         
+        for i in range(cycles):
+            if verbosity>=2:
+                print('Run test cycle {}'.format(i))
+
+            for hol in Garage_holders:
+                
+                    [shelf_num, spot_num] = hol.GaragePosition
+
+            
+                    if verbosity>=2:
+                        print('Run test garage ({}, {})'.format(shelf_num, spot_num))
+    
+                    
+                    self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+                    self.sequencePutSampleOntoStage(verbosity=verbosity)
+
+                    hol.listSamples()
+                    sleep(3)
+                    hol.doSamples()
+                    
+                    
+                    self.sequenceGetSampleFromStage(verbosity=verbosity)
+                    self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
         
-        
-        
+    def listGarage(self, verbosity=3):
+
+        for hol in Garage_holders:
+               
+                [shelf_num, spot_num] = hol.GaragePosition
+                print('In Garage ({}, {})'.format(shelf_num, spot_num))
+                hol.listSamplesPositions()        
         
         
 

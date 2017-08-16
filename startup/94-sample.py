@@ -1,3 +1,4 @@
+
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # vi: ts=4 sw=4
@@ -1265,7 +1266,8 @@ class Sample_Generic(CoordinateSystem):
         
         #md_current = {}
         md_current = { k : v for k, v in RE.md.items() } # Global md
-        md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:SAXS}:cam1:FileNumber_RBV')
+        #md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:SAXS}:cam1:FileNumber_RBV')
+        md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
         
         md_current.update(get_beamline().get_md())
         
@@ -1290,25 +1292,27 @@ class Sample_Generic(CoordinateSystem):
 
         if exposure_time is not None:
             # Prep detector
-            caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
-            caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
+            #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
+            #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
         
+            caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), exposure_time)
+            caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), exposure_time+0.1)
         
         get_beamline().beam.on()
         
         # Trigger acquisition manually
-        caput('XF:11BMB-ES{Det:SAXS}:cam1:Acquire', 1)
+        caput('XF:11BMB-ES{}:cam1:Acquire'.format(pilatus_Epicsname), 1)
         
         if verbosity>=2:
             start_time = time.time()
-            while caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1 and (time.time()-start_time)<(exposure_time+20):
+            while caget('XF:11BMB-ES{}:cam1:Acquire'.format(pilatus_Epicsname))==1 and (time.time()-start_time)<(exposure_time+20):
                 percentage = 100*(time.time()-start_time)/exposure_time
                 print( 'Exposing {:6.2f} s  ({:3.0f}%)      \r'.format((time.time()-start_time), percentage), end='')
                 time.sleep(poling_period)
         else:
             time.sleep(exposure_time)
             
-        if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+        if verbosity>=3 and caget('XF:11BMB-ES{}:cam1:Acquire'.format(pilatus_Epicsname))==1:
             print('Warning: Detector still not done acquiring.')
         
         get_beamline().beam.off()
@@ -1335,6 +1339,12 @@ class Sample_Generic(CoordinateSystem):
         md['plan_header_override'] = md['measure_type']
         start_time = time.time()
         
+        #md_current = self.get_md()
+        md['beam_int_bim3'] = beam.bim3.flux(verbosity=0)
+        md['beam_int_bim4'] = beam.bim4.flux(verbosity=0)
+        md['beam_int_bim5'] = beam.bim5.flux(verbosity=0)
+        #md.update(md_current)
+
         uids = RE(count(gs.DETS, 1), **md)
         
         #get_beamline().beam.off()
@@ -1345,6 +1355,9 @@ class Sample_Generic(CoordinateSystem):
         for detector in gs.DETS:
             if detector.name is 'pilatus300':
                 current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            elif detector.name is 'pilatus2M':
+                current_exposure_time = caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime')
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
             elif detector.name is 'PhotonicSciences_CMS':
                 current_exposure_time = detector.exposure_time
@@ -1365,6 +1378,9 @@ class Sample_Generic(CoordinateSystem):
                     if detector.name is 'pilatus300':
                         if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
                             status *= 0
+                    elif detector.name is 'pilatus2M':
+                        if caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
+                            status *= 0
                     elif detector.name is 'PhotonicSciences_CMS':
                         if not detector.detector_is_ready(verbosity=0):
                             status *= 0
@@ -1375,12 +1391,17 @@ class Sample_Generic(CoordinateSystem):
             time.sleep(max_exposure_time)
         
         if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
-            print('Warning: Detector still not done acquiring.')
+            print('Warning: Detector pilatus300 still not done acquiring.')
+
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
+            print('Warning: Detector pilatus2M still not done acquiring.')
+ 
         
         get_beamline().beam.off()
         
         for detector in gs.DETS:
             self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+
 
 
     def handle_file(self, detector, extra=None, verbosity=3, subdirs=True, **md):
@@ -1410,7 +1431,7 @@ class Sample_Generic(CoordinateSystem):
                 #savename = md['filename'][:-5]
                 
                 savename = self.get_savename(savename_extra=extra)
-                link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
+                link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
                 
                 if os.path.isfile(link_name):
                     i = 1
@@ -1421,7 +1442,42 @@ class Sample_Generic(CoordinateSystem):
                 
                 if verbosity>=3:
                     print('  Data linked as: {}'.format(link_name))
+
+        elif detector.name is 'pilatus2M':
+            chars = caget('XF:11BMB-ES{Det:PIL2M}:TIFF1:FullFileName_RBV')
+            filename = ''.join(chr(char) for char in chars)[:-1]
             
+            # Alternate method to get the last filename
+            #filename = '{:s}/{:s}.tiff'.format( detector.tiff.file_path.get(), detector.tiff.file_name.get()  )
+
+            if verbosity>=3:
+                print('  Data saved to: {}'.format(filename))
+
+            if subdirs:
+                subdir = '/saxs/'
+
+            #if md['measure_type'] is not 'snap':
+            if True:
+                
+                self.set_attribute('exposure_time', caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'))
+                
+                # Create symlink
+                #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])
+                #savename = md['filename'][:-5]
+                
+                savename = self.get_savename(savename_extra=extra)
+                link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                
+                if os.path.isfile(link_name):
+                    i = 1
+                    while os.path.isfile('{}.{:d}'.format(link_name,i)):
+                        i += 1
+                    os.rename(link_name, '{}.{:d}'.format(link_name,i))
+                os.symlink(filename, link_name)
+                
+                if verbosity>=3:
+                    print('  Data linked as: {}'.format(link_name))
+                        
         elif detector.name is 'PhotonicSciences_CMS':
             
             self.set_attribute('exposure_time', detector.exposure_time)
@@ -1433,7 +1489,7 @@ class Sample_Generic(CoordinateSystem):
 
             #savename = md['filename'][:-5]
             savename = self.get_savename(savename_extra=extra)
-            savename = '{}/{}{}_{:04d}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
+            savename = '{}/{}{}_{:04d}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
             
             shutil.copy(filename, savename)
             if verbosity>=3:
@@ -1543,7 +1599,7 @@ class Sample_Generic(CoordinateSystem):
         time.time()
         
     
-    def _test_measure_single(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, **md):
+    def _test_measure_single(self, exposure_time=None, extra=None, shutteronoff=True, measure_type='measure', verbosity=3, **md):
         '''Measure data by triggering the area detectors.
         
         Parameters
@@ -1555,8 +1611,8 @@ class Sample_Generic(CoordinateSystem):
             included in the savename/filename).
         '''           
         
-        print('1') #0s
-        print(time.time())
+        #print('1') #0s
+        #print(time.time())
         
         if exposure_time is not None:
             self.set_attribute('exposure_time', exposure_time)
@@ -1574,8 +1630,8 @@ class Sample_Generic(CoordinateSystem):
             print("ERROR: No detectors defined in gs.DETS")
             return
         
-        print('2') #0.0004s
-        print(time.time())       
+        #print('2') #0.0004s
+        #print(time.time())       
 
         md_current = self.get_md()
         md_current['sample_savename'] = savename
@@ -1586,20 +1642,20 @@ class Sample_Generic(CoordinateSystem):
         md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
         md_current.update(md)
         
-        print('3') #0.032s
-        print(time.time())
+        #print('3') #0.032s
+        #print(time.time())
         
-        self.expose(exposure_time, extra=extra, verbosity=verbosity, **md_current)
+        self._test_expose(exposure_time, shutteronoff=shutteronoff, extra=extra, verbosity=verbosity, **md_current)
 
-        print('4') #5.04s
-        print(time.time())
+        #print('4') #5.04s
+        #print(time.time())
         
         self.md['measurement_ID'] += 1
         
-        print('5') #5.0401
-        print(time.time())
+        #print('5') #5.0401
+        #print(time.time())
         
-    def _test_expose(self, exposure_time=None, extra=None, verbosity=3, poling_period=0.1, **md):
+    def _test_expose(self, exposure_time=None, extra=None, verbosity=3, poling_period=0.1, shutteronoff=True, **md):
         '''Internal function that is called to actually trigger a measurement.'''
         
         if 'measure_type' not in md:
@@ -1612,22 +1668,26 @@ class Sample_Generic(CoordinateSystem):
             for detector in gs.DETS:
                 detector.setExposureTime(exposure_time, verbosity=verbosity)
         
-        print('1') #5e-5
-        print(self.clock())
+        #print('1') #5e-5
+        #print(self.clock())
         
         # Do acquisition
-        get_beamline().beam.on()
+        # check shutteronoff, if 
+        if shutteronoff == True: 
+            get_beamline().beam.on()
+        else:
+            print('shutter is disabled')
 
-        print('2') #3.0
-        print(self.clock())
+        #print('2') #3.0
+        #print(self.clock())
         
         md['plan_header_override'] = md['measure_type']
         start_time = time.time()
         
         uids = RE(count(gs.DETS, 1), **md)
 
-        print('3') #4.3172
-        print(self.clock())
+        #print('3') #4.3172
+        #print(self.clock())
         
         #get_beamline().beam.off()
         #print('shutter is off')
@@ -1635,8 +1695,8 @@ class Sample_Generic(CoordinateSystem):
         # Wait for detectors to be ready
         max_exposure_time = 0
         for detector in gs.DETS:
-            if detector.name is 'pilatus300':
-                current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
+            if detector.name is 'pilatus300' or 'pilatus2M':
+                current_exposure_time = caget('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname))
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
             elif detector.name is 'PhotonicSciences_CMS':
                 current_exposure_time = detector.exposure_time
@@ -1645,8 +1705,8 @@ class Sample_Generic(CoordinateSystem):
                 if verbosity>=1:
                     print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
         
-        print('4') #4.3193
-        print(self.clock())
+        #print('4') #4.3193
+        #print(self.clock())
 
             
         if verbosity>=2:
@@ -1658,8 +1718,8 @@ class Sample_Generic(CoordinateSystem):
                 
                 status = 1
                 for detector in gs.DETS:
-                    if detector.name is 'pilatus300':
-                        if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+                    if detector.name is 'pilatus300' or 'pilatus2M':
+                        if caget('XF:11BMB-ES{}:cam1:Acquire'.format(pilatus_Epicsname))==1:
                             status *= 0
                     elif detector.name is 'PhotonicSciences_CMS':
                         if not detector.detector_is_ready(verbosity=0):
@@ -1670,23 +1730,44 @@ class Sample_Generic(CoordinateSystem):
         else:
             time.sleep(max_exposure_time)
         
-        print('5') #4.4193
-        print(self.clock())
+        #print('5') #4.4193
+        #print(self.clock())
 
-        if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+        if verbosity>=3 and caget('XF:11BMB-ES{}:cam1:Acquire'.format(pilatus_Epicsname))==1:
             print('Warning: Detector still not done acquiring.')
         
-        get_beamline().beam.off()
+        if shutteronoff == True: 
+            get_beamline().beam.off()
+        else:
+            print('shutter is disabled')
 
-        print('6') #4.9564
-        print(self.clock())
+        #print('6') #4.9564
+        #print(self.clock())
         
         for detector in gs.DETS:
             self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
             
-        print('7') #4.9589
-        print(self.clock())
+        #print('7') #4.9589
+        #print(self.clock())
 
+    def _test_measureSpots(self, num_spots=4, translation_amount=0.2, axis='y', exposure_time=None, extra=None, shutteronoff=True, measure_type='measureSpots', tiling=False, **md):
+        '''Measure multiple spots on the sample.'''
+        
+        if 'spot_number' not in self.md:
+            self.md['spot_number'] = 1
+        
+        start_time = time.time()
+        
+        for spot_num in range(num_spots):
+        
+            self._test_measure_single(exposure_time=exposure_time, extra=extra, measure_type=measure_type, shutteronoff=shutteronoff, tiling=tiling, **md)
+            
+            print(spot_num+1)
+            print(time.time()-start_time)
+            getattr(self, axis+'r')(translation_amount)
+            self.md['spot_number'] += 1
+            print('{:d} of {:d} is done'.format(spot_num+1,num_spots))
+            print(time.time()-start_time)
         
     def measureSpots(self, num_spots=4, translation_amount=0.2, axis='y', exposure_time=None, extra=None, measure_type='measureSpots', tiling=False, **md):
         '''Measure multiple spots on the sample.'''
@@ -1767,15 +1848,15 @@ class Sample_Generic(CoordinateSystem):
             time.sleep(wait_time)
             
         # Measure
-        if fix_name and ('temperature' not in self.naming_scheme):
-            self.naming_scheme_hold = self.naming_scheme
-            self.naming_scheme = self.naming_scheme_hold.copy()
-            self.naming_scheme.insert(-1, 'temperature')
+        #if fix_name and ('temperature' not in self.naming_scheme):
+        #    self.naming_scheme_hold = self.naming_scheme
+        #    self.naming_scheme = self.naming_scheme_hold.copy()
+        #    self.naming_scheme.insert(-1, 'temperature')
             
             
         self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, tiling=tiling, **md)
         
-        self.naming_scheme = self.naming_scheme_hold
+        #self.naming_scheme = self.naming_scheme_hold
 
 
     def measureTemperatures(self, temperatures, exposure_time=None, wait_time=None, temperature_tolerance=0.4, extra=None, measure_type='measureTemperature', verbosity=3, tiling=False, poling_period=1.0, fix_name=True, **md):
@@ -1800,6 +1881,7 @@ class Sample_Generic(CoordinateSystem):
             if verbosity>=5:
                 print('    step 1: goto origin')
             self.xo() # goto origin
+            self.yo()
             #self.gotoAlignedPosition()
             
         #if step<=5:
@@ -1810,6 +1892,26 @@ class Sample_Generic(CoordinateSystem):
                 print('    step 10: measuring')
             self.measure(**md)
                 
+
+    # Control methods
+    ########################################
+    def setTemperature(self, temperature, verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+        if verbosity>=2:
+            print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, temperature))
+        caput('XF:11BM-ES{Env:01-Out:1}T-SP', temperature+273.15)
+        
+        
+    def temperature(self, verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+            
+        current_temperature = caget('XF:11BM-ES{Env:01-Chan:A}T:C-I')
+        if verbosity>=3:
+            print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15 ) )
+            
+        return current_temperature
         
 
 
@@ -1947,12 +2049,12 @@ class SampleGISAXS_Generic(Sample_Generic):
             self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
         
         
-        if step<=4:
-            if verbosity>=4:
-                print('    align: fitting')
+        #if step<=4:
+            #if verbosity>=4:
+                #print('    align: fitting')
 
-            fit_scan(smy, 1.2, 21, fit='HMi')
-            fit_scan(sth, 1.5, 21, fit='max')
+            #fit_scan(smy, 1.2, 21, fit='HMi')
+            #fit_scan(sth, 1.5, 21, fit='max')
             
             
         #if step<=5:
@@ -1963,7 +2065,9 @@ class SampleGISAXS_Generic(Sample_Generic):
 
         if step<=8:
             #fit_scan(smy, 0.3, 21, fit='sigmoid_r')
-            fit_edge(smy, 0.4, 21)
+            
+            fit_edge(smy, 0.6, 21)
+            #fit_edge(smy, 0.4, 21)
             fit_scan(sth, 0.8, 21, fit='COM')
             
             self.setOrigin(['y', 'th'])
@@ -1973,17 +2077,21 @@ class SampleGISAXS_Generic(Sample_Generic):
             # Final alignment using reflected beam
             if verbosity>=4:
                 print('    align: reflected beam')
-            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
             
             self.thabs(reflection_angle)
             
-            result = fit_scan(sth, 0.7, 41, fit='max')
+            result = fit_scan(sth, 0.2, 41, fit='max') 
+            #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
             sth_target = result.values['x_max']-reflection_angle
             
             if result.values['y_max']>10:
                 th_target = self._axes['th'].motor_to_cur(sth_target)
                 self.thsetOrigin(th_target)
 
+            fit_edge(smy, 0.2, 21)
+            self.setOrigin(['y'])            
 
         if step<=10:
             self.thabs(0.0)
@@ -2066,6 +2174,9 @@ class SampleGISAXS_Generic(Sample_Generic):
         
         if step<=10:
             #detselect([pilatus300, psccd])
+            #detselect(psccd)
+            #detselect(pilatus300)
+            detselect(pilatus2M)
             for detector in gs.DETS:
                 detector.setExposureTime(self.md['exposure_time'])
             self.measureIncidentAngles(self.incident_angles_default, **md)
@@ -2226,7 +2337,7 @@ class Holder(Stage):
         sample.set_base_stage(self)
         sample.md['holder_sample_number'] = sample_number
 
-
+       
     def removeSample(self, sample_number):
         '''Remove a particular sample from this holder/bar.'''
         
@@ -2420,7 +2531,7 @@ class Holder(Stage):
         string, then all samples with names that match are returned.'''
         
         for sample in self.getSamples(range=range):
-            if verbosity>3:
+            if verbosity>=3:
                 print('Doing sample {}...'.format(sample.name))
             sample.do(verbosity=verbosity, **md)
             
@@ -2444,11 +2555,11 @@ class Holder(Stage):
         self.doSamples(range=range, verbosity=verbosity, **md)
             
 
-    def doTemperatures(self, temperatures, temperature, wait_time=None, temperature_tolerance=0.4, range=None, verbosity=3, **md):
+    def doTemperatures(self, temperatures,  wait_time=None, temperature_tolerance=0.4, range=None, verbosity=3, **md):
         
         for temperature in temperatures:
             
-            self.doTemperature(temperature, temperature, wait_time=wait_time, temperature_tolerance=temperature_tolerance, range=range, verbosity=verbosity, **md)
+            self.doTemperature(temperature,  wait_time=wait_time, temperature_tolerance=temperature_tolerance, range=range, verbosity=verbosity, **md)
                 
 
 
@@ -2467,7 +2578,7 @@ class PositionalHolder(Holder):
         super().__init__(name=name, base=base, **kwargs)
         
         self._positional_axis = 'x'
-
+        self.GaragePosition=[]
         
     # Sample management
     ########################################
@@ -2488,20 +2599,21 @@ class PositionalHolder(Holder):
         return position
         
         
-    def addSampleSlot(self, sample, slot):
+    def addSampleSlot(self, sample, slot, detector_opt='SAXS'):
         '''Adds a sample to the specified "slot" (defined/numbered sample 
         holding spot on this holder).'''
         
         self.addSample(sample, sample_number=slot)
         sample.setOrigin( [self._positional_axis], [self.get_slot_position(slot)] )
-
-
-    def addSampleSlotPosition(self, sample, slot, position):
+        sample.detector=detector_opt
+        
+    def addSampleSlotPosition(self, sample, slot, position, detector_opt='SAXS'):
         '''Adds a sample to the specified "slot" (defined/numbered sample 
         holding spot on this holder).'''
         
         self.addSample(sample, sample_number=slot)
         sample.setOrigin( [self._positional_axis], [position] )
+        sample.detector=detector_opt
         
         
     def listSamplesPositions(self):
@@ -2513,6 +2625,22 @@ class PositionalHolder(Holder):
             pos = sample.origin(verbosity=0)[self._positional_axis]
             print( '%s: %s (%s = %.3f)' % (str(sample_number), sample.name, self._positional_axis, pos) )
 
+    def listSamplesDetails(self):
+        '''Print a list of the current samples associated with this holder/
+        bar.'''
+        
+        for sample_number, sample in self._samples.items():
+            #pos = getattr(sample, self._positional_axis+'pos')(verbosity=0)
+            pos = sample.origin(verbosity=0)[self._positional_axis]
+            print( '%s: %s (%s = %.3f) %s' % (str(sample_number), sample.name, self._positional_axis, pos, sample.detector) )
+            
+    def addGaragePosition(self, shelf_num, spot_num):
+        '''the position in garage'''
+        if shelf_num not in range(1, 5) or spot_num not in range(1, 4):
+            print('Out of the range in Garage (4 x 3)')
+                    
+        self.GaragePosition=[shelf_num, spot_num]
+        
 
 class GIBar(PositionalHolder):
     '''This class is a sample bar for grazing-incidence (GI) experiments.'''
@@ -2535,7 +2663,7 @@ class GIBar(PositionalHolder):
         self.mark('center', x=54.1, y=0)
              
              
-    def addSampleSlotPosition(self, sample, slot, position, account_substrate=True):
+    def addSampleSlotPosition(self, sample, slot, position, detector_opt='SAXS', account_substrate=True):
         '''Adds a sample to the specified "slot" (defined/numbered sample 
         holding spot on this holder).'''
         
@@ -2544,7 +2672,10 @@ class GIBar(PositionalHolder):
         # Adjust y-origin to account for substrate thickness
         if account_substrate and 'substrate_thickness' in sample.md:
             sample.ysetOrigin( -1.0*sample.md['substrate_thickness'] )
-                     
+        
+        sample.detector=detector_opt
+
+        
 
 class CapillaryHolder(PositionalHolder):
     '''This class is a sample holder that has 15 slots for capillaries.'''
@@ -2565,7 +2696,7 @@ class CapillaryHolder(PositionalHolder):
         # slot 15; smx = -61.94
         
         # Set the x and y origin to be the center of slot 8
-        self.xsetOrigin(-17.49410)
+        self.xsetOrigin(-17.49410+0.35)
         self.ysetOrigin(-2.36985)
         
         self.mark('right edge', x=+54.4)
