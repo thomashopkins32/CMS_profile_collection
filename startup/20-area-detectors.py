@@ -83,6 +83,7 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
                root='/GPFS/xf11bm',
                fs=db.fs)
     
+    
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
@@ -149,6 +150,8 @@ pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
 pilatus2M.tiff.read_attrs = []
 STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
 pilatus2M.read_attrs = ['tiff'] + STATS_NAMES
+#pilatus2M.read_attrs = ['cbf'] + STATS_NAMES
+
 for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']

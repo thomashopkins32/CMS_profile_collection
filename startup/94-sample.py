@@ -1266,9 +1266,14 @@ class Sample_Generic(CoordinateSystem):
         
         #md_current = {}
         md_current = { k : v for k, v in RE.md.items() } # Global md
+
         #md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:SAXS}:cam1:FileNumber_RBV')
-        md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
-        
+        #md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
+        if detector.name is 'pilatus300':
+            md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:SAXS}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
+        elif detector.name is 'pilatus2M':
+            md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:PIL2M}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
+          
         md_current.update(get_beamline().get_md())
         
         md_current.update(md)
@@ -1294,9 +1299,15 @@ class Sample_Generic(CoordinateSystem):
             # Prep detector
             #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
             #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
-        
-            caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), exposure_time)
-            caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), exposure_time+0.1)
+            #caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), exposure_time)
+            #caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), exposure_time+0.1)
+
+            if detector.name is 'pilatus300':
+                caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
+                caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
+            elif detector.name is 'pilatus2M':
+                caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+                caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
         
         get_beamline().beam.on()
         
@@ -1467,6 +1478,7 @@ class Sample_Generic(CoordinateSystem):
                 
                 savename = self.get_savename(savename_extra=extra)
                 link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                #link_name = '{}/{}{}_{:04d}_saxs.cbf'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
                 
                 if os.path.isfile(link_name):
                     i = 1
