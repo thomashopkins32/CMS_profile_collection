@@ -89,20 +89,6 @@ logbook = simple_olog_client
 #logbook_cb = logbook_cb_factory(configured_logbook_func)
 logbook_cb = logbook_cb_factory(configured_logbook_func, desc_dispatch=TEMPLATES)
 
-def logbook_cb_q(*args, **kwargs):
-    try:
-        logbook_cb(*args, **kwargs)
-    except:
-        import sys
-        print("WARNING: logbook_cb threw error: {}".format(sys.exc_info()[0]))
-
-
-# Comment this line to turn off automatic log entries from bluesky.
-#RE.subscribe('start', logbook_cb)
-RE.subscribe('start', logbook_cb_q)
-
-
-
 
 # Note: According to Yugang, to get the filename from the databroker (after the end of a run), you can do something like:
 #header = db[-1] # Get most recent record
@@ -113,3 +99,30 @@ RE.subscribe('start', logbook_cb_q)
 #filenames =  [  str( ev['data'][key][0]) + '_'+ str(ev['data'][key][2]['seq_id']) for ev in events]     
 # Refer to Yugang's chxanalys package for full code.
 #    https://github.com/yugangzhang/chxanalys
+from functools import partial
+from pyOlog import SimpleOlogClient
+import queue
+import threading
+from warnings import warn
+
+
+def submit_to_olog(queue, cb):
+    while True:
+        name, doc = queue.get()  # waits until document is available
+        try:
+            cb(name, doc)
+        except Exception as exc:
+            warn('This olog is giving errors. This will not be logged.'
+                 'Error:' + str(exc))
+
+olog_queue = queue.Queue(maxsize=100)
+olog_thread = threading.Thread(target=submit_to_olog, args=(olog_queue, logbook_cb), daemon=True)
+olog_thread.start()
+
+def send_to_olog_queue(name, doc):
+    try:
+        olog_queue.put((name, doc), block=False)
+    except queue.Full:
+        warn('The olog queue is full. This will not be logged.')
+
+RE.subscribe(send_to_olog_queue, 'start')

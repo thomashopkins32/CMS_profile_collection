@@ -9,7 +9,6 @@ from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt, Signal
 from ophyd.utils import set_and_wait
-#import filestore.api as fs
 
 
 #class Elm(SingleTrigger, DetectorBase):
@@ -57,7 +56,7 @@ class Pilatus(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
                root='/GPFS/xf11bm',
-               fs=db.fs)
+               reg=db.reg)
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
@@ -81,8 +80,12 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
                root='/GPFS/xf11bm',
-               fs=db.fs)
-    
+               reg=db.reg)
+
+    @property
+    def hints(self):
+        return {'fields': [self.stats4.total.name,
+                           self.stats5.total.name]}
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
@@ -94,7 +97,7 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
 #               suffix='TIFF1:',
 #               write_path_template='/GPFS/xf11bm/data/%Y/%m/%d/',
 #               root='/GPFS/xf11bm/',
-#               fs=db.fs)
+#               reg=db.reg)
 
 
 

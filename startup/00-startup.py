@@ -2,35 +2,43 @@
 from ophyd import setup_ophyd
 setup_ophyd()
 
-from metadatastore.mds import MDS
-# from metadataclient.mds import MDS
+# Set up a RunEngine and use metadata backed by a sqlite file.
+from bluesky import RunEngine
+from bluesky.utils import get_history
+RE = RunEngine(get_history())
+
+# Set up a Broker.
 from databroker import Broker
-from databroker.core import register_builtin_handlers
-from filestore.fs import FileStore
-
-# pull from /etc/metadatastore/connection.yaml
-mds = MDS({'host': 'xf11bm-ca1',
-           'port': 27017,
-           'database': 'metadatastore-production-v1',
-           'timezone': 'US/Eastern'}, auth=False)
-# mds = MDS({'host': CA, 'port': 7770})
-
-# pull configuration from /etc/filestore/connection.yaml
-db = Broker(mds, FileStore({'host': 'xf11bm-ca1',
-           'port': 27017,
-           'database': 'filestore-production-v1',
-           'timezone': 'US/Eastern'}))
-register_builtin_handlers(db.fs)
+db = Broker.named('cms')
 
 # Subscribe metadatastore to documents.
 # If this is removed, data is not saved to metadatastore.
-from bluesky.global_state import gs
-gs.RE.subscribe('all', db.mds.insert)
+RE.subscribe(db.insert)
+
+# Set up SupplementalData.
+from bluesky import SupplementalData
+sd = SupplementalData()
+RE.preprocessors.append(sd)
+
+# Add a progress bar.
+from bluesky.utils import ProgressBarManager
+pbar_manager = ProgressBarManager()
+RE.waiting_hook = pbar_manager
+
+# Register bluesky IPython magics.
+from bluesky.magics import BlueskyMagics
+get_ipython().register_magics(BlueskyMagics)
+
+# Set up the BestEffortCallback.
+from bluesky.callbacks.best_effort import BestEffortCallback
+bec = BestEffortCallback()
+RE.subscribe(bec)
+peaks = bec.peaks  # just as alias for less typing
 
 # At the end of every run, verify that files were saved and
 # print a confirmation message.
-# from bluesky.callbacks.broker import verify_files_saved
-# gs.RE.subscribe('stop', post_run(verify_files_saved))
+from bluesky.callbacks.broker import verify_files_saved
+# RE.subscribe(post_run(verify_files_saved), 'stop')
 
 # Import matplotlib and put it in interactive mode.
 import matplotlib.pyplot as plt
@@ -44,18 +52,23 @@ install_qt_kicker()
 # RE.md['beamline_id'] = 'YOUR_BEAMLINE_HERE'
 
 # convenience imports
-from ophyd.commands import *
 from bluesky.callbacks import *
-from bluesky.spec_api import *
-from bluesky.global_state import gs, abort, stop, resume
-#from databroker import (DataBroker as db, get_events, get_images,
-#                        get_table, get_fields, restream, process)
-from time import sleep
+from bluesky.callbacks.broker import *
+from bluesky.simulators import *
+from bluesky.plans import *
 import numpy as np
 
-RE = gs.RE  # convenience alias
+from pyOlog.ophyd_tools import *
 
-# Uncomment the following lines to turn on verbose messages for debugging.
+# Uncomment the following lines to turn on verbose messages for
+# debugging.
 # import logging
 # ophyd.logger.setLevel(logging.DEBUG)
 # logging.basicConfig(level=logging.DEBUG)
+
+# Add a callback that prints scan IDs at the start of each scan.
+# def print_scan_ids(name, start_doc):
+#     print("Transient Scan ID: {0} @ {1}".format(start_doc['scan_id'],time.strftime("%Y/%m/%d %H:%M:%S")))
+#     print("Persistent Unique Scan ID: '{0}'".format(start_doc['uid']))
+# 
+# RE.subscribe(print_scan_ids, 'start')

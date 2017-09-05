@@ -764,6 +764,7 @@ class Queue(object):
 
 
 
-robot = SampleExchangeRobot(use_gs=False)
+# Note: This will break until class is updated to not use gs at all.
+# robot = SampleExchangeRobot(use_gs=False)
 
 #robot._region='safe'

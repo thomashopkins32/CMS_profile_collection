@@ -27,6 +27,9 @@
 # verbosity=5 : Output everything (e.g. for testing)
 
 
+# TODO: change "from mv" to "from bp.mv"
+#import bluesky.plans as bp
+
 
 # These imports are not necessary if part of the startup sequence.
 # If this file is called separately, some of these may be needed.
@@ -448,7 +451,8 @@ class PointDiode_CMS(Monitor):
         if verbosity>=3:
             print('Inserting {:s}...'.format(self.name))
         
-        mov( [DETx, DETy], [self.in_position_x, self.in_position_y] )
+        #mov( [DETx, DETy], [self.in_position_x, self.in_position_y] )
+        yield from mv( DETx, self.in_position_x, DETy, self.in_position_y )
         
     
     def retract(self, verbosity=3):
@@ -456,7 +460,8 @@ class PointDiode_CMS(Monitor):
         if verbosity>=3:
             print('Retracting {:s}...'.format(self.name))
             
-        mov( [DETx, DETy], [self.out_position_x, self.out_position_y] )
+        #mov( [DETx, DETy], [self.out_position_x, self.out_position_y] )
+        yield from mv( DETx, self.in_position_x, DETy, self.in_position_y )
         
         
     def reading(self, verbosity=3):
@@ -960,7 +965,8 @@ class CMSBeam(object):
         response = input('    Are you sure? (y/[n]) ')
         if response is 'y' or response is 'Y':
             
-            mov(mono_bragg, Bragg_deg)
+            #mov(mono_bragg, Bragg_deg)
+            yield from mv( mono_bragg, Bragg_deg )
             
             if verbosity>=1:
                 print('mono_bragg moved from {:.4f} deg to {:.4f} deg'.format(Bragg_deg_initial, Bragg_deg))
@@ -1443,7 +1449,7 @@ class CMSBeam(object):
             print('  final:      {} T = {:.6g}'.format(filters_final, self.calc_transmission_filters(filters_final, verbosity=0)))
 
         
-    def setTransmission(self, transmission, retries=3, tolerance=0.5, verbosity=3):
+    def setTransmission(self, transmission, retries=3, tolerance=0.5, delay=0.1, verbosity=3):
         """
         Sets the transmission through the attenuator/filter box.
         Because the filter box has a discrete set of foils, it is impossible to
@@ -1511,6 +1517,7 @@ class CMSBeam(object):
             
         
         # Check that transmission was actually correctly changed
+        sleep(delay)
         if abs(self.transmission(verbosity=0)-transmission)/transmission > tolerance:
             if retries>0:
                 # Try again
@@ -1821,7 +1828,8 @@ class CMS_Beamline(Beamline):
             sleep(0.5)
             self.beam.setTransmission(1e-8)
             
-        mov(bsx, -10.95)
+        #bsx.user_setpoint.value = -10.95 # mov(bsx, -10.95)
+        yield from mv(bsx, -10.95)
         #detselect(pilatus300, suffix='_stats4_total')
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.6)
@@ -1844,7 +1852,8 @@ class CMS_Beamline(Beamline):
         
         self.beam.off()
         
-        mov(bsx, -15.95)
+        #bsx.user_setpoint.value = -15.95 # mov(bsx, -15.95)
+        yield from mv(bsx, -15.95)
         if abs(bsx.user_readback.value - -15.95)>0.1:
             print('WARNING: Beamstop did not return to correct position!')
             return
@@ -1872,7 +1881,8 @@ class CMS_Beamline(Beamline):
     def modeBeamstopAlignment(self, verbosity=3):
         '''Places bim6 (dsmon) as a temporary beamstop.'''
         
-        mov(DETy, -6.1)
+        #mov(DETy, -6.1)
+        yield from mv(DETy, -6.1)
         
         
         
@@ -1880,10 +1890,14 @@ class CMS_Beamline(Beamline):
         
         self.beam.setTransmission(1e-6)
         
-        mov(bsx, 0)
-        mov(bsphi, -12.0)
-        mov(bsx, -15.9148)
-        mov(bsy, -15.47)
+        #mov(bsx, 0)
+        #mov(bsphi, -12.0)
+        #mov(bsx, -15.9148)
+        #mov(bsy, -15.47)
+        yield from mv(bsx, 0)
+        yield from mv(bsphi, -12.0)
+        yield from mv(bsx, -15.9148)
+        yield from mv(bsy, -15.47)
         
         # TODO: Capture image and confirm that it's okay?
         if verbosity>=1:
@@ -1896,10 +1910,14 @@ class CMS_Beamline(Beamline):
         
         self.beam.setTransmission(1e-6)
         
-        mov(bsx, 0)
-        mov(bsphi, -223.4)
-        mov(bsx, -16.14)
-        mov(bsy, 17)
+        #mov(bsx, 0)
+        #mov(bsphi, -223.4)
+        #mov(bsx, -16.14)
+        #mov(bsy, 17)
+        yield from mv(bsx, 0)
+        yield from mv(bsphi, -223.4)
+        yield from mv(bsx, -16.14)
+        yield from mv(bsy, 17)
         
         # TODO: Capture image and confirm that it's okay?
         if verbosity>=1:
@@ -2387,8 +2405,8 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
     
     def modeAlignment(self, verbosity=3):
         
-        if RE.state!='idle':
-            RE.abort()
+        #if RE.state!='idle':
+            #RE.abort()
         
         self.current_mode = 'undefined'
         
@@ -2409,7 +2427,8 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #mov(bsx, -17.03+3) # changed at 06/04/17, GISAXS, 3m, Osuji beam time
         #mov(bsx, -16.0+3) #change it at 07/10/17, GISAXS, 2m, LSita Beam time
         #mov(bsx, -16.53+3) # 07/20/17, GISAXS, 5m, CRoss
-        mov(bsx, self.bsx_pos+3)
+        #mov(bsx, self.bsx_pos+3)
+        yield from mv(bsx, self.bsx_pos+3)
         
         self.setReflectedBeamROI()
         self.setDirectBeamROI()
@@ -2451,7 +2470,8 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #mov(bsx, -15.84) # 07/26/17, SAXS/WAXS, 2m, BVogt Beam time
         #mov(bsx, -16.34) # 08/02/17, TOMO GISAXS, 5m, LRichter Beam time
         #mov(bsx, -16.74) # 08/02/17, TOMO GISAXS, 5m, LRichter Beam time
-        mov(bsx, self.bsx_pos)
+        #mov(bsx, self.bsx_pos)
+        yield from mv(bsx, self.bsx_pos)
         
         #if abs(bsx.user_readback.value - -16.74)>0.1:
         if abs(bsx.user_readback.value - self.bsx_pos)>0.1:
@@ -2554,3 +2574,29 @@ def get_beamline():
     return cms
 
 
+from ophyd import EpicsSignalRO, DerivedSignal
+
+mono_angle = EpicsSignalRO('XF:11BMA-OP{Mono:DMM-Ax:Bragg}Mtr.RBV', name='mono_angle')
+
+
+class EnergySignal(DerivedSignal):
+    hc_over_e = 1.23984197e-6 # m^3 kg s^-3 Amp^-1 = eV*m
+    dmm_dsp = 20.1 # Angstroms
+
+    def inverse(self, value):
+        Bragg_deg = value
+        Bragg_rad = np.radians(Bragg_deg)
+        
+        wavelength_A = 2.*self.dmm_dsp*np.sin(Bragg_rad)
+        wavelength_m = wavelength_A*1e-10
+
+        energy_eV = self.hc_over_e/wavelength_m
+        energy_keV = energy_eV/1000.
+
+        return energy_keV
+
+    def forward(self, value):
+        raise NotImplementedError()
+
+
+energy = EnergySignal(derived_from=mono_angle, name='energy')
