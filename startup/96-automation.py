@@ -70,7 +70,12 @@ class SampleExchangeRobot(Stage):
         #self._position_garage = [ -98, -200, -128, 0.0, 1 ] # x, y, z, r, phi
 
         #tested with the gripper with spring. smx=50; smy=-2.37
-        self._position_garage = [ -96, -197.5, -127, 0.0, 1 ] # x, y, z, r, phi
+        #self._position_garage = [ -96, -197.5, -127, 0.0, 1 ] # x, y, z, r, phi
+        
+        # Manual tweak KY (2017-11-28)
+        self._position_garage = [ -96, -197.5-0.5, -128.5, 0.0, 1 ] # x, y, z, r, phi
+        
+        
 
         #default position for stage
         #self._position_stg_exchange = [+30.0, -2.37] # smx, smy
@@ -78,7 +83,8 @@ class SampleExchangeRobot(Stage):
         #self._position_stg_measure = [] # smx, smy
 
         #default position for stage without SmarAct motor
-        self._position_stg_exchange = [+50.0, -2.37] # smx, smy
+        #self._position_stg_exchange = [+50.0, -2.37] # smx, smy
+        self._position_stg_exchange = [+51.5, -1.87] # smx, smy # Manual tweak KY (2017-11-28)
         self._position_stg_safe = [-30.0, -2.37] # smx, smy
         self._position_stg_measure = [] # smx, smy
         
@@ -86,15 +92,15 @@ class SampleExchangeRobot(Stage):
         self._delta_garage_x = 44.45 # 1.75 inch = 44.45 mm
         self._delta_garage_y = 63.5 # 2.5 inch = 63.5 mm
         
-        if use_gs and hasattr(gs, 'robot'):
-            if '_position_sample_gripped' in gs.robot:
-                self._position_sample_gripped = gs.robot['_position_sample_gripped']
-            if '_position_hold' in gs.robot:
-                self._position_hold = gs.robot['_position_hold']
-            if '_position_garage' in gs.robot:
-                self._position_garage = gs.robot['_position_garage']
-        else:
-            gs.robot = {}
+        #if use_gs and hasattr(gs, 'robot'):
+            #if '_position_sample_gripped' in gs.robot:
+                #self._position_sample_gripped = gs.robot['_position_sample_gripped']
+            #if '_position_hold' in gs.robot:
+                #self._position_hold = gs.robot['_position_hold']
+            #if '_position_garage' in gs.robot:
+                #self._position_garage = gs.robot['_position_garage']
+        #else:
+            #gs.robot = {}
         
         for axis_name, axis in self._axes.items():
             axis._move_settle_max_time = 30.0
@@ -161,7 +167,7 @@ class SampleExchangeRobot(Stage):
         # Make sure homing actually started
         start_time = time.time()
         while caget('XF:11BMB-ES{SM:1-Ax:Y}Sts:Homing-Sts')!=1 and time.time()-start_time<max_wait:
-            sleep(.01)
+            time.sleep(.01)
             if verbosity>=5:
                 print( 'phase, status, homing = {}, {}, {}'.format( caget('XF:11BMB-ES{SM:1-Ax:Y}Sts:Home-Sts'), caget('XF:11BMB-ES{SM:1-Ax:Y}Pgm:Home-Sts'), caget('XF:11BMB-ES{SM:1-Ax:Y}Sts:Homing-Sts') ) )
             
@@ -172,9 +178,9 @@ class SampleExchangeRobot(Stage):
             
             
         # Wait for motion to be complete
-        sleep(delays)
+        time.sleep(delays)
         while army.moving or caget('XF:11BMB-ES{SM:1-Ax:Y}Sts:Homing-Sts')!=0:
-            sleep(delays)
+            time.sleep(delays)
             
         
         if abs(self.yabs(verbosity=0)-0)>0.1:
@@ -214,41 +220,41 @@ class SampleExchangeRobot(Stage):
         # armx to positive limit; set this to be zero
         self.xabs(0)
         caput('XF:11BMB-ES{SM:1-Ax:X}Start:Home-Cmd', 1)
-        sleep(delays)
+        time.sleep(delays)
         while armx.moving:
-            sleep(delays)
+            time.sleep(delays)
         
         # Rotate arm so that it doesn't collide when doing a +z scan
         self.phiabs(+90) # gripper pointing -x (towards sample stack)
-        sleep(delays)
+        time.sleep(delays)
         while armphi.moving:
-            sleep(delays)
+            time.sleep(delays)
             
         # Home armphi 
         caput('XF:11BMB-ES{SM:1-Ax:Yaw}Start:Home-Cmd', 1)
-        sleep(delays)
+        time.sleep(delays)
         while armphi.moving and caget('XF:11BMB-ES{SM:1-Ax:Yaw}Sts:Homing-Sts')!=0:
-            sleep(delays)
+            time.sleep(delays)
         
         # Rotate arm so that it doesn't collide when doing a +z scan
         self.phiabs(+90) # gripper pointing -x (towards sample stack)
-        sleep(delays)
+        time.sleep(delays)
         while armphi.moving:
-            sleep(delays)
+            time.sleep(delays)
         
         
         # armz to positive limit (moves arm to downstream of range); set this to be zero
         caput('XF:11BMB-ES{SM:1-Ax:Z}Start:Home-Cmd', 1)
-        sleep(delays)
+        time.sleep(delays)
         while armz.moving:
-            sleep(delays)
+            time.sleep(delays)
         
         
         #caput('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr.HOMF',1) # armr home forward
         caput('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr.HOMR',1) # armr home reverse
-        sleep(delays)
+        time.sleep(delays)
         while self._axes['r'].motor.moving:
-            sleep(delays)
+            time.sleep(delays)
         
         self._region = 'safe'
         return True
@@ -281,16 +287,16 @@ class SampleExchangeRobot(Stage):
 
         print("self._position_sample_gripped = [ {}, {}, {}, {}, {} ] # x, y, z, r, phi".format(x, y, z, r, phi))
 
-        if hasattr(gs, 'robot'):
-            gs.robot['_position_sample_gripped'] = self._position_sample_gripped
+        #if hasattr(gs, 'robot'):
+            #gs.robot['_position_sample_gripped'] = self._position_sample_gripped
 
         
         self._position_hold = 0, y, z, 0, phi # x, y, z, r, phi
         
         print("self._position_hold = [ {}, {}, {}, {}, {} ] # x, y, z, r, phi".format(0, y, z, 0, phi))
 
-        if hasattr(gs, 'robot'):
-            gs.robot['_position_hold'] = self._position_hold
+        #if hasattr(gs, 'robot'):
+            #gs.robot['_position_hold'] = self._position_hold
 
         
     def setReferenceGarage(self):
@@ -306,8 +312,8 @@ class SampleExchangeRobot(Stage):
         
         print("self._position_garage = [ {}, {}, {}, {}, {} ] # x, y, z, r, phi".format(x, y, z, r, phi))
 
-        if hasattr(gs, 'robot'):
-            gs.robot['_position_garage'] = self._position_garage
+        #if hasattr(gs, 'robot'):
+            #gs.robot['_position_garage'] = self._position_garage
         
         
     def motionSlot(self, direction):
@@ -352,7 +358,9 @@ class SampleExchangeRobot(Stage):
         
         # Move sample stage
         x, y = self._position_stg_exchange # smx, smy
-        mov([smx, smy], [x,y])
+        #mov([smx, smy], [x,y])
+        smx.move(x)
+        smy.move(y)
         
         
         x, y, z, r, phi = self._position_sample_gripped
@@ -384,8 +392,10 @@ class SampleExchangeRobot(Stage):
         
         # Move sample stage
         x, y = self._position_stg_exchange # smx, smy
-        mov([smx, smy], [x,y])
-
+        #mov([smx, smy], [x,y])
+        smx.move(x)
+        smy.move(y)
+        sth.move(0)
         
         x, y, z, r, phi = self._position_sample_gripped
         
@@ -398,8 +408,9 @@ class SampleExchangeRobot(Stage):
         # Push the sample out so that it is hovering above the stage
         # r is removed without SmarAct motor
         #mov([armx, self._axes['r'].motor], [x, r])
-        mov(armx,x)
-        
+        #mov(armx,x)
+        armx.move(x)
+
         # Move sample down (-y)
         self.yr(-self._delta_y_hover, verbosity=verbosity) # Now in contact with stage
         
@@ -411,7 +422,8 @@ class SampleExchangeRobot(Stage):
         x, y, z, r, phi = self._position_hold
         #mov([armx, self._axes['r'].motor], [x, r])
         # r is removed without SmarAct motor
-        mov(armx, x)
+        #mov(armx, x)
+        armx.move(x)
         
         self.sequenceGotoSafe(verbosity=verbosity)
         
@@ -432,8 +444,10 @@ class SampleExchangeRobot(Stage):
         
         # Move sample stage
         x, y = self._position_stg_exchange # smx, smy
-        mov([smx, smy], [x,y])
-        
+        #mov([smx, smy], [x,y])
+        smx.move(x)
+        smy.move(y)
+        sth.move(0)
         
         x, y, z, r, phi = self._position_sample_gripped
         
@@ -459,8 +473,9 @@ class SampleExchangeRobot(Stage):
         x, y, z, r, phi = self._position_hold
         #mov([armx, self._axes['r'].motor], [x, r])
         # r is removed without SmarAct motor
-        mov(armx, x)
-        
+        #mov(armx, x)
+        armx.move(x)
+       
         self.sequenceGotoSafe(verbosity=verbosity)
         
         
@@ -618,7 +633,7 @@ class SampleExchangeRobot(Stage):
         self.sequencePutSampleOntoStage()
     
     
-    def _testing_calibrationStage(self, verbosity=3):
+    def calibrationStage(self, verbosity=3):
         
         if self._sample is not None:
             print("ERROR: Calibration cannot be done with sample on robot arm.")
@@ -632,8 +647,9 @@ class SampleExchangeRobot(Stage):
         
         # Move sample stage
         x, y = self._position_stg_exchange # smx, smy
-        mov([smx, smy], [x,y])
-        
+        #mov([smx, smy], [x,y])
+        smx.move(x)
+        smy.move(y)        
         
         x, y, z, r, phi = self._position_sample_gripped
         
@@ -646,7 +662,7 @@ class SampleExchangeRobot(Stage):
         self.xabs(-40, verbosity=verbosity)
         self.rabs(0, verbosity=verbosity)
          
-    def _testing_calibrationGarage(self, verbosity=3):
+    def calibrationGarage(self, verbosity=3):
         
         #use Garage(1,1) to calibration the gripper position
         shelf_num=1
@@ -702,7 +718,7 @@ class SampleExchangeRobot(Stage):
                     self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
                     self.sequencePutSampleOntoStage(verbosity=verbosity)
                     
-                    sleep(3)
+                    time.sleep(3)
                                         
                     self.sequenceGetSampleFromStage(verbosity=verbosity)
                     self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)
@@ -733,7 +749,7 @@ class SampleExchangeRobot(Stage):
                     self.sequencePutSampleOntoStage(verbosity=verbosity)
 
                     hol.listSamples()
-                    sleep(3)
+                    time.sleep(3)
                     hol.doSamples()
                     
                     
@@ -765,6 +781,6 @@ class Queue(object):
 
 
 # Note: This will break until class is updated to not use gs at all.
-# robot = SampleExchangeRobot(use_gs=False)
+robot = SampleExchangeRobot(use_gs=False)
 
 #robot._region='safe'

@@ -84,6 +84,7 @@ bim5y = EpicsMotor('XF:11BMB-BI{IM:5-Ax:Y}Mtr', name='bim5y')
 ## stages for sample positioning
 smx = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:X}Mtr', name='smx')
 smy = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:Z}Mtr', name='smy')
+smy2 = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:Y}Mtr', name='smy2')
 sth = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:theta}Mtr', name='sth')
 schi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:chi}Mtr', name='schi')
 sphi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:phi}Mtr', name='sphi')

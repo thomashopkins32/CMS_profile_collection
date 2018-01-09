@@ -9,6 +9,6 @@ def xp_set(seconds):
 def xp(seconds):
     sleep_time=0.1
     caput('XF:11BMB-ES{}:cam1:Acquire'.format(pilatus_Epicsname),1)
-    sleep(seconds+sleep_time)
+    time.sleep(seconds+sleep_time)
 
 

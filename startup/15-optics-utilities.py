@@ -23,8 +23,11 @@ def moveE(eng):
     print('mono_roll2 will move to %.4g deg' % roll2)
     yn = input('Are you sure? (y/n): ')
     if yn == 'y' or yn == 'Y':
-        mov(mono_bragg, bragg)
-        mov(mono_roll2, roll2)
+        #mov(mono_bragg, bragg)
+        #mov(mono_roll2, roll2)
+        mono_bragg.move(bragg)
+        mono_roll2.move(roll2)
+        
         print('mono_bragg and mono_roll2 were moved')
     else:
         print('No move was made')
@@ -35,9 +38,11 @@ def moveE_force(eng):
     wavelen = hc_over_e/eng		        ## in [Ang]
     bragg = asin(wavelen/(2.*dmm_dsp))*180./pi	## in [deg]
     roll2 = -0.02617 - 0.010134*eng		## in [deg], based on linear fitting
-    mov(mono_bragg, bragg)
-    mov(mono_roll2, roll2)
-    
+    #mov(mono_bragg, bragg)
+    #mov(mono_roll2, roll2)
+    mono_bragg.move(bragg)
+    mono_roll2.move(roll2)    
+
 ##### toroidal mirror utilities #####
 mir_us_to_ds = 1.0669		## kinematic support pivot_to_pivot distance along Z in [m]
 mir_ib_to_ob = 0.6096		## kinematic support pivot_to_pivot distance along X in [m]
@@ -45,32 +50,46 @@ mir_ib_to_ob = 0.6096		## kinematic support pivot_to_pivot distance along X in [
 def movr_mir_pitch(del_mrad):
     '''Moves the pitch of the mirror support by specified angle in [mrad]'''
     del_mm = 0.5 * mir_us_to_ds * del_mrad
-    movr(mir_usy,-del_mm)
-    movr(mir_dsyi,del_mm)
-    movr(mir_dsyo,del_mm)
+    #movr(mir_usy,-del_mm)
+    #movr(mir_dsyi,del_mm)
+    #movr(mir_dsyo,del_mm)
+    mir_usy.move(mir_usy.user_readback.value + -del_mm)
+    mir_dsyi.move(mir_dsyi.user_readback.value + del_mm)
+    mir_dsyo.move(mir_usyo.user_readback.value + del_mm)
 
 def movr_mir_roll(del_mrad):
     '''Moves the roll of the mirror support by specified angle in [mrad]'''
     del_mm = 0.5 * mir_ib_to_ob * del_mrad
-    movr(mir_dsyi,-del_mm)
-    movr(mir_dsyo,del_mm)
+    #movr(mir_dsyi,-del_mm)
+    #movr(mir_dsyo,del_mm)
+    mir_dsyi.move(mir_dsyi.user_readback.value + -del_mm)
+    mir_dsyo.move(mir_usyo.user_readback.value + del_mm)
 
 def movr_mir_yaw(del_mrad):
     '''Moves the yaw of the mirror support by specified angle in [mrad]'''
     del_mm = 0.5 * mir_us_to_ds * del_mrad
-    movr(mir_usx,-del_mm)
-    movr(mir_dsx,del_mm)
+    #movr(mir_usx,-del_mm)
+    #movr(mir_dsx,del_mm)
+    mir_usx.move(mir_usx.user_readback.value + -del_mm)
+    mir_dsx.move(mir_dsx.user_readback.value + del_mm)
+
 
 def movr_mir_y(del_mm):
     '''Moves the mirror support vertically by specified distance in [mm]'''
-    movr(mir_usy,del_mm)
-    movr(mir_dsyi,del_mm)
-    movr(mir_dsyo,del_mm)
+    #movr(mir_usy,del_mm)
+    #movr(mir_dsyi,del_mm)
+    #movr(mir_dsyo,del_mm)
+    mir_usy.move(mir_usy.user_readback.value + del_mm)
+    mir_dsyi.move(mir_dsyi.user_readback.value + del_mm)
+    mir_dsyo.move(mir_usyo.user_readback.value + del_mm)
+
 
 def movr_mir_x(del_mm):
     '''Moves the mirror support horizontally, normal to beam, by specified distance in [mm]'''
-    movr(mir_usx,del_mm)
-    movr(mir_dsx,del_mm)
+    #movr(mir_usx,del_mm)
+    #movr(mir_dsx,del_mm)
+    mir_usx.move(mir_usx.user_readback.value + del_mm)
+    mir_dsx.move(mir_dsx.user_readback.value + del_mm)
 
 def ave_mir_y():
     '''Returns the average height of the toroidal mirror in [mm] '''

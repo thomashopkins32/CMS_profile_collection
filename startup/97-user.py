@@ -16,6 +16,9 @@
 #tags_default = ['CFN Soft-Bio']
 
 
+config_load()
+
+
 if False:
     # The following shortcuts can be used for unit conversions. For instance,
     # for a motor operating in 'mm' units, one could instead do:

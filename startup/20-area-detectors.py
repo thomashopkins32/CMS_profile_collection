@@ -9,6 +9,7 @@ from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt, Signal
 from ophyd.utils import set_and_wait
+#import filestore.api as fs
 
 
 #class Elm(SingleTrigger, DetectorBase):
@@ -56,11 +57,18 @@ class Pilatus(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
                root='/GPFS/xf11bm',
-               reg=db.reg)
+               fs=db.fs)
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
+
+    @property
+    def hints(self):
+        return {'fields': [self.stats3.total.name,
+                           self.stats4.total.name]}
+
+
 
 
 class Pilatus2M(SingleTrigger, PilatusDetector):
@@ -80,16 +88,17 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
                root='/GPFS/xf11bm',
-               reg=db.reg)
-
-    @property
-    def hints(self):
-        return {'fields': [self.stats4.total.name,
-                           self.stats5.total.name]}
+               fs=db.fs)
+    
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+
+    @property
+    def hints(self):
+        return {'fields': [self.stats3.total.name,
+                           self.stats4.total.name]}
 
 
 #class StandardProsilicaWithTIFF(StandardProsilica):
@@ -97,7 +106,7 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
 #               suffix='TIFF1:',
 #               write_path_template='/GPFS/xf11bm/data/%Y/%m/%d/',
 #               root='/GPFS/xf11bm/',
-#               reg=db.reg)
+#               fs=db.fs)
 
 
 
@@ -140,20 +149,22 @@ for camera in all_standard_pros:
 #    camera.read_attrs.append('tiff')
 #    camera.tiff.read_attrs = []
 
-pilatus300 = Pilatus('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
-pilatus300.tiff.read_attrs = []
-STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
-pilatus300.read_attrs = ['tiff'] + STATS_NAMES
-for stats_name in STATS_NAMES:
-    stats_plugin = getattr(pilatus300, stats_name)
-    stats_plugin.read_attrs = ['total']
-
+#pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL 
+'''
+#pilatus300 = Pilatus('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
+#pilatus300.tiff.read_attrs = []
+#STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
+#pilatus300.read_attrs = ['tiff'] + STATS_NAMES
+#for stats_name in STATS_NAMES:
+    #stats_plugin = getattr(pilatus300, stats_name)
+    #stats_plugin.read_attrs = ['total']
+'''
 
 pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
 pilatus2M.tiff.read_attrs = []
 STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
-pilatus2M.read_attrs = ['tiff'] + STATS_NAMES
-#pilatus2M.read_attrs = ['cbf'] + STATS_NAMES
+pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
+#pilatus2M.read_attrs = ['cbf'] + STATS_NAMES2M
 
 for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)

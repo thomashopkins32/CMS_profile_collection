@@ -333,11 +333,11 @@ class Keithley_2000(Device):
     def readOhm(self, channel, verbosity = 1):
 
         self.selectChannel(channel, verbosity=1)
-        sleep(0.1)
+        time.sleep(0.1)
         self.send_socket(':SENS:FUNC \'RES\'\r')    
-        sleep(0.1)
+        time.sleep(0.1)
         self.send_socket(':SENS:DATA?\r')    
-        sleep(0.1)
+        time.sleep(0.1)
         ohm = float(self.read_socket(verbosity=1))
 
         if (verbosity > 1):
@@ -350,11 +350,11 @@ class Keithley_2000(Device):
     def readDCV(self, channel, verbosity = 1):
 
         self.selectChannel(channel, verbosity=1)
-        sleep(0.1)
+        time.sleep(0.1)
         self.send_socket(':SENS:FUNC \'VOLT:DC\'\r')    
-        sleep(0.1)
+        time.sleep(0.1)
         self.send_socket(':SENS:DATA?\r')    
-        sleep(0.1)
+        time.sleep(0.1)
         dcv = float(self.read_socket(verbosity=1))
 
         if (verbosity > 1):
@@ -529,10 +529,272 @@ class TTL_control(object):
         return self.setPort(unit, port, 0, verbosity=verbosity)
 
 
+class Minichiller(Device):
+    # Note: Command terminator is a carriage-return character \r.
+    # Settings as of 10/09/2017: Baud rate = 9600 bits/s, Stop bits = 1, Parity = None, Flow control = None
+    # Moxa port 11: socket = 10.11.130.53:4011
+    
+    def __init__(self, prefix='', *args, read_attrs=None, configuration_attrs=None,
+                 name='Minichiller', parent=None, **kwargs):
+
+        super().__init__(prefix=prefix, *args, read_attrs=read_attrs, configuration_attrs=configuration_attrs, name=name, parent=parent, **kwargs)
+
+        #self.port_number = 11
+        #self.server_port = 4000 + self.port_number
+        self.connect_socket()
+
+    # Essential socket interaction
+    ########################################
+        
+    def connect_socket(self):
+        
+        #self.server_address= '10.11.130.51'
+        self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        #self.server_IP = '10.11.129.2'
+        self.port_number = 11
+        self.server_port = 4000 + self.port_number
+        
+        import socket
+        #self.sock = socket.socket()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(self.server_address)
+        self.sock.connect((self.server_address, self.server_port))
+        
+        self.sock.settimeout(0.5)
+        
+        
+    def disconnect_socket(self):
+        
+        self.sock.close()
+    
+        
+    def send_socket(self, msg):
+        
+        #self.sock.send(chr(13).encode('ascii', 'ignore')) # Carriage return
+        self.sock.send(msg.encode('ascii', 'ignore'))
+        #self.sock.send(msg.encode('utf-8'))
+
+
+    def send_get_reply(self, msg, verbosity=3):
+        
+        #self.send_socket('\r')
+        self.send_socket(msg)
+        
+        time.sleep(0.5)
+        
+        return self.read_socket(verbosity=verbosity)
+    
+        
+    def read_socket(self, timeout_s=3, verbosity=3):
+        
+        start_time = time.time()
+        terminator = chr(0x18)
+    
+        # Look for the response
+        amount_received = 0
+        amount_cutoff = 5000
+        
+        txt = ''
+        msg_received = ''
+        
+        while terminator not in txt and time.time()-start_time<timeout_s and amount_received<amount_cutoff:
+            try:
+                data = self.sock.recv(1)
+            except:
+                break
+                                    
+            amount_received += len(data)
+            txt = data.decode('ascii')
+            
+            msg_received += txt
+            
+        msg_received = msg_received.replace(terminator, '')
+        
+        if time.time()-start_time>timeout_s:
+            if verbosity>=1:
+                print('Read timeout after {:.1f} s.'.format(time.time()-start_time))
+            return ''
+        
+        else:
+            if verbosity>=2:
+                print(msg_received)
+            return msg_received
+
+    # Output specified voltage on specified DAC channel
+    def setTemp(self, degC, verbosity = 1):
+
+        if degC < 0:
+            sign='-'
+        else:
+            sign='+'
+
+        if abs(degC) >= 10.0 and degC < 100.0:
+            sign+='0'
+        if abs(degC) >= 0.0 and degC < 10.0:
+            sign+='00'
+        if abs(degC) >= 0.1 and degC < 1.0:
+            sign+='000'
+        if abs(degC) >= 0.01 and degC < 0.10:
+            sign+='0000'
+
+        temperature = abs(int(degC * 100))
+
+        self.send_socket('SP@{s}{temp}\r\n'.format(s=sign, temp=temperature))    
+
+        if (verbosity > 1):
+            self.readTemp(verbosity=verbosity)
+
+        return 1
+
+
+    # Query temperature in degC
+    def readTemp(self, verbosity = 1):
+
+        self.send_socket('SP?\r\n')    
+        degC_raw = self.read_socket(verbosity=1)
+        degC = int(degC_raw[2:])/100.0
+
+        if (verbosity > 1):
+            print('Temperature setpoint is set to {tt} degC.\n'.format(tt=degC))
+
+        return degC
+
+class SyringePump(Device):
+    # Note: Command terminator is a carriage-return character \r.
+    # Settings as of 12/09/2017: Baud rate = 9600 bits/s, Stop bits = 1, Parity = None, Flow control = None
+    # Moxa port 11: socket = 10.11.130.53:4011
+    
+    def __init__(self, prefix='', *args, read_attrs=None, configuration_attrs=None,
+                 name='Minichiller', parent=None, **kwargs):
+
+        super().__init__(prefix=prefix, *args, read_attrs=read_attrs, configuration_attrs=configuration_attrs, name=name, parent=parent, **kwargs)
+
+        #self.port_number = 11
+        #self.server_port = 4000 + self.port_number
+        self.connect_socket()
+
+    # Essential socket interaction
+    ########################################
+        
+    def connect_socket(self):
+        
+        #self.server_address= '10.11.130.51'
+        self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        #self.server_IP = '10.11.129.2'
+        self.port_number = 11
+        self.server_port = 4000 + self.port_number
+        
+        import socket
+        #self.sock = socket.socket()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(self.server_address)
+        self.sock.connect((self.server_address, self.server_port))
+        
+        self.sock.settimeout(0.5)
+        
+        
+    def disconnect_socket(self):
+        
+        self.sock.close()
+    
+        
+    def send_socket(self, msg):
+        
+        #self.sock.send(chr(13).encode('ascii', 'ignore')) # Carriage return
+        self.sock.send(msg.encode('ascii', 'ignore'))
+        #self.sock.send(msg.encode('utf-8'))
+
+
+    def send_get_reply(self, msg, verbosity=3):
+        
+        #self.send_socket('\r')
+        self.send_socket(msg)
+        
+        time.sleep(0.5)
+        
+        return self.read_socket(verbosity=verbosity)
+    
+        
+    def read_socket(self, timeout_s=3, verbosity=3):
+        
+        start_time = time.time()
+        terminator = chr(0x18)
+    
+        # Look for the response
+        amount_received = 0
+        amount_cutoff = 5000
+        
+        txt = ''
+        msg_received = ''
+        
+        while terminator not in txt and time.time()-start_time<timeout_s and amount_received<amount_cutoff:
+            try:
+                data = self.sock.recv(1)
+            except:
+                break
+                                    
+            amount_received += len(data)
+            txt = data.decode('ascii')
+            
+            msg_received += txt
+            
+        msg_received = msg_received.replace(terminator, '')
+        
+        if time.time()-start_time>timeout_s:
+            if verbosity>=1:
+                print('Read timeout after {:.1f} s.'.format(time.time()-start_time))
+            return ''
+        
+        else:
+            if verbosity>=2:
+                print(msg_received)
+            return msg_received
+
+    #TODO:command input, including setting of speed and direction, inject , purge....
+    # Output specified voltage on specified DAC channel
+    def setTemp(self, degC, verbosity = 1):
+
+        if degC < 0:
+            sign='-'
+        else:
+            sign='+'
+
+        if abs(degC) >= 10.0 and degC < 100.0:
+            sign+='0'
+        if abs(degC) >= 0.0 and degC < 10.0:
+            sign+='00'
+        if abs(degC) >= 0.1 and degC < 1.0:
+            sign+='000'
+        if abs(degC) >= 0.01 and degC < 0.10:
+            sign+='0000'
+
+        temperature = abs(int(degC * 100))
+
+        self.send_socket('SP@{s}{temp}\r\n'.format(s=sign, temp=temperature))    
+
+        if (verbosity > 1):
+            self.readTemp(verbosity=verbosity)
+
+        return 1
+
+
+    # Query temperature in degC
+    def readTemp(self, verbosity = 1):
+
+        self.send_socket('SP?\r\n')    
+        degC_raw = self.read_socket(verbosity=1)
+        degC = int(degC_raw[2:])/100.0
+
+        if (verbosity > 1):
+            print('Temperature setpoint is set to {tt} degC.\n'.format(tt=degC))
+
+        return degC
 
 
 #agilent = Agilent_34970A()
 #keithley = Keithley_2000()
 #ttl = TTL_control()
+#Sypump = SringePump()
+#chiller = Minichiller()
     
 

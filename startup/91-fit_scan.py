@@ -4,6 +4,47 @@
 
 import glob
 
+from bluesky.callbacks import CallbackBase
+class SavingCallback(CallbackBase):
+	''' This call back saves data in a data element.
+
+		Access each element by calling
+		scallback.data[key] etc...
+	'''
+	def __init__(self, *args, **kwargs):
+		super(SavingCallback, self).__init__(*args, **kwargs)
+		self.data = dict()
+
+	def descriptor(self, doc):
+		for key, val in doc['data_keys'].items():
+			self.data[key] = list()
+
+	def event(self, doc):
+		for key, val in doc['data'].items():
+			self.data[key].append(val)
+
+
+class PrintCallback(CallbackBase):
+	''' For debugging only
+		Exposes raw documents
+	'''
+	def start(self, doc):
+		print("Start document: ")
+		print(doc)
+		print("END")
+	def event(self, doc):
+		print("Events document: ")
+		print(doc)
+		print("END")
+	def descriptor(self, doc):
+		print("Descriptor document: ")
+		print(doc)
+		print("END")
+	def stop(self, doc):
+		print("Stop document: ")
+		print(doc)
+		print("END")
+
 def remove_last_Pilatus_series():
     '''Delete the last Pilatus image tiff. If the last image is a series of files
     with sequential IDs, they are all deleted.'''
@@ -780,7 +821,7 @@ class LiveFit_Custom(LiveFit):
 
 import lmfit
 
-def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi', background=None, per_step=None, wait_time=None, md={}):
+def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi', background=None, per_step=None, wait_time=None, md={}, save_flg=0):
     """
     Scans the specified motor, and attempts to fit the data as requested.
     
@@ -809,6 +850,7 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
     """
     
     # TODO: Normalize per ROI pixel and per count_time?
+    # TODO: save scan data with save_flg=1.
     
     if not beam.is_on():
         print('WARNING: Experimental shutter is not open.')
@@ -825,8 +867,10 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
     #positions, dp = np.linspace(start, stop, num, endpoint=True, retstep=True)
 
     if detectors is None:
-        detectors = gs.DETS
-        plot_y = gs.PLOT_Y
+
+        #detselect(pilatus_name, suffix='_stats4_total')
+        detectors = get_beamline().detector
+        plot_y = get_beamline().PLOT_Y
     else:
         plot_y = '{}{}'.format(detectors[0].name, detector_suffix)
     
@@ -858,8 +902,7 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
     subs = []
     
     livetable = LiveTable([motor] + list(detectors))
-    #livetable = LiveTable([motor] + list(detectors))
-    subs.append(livetable)
+    #subs.append(livetable)
     liveplot = LivePlot_Custom(plot_y, motor.name, ax=ax)
     subs.append(liveplot)
     
@@ -895,25 +938,37 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
     md['fit_background'] = background
 
     # Perform the scan
-    RE(scan(list(detectors), motor, start, stop, num, per_step=per_step, md=md), subs )
     
+    bec.disable_plots()
+    RE(scan(list(detectors), motor, start, stop, num, per_step=per_step, md=md), subs )
+    bec.enable_plots()
+    #RE(scan(list(detectors), motor, start, stop, num, per_step=per_step, md=md), [liveplot, livefit, livefitplot])
+    #RE(scan(list(detectors), motor, start, stop, num, per_step=per_step, md=md), [livefit])
+   
     
     
     #if plot_y=='pilatus300_stats4_total' or plot_y=='pilatus300_stats3_total':
     if plot_y=='pilatus2M_stats4_total' or plot_y=='pilatus2M_stats3_total':
         remove_last_Pilatus_series()
     
+    #check save_flg and save the scan data thru databroker
+    #header = db[-1]
+    #dtable = header.table[]
+    #filename=###
+    #dtable.to_csv(filename)
     
     if fit is None:
         # Return to start position
         #motor.user_setpoint.set(initial_position)
-        mov(motor, initial_position)
+        #mov(motor, initial_position)
+        motor.move(initial_position)
         
     else:
         
         print( livefit.result.values )
         x0 = livefit.result.values['x0']
-        mov(motor, x0)
+        #mov(motor, x0)
+        motor.move(x0)
         return livefit.result
 
 
@@ -952,13 +1007,17 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
     span = abs(stop-start)
 
     if detectors is None:
-        detectors = gs.DETS
-        plot_y = gs.PLOT_Y
+        detectors = get_beamline().detector
+        plot_y = get_beamline().PLOT_Y
     else:
         plot_y = '{}{}'.format(detectors[0].name, detector_suffix)
     
     subs = []
     livetable = LiveTable_Custom([motor] + list(detectors), plot_y, motor.name)
+	#scallback = SavingCallback()
+	#subs.append(scallback)
+	# access data with scallback.data['keyname']
+	# (gives a list)
     subs.append(livetable)
     
     if plot:
@@ -991,16 +1050,47 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
     md['scan'] = 'fit_edge'
 
     # Perform the scan
-    RE(scan(list(detectors), motor, start, stop, num, md=md), subs )
+    bec.disable_table()
+    bec.disable_plots()
+    RE(scan(list(detectors), motor, start, stop, num, md=md), subs)
+    #RE(scan(list(detectors), motor, start, stop, num, md=md), [liveplot, livetable] )
+    bec.enable_plots()
+    bec.enable_table()
     
     #if plot_y=='pilatus300_stats4_total' or plot_y=='pilatus300_stats3_total':
     if plot_y=='pilatus2M_stats4_total' or plot_y=='pilatus2M_stats3_total':
         remove_last_Pilatus_series()
         
         
+        
+    
+    x0_guess = np.average(livetable.xdata)
+    
+    # Determine x0 from half-max (HM) analysis
+    if True:
+        # TODO: Handle case where more than one pair of points cross the HM
+        if len(livetable.xdata)>3:
+            
+            y_max = np.max(livetable.ydata)
+            HM = (y_max-np.min(livetable.ydata))/2.0
+            
+            for ip, (x2, y2) in enumerate(zip(livetable.xdata, livetable.ydata)):
+                if ip>0:
+                    x1 = livetable.xdata[ip-1]
+                    yx1 = livetable.ydata[ip-1]
+                    
+                    if x1>HM and x2<HM:
+                        # This pair of points crosses the HM
+                        m = (y2-y1)/(x2-x1)
+                        b = y2-m*x2
+                        xHM = (HM-b)/m
+                        x0_guess = xHM
+                
     # Fit to sigmoid_r
     if True:
+        
         y_max = np.max(livetable.ydata)
+
         x_span = abs(np.max(livetable.xdata)-np.min(livetable.xdata))
         def model(v, x):
             return v['prefactor']/( 1 + np.exp( +(x-v['x0'])/v['sigma'] ) )
@@ -1012,9 +1102,19 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
 
         params = lmfit.Parameters()
         params.add('prefactor', value=y_max*0.95, min=y_max*0.90, max=y_max*1.02)
-        params.add('x0', value=np.average(livetable.xdata), min=np.min(livetable.xdata), max=np.max(livetable.xdata))
-        params.add('sigma', value=x_span*0.01, min=x_span*1e-4, max=x_span*0.05)
+        params.add('x0', value=x0_guess, min=np.min(livetable.xdata)+x_span*0.05, max=np.max(livetable.xdata)-x_span*0.05 )
+        params.add('sigma', value=0.014, min=x_span*1e-4, max=x_span*0.08)
         
+        
+        # 1st fit: only vary x0
+        params['prefactor'].set(vary=False)
+        params['sigma'].set(vary=False)
+        lm_result = lmfit.minimize(func2minimize, params, args=(livetable.xdata, livetable.ydata))
+        #lmfit.report_fit(lm_result.params)
+
+        # 2nd fit: vary everything
+        params['prefactor'].set(vary=True)
+        params['sigma'].set(vary=True)
         lm_result = lmfit.minimize(func2minimize, params, args=(livetable.xdata, livetable.ydata))
         #lmfit.report_fit(lm_result.params)
         
@@ -1025,7 +1125,7 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
             liveplot.add_line(fit_x, fit_y, color='b', linewidth=2.5)
             
             
-        # TODO: Detect bad fits and react accordingly
+        # Detect bad fits
         avg_deviation = np.sum(np.abs(lm_result.residual/y_max))/len(livetable.ydata)
         print('  avg deviation {:.1f}%'.format(avg_deviation*100))
         #avg_deviation of <1% is good.
@@ -1033,12 +1133,19 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
         #avg_deviation of 8% is not good (fit okay, but HM slightly off).
         #avg_deviation of 10% is bad fit.
         
+        # TODO: Change the plotting if the fit is bad. (I.e. since we're using HM instead of fit, show that.)
+        
 
+    if avg_deviation>0.06:
+        x0 = x0_guess
+    else:
+        x0 = lm_result.params['x0'].value
     
-    x0 = lm_result.params['x0'].value
-    mov(motor, x0)
-    
+    motor.move(x0)
+
     return lm_result.values
+
+
 
 def _test_fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi', background=None, per_step=None, wait_time=None, md={}):
     """
@@ -1085,8 +1192,8 @@ def _test_fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit=
     #positions, dp = np.linspace(start, stop, num, endpoint=True, retstep=True)
 
     if detectors is None:
-        detectors = gs.DETS
-        plot_y = gs.PLOT_Y
+        detectors = get_beamline().detector
+        plot_y = get_beamline().PLOT_Y
     else:
         plot_y = '{}{}'.format(detectors[0].name, detector_suffix)
     
@@ -1179,13 +1286,16 @@ def _test_fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit=
     if fit is None:
         # Return to start position
         #motor.user_setpoint.set(initial_position)
-        mov(motor, initial_position)
-        
+        #mov(motor, initial_position)
+        motor.move(initial_position)
+
     else:
         
         print( livefit.result.values )
         x0 = livefit.result.values['x0']
-        mov(motor, x0)
+        #mov(motor, x0)
+        motor.move(x0)
+        
         return livefit.result
 
 

@@ -311,6 +311,8 @@ class CoordinateSystem(object):
         
         else:
             self.gotoOrigin()
+        
+
             
             
 
@@ -696,12 +698,17 @@ class Axis(object):
 
         
         if detector is None:
-            detector = gs.DETS[0]
+            #detector = gs.DETS[0]
+            detector = get_beamline().detector[0]
         if detector_suffix is None:
-            value_name = gs.TABLE_COLS[0]
+            #value_name = gs.TABLE_COLS[0]
+            value_name = get_beamline().TABLE_COLS[0]
         else:
             value_name = detector.name + detector_suffix
 
+        bec.disable_table()
+        
+        
         # Check current value
         RE(count([detector]))
         value = detector.read()[value_name]['value']
@@ -724,8 +731,8 @@ class Axis(object):
                 self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
 
                 prev_value = value
-                
                 RE(count([detector]))
+                
                 value = detector.read()[value_name]['value']
                 if verbosity>=3:
                     print("      {} = {:.3f} {}; value : {}".format(self.name, self.get_position(verbosity=0), self.units, value))
@@ -756,7 +763,6 @@ class Axis(object):
                 self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
 
                 prev_value = value
-                
                 RE(count([detector]))
                 value = detector.read()[value_name]['value']
                 if verbosity>=3:
@@ -814,19 +820,10 @@ class Axis(object):
                     # Switch directions!
                     direction *= -1
                     step_size *= 0.5
-            
-            
-        
-        
-            
-            
-        
-            
-        
-            
-        
-        
     
+        bec.enable_table()
+            
+        
     def scan(self):
         print('todo')
         
@@ -1004,6 +1001,13 @@ class Sample_Generic(CoordinateSystem):
                             #'units': 'deg',
                             #'hint': None,
                             #},
+                            #{'name': 'yy',
+                            #'motor': None,
+                            #'enabled': True,
+                            #'scaling': +1.0,
+                            #'units': 'mm',
+                            #'hint': None,
+                            #},
                             ]          
         
 
@@ -1046,6 +1050,14 @@ class Sample_Generic(CoordinateSystem):
 
         if attribute=='temperature':
             return self.temperature(verbosity=0)
+        if attribute=='temperature_A':
+            return self.temperature(temperature_probe='A', verbosity=0)
+        if attribute=='temperature_B':
+            return self.temperature(temperature_probe='B',verbosity=0)
+        if attribute=='temperature_C':
+            return self.temperature(temperature_probe='C',verbosity=0)
+        if attribute=='temperature_D':
+            return self.temperature(temperature_probe='D',verbosity=0)
 
 
         if attribute in self.md:
@@ -1102,7 +1114,11 @@ class Sample_Generic(CoordinateSystem):
     
         # Add md that varies over time
         md_return['clock'] = self.clock()
-        md_return['temperature'] = self.temperature(verbosity=0)
+        md_return['temperature'] = self.temperature(temperature_probe='A', verbosity=0)
+        md_return['temperature_A'] = self.temperature(temperature_probe='A', verbosity=0)
+        md_return['temperature_B'] = self.temperature(temperature_probe='B', verbosity=0)
+        md_return['temperature_C'] = self.temperature(temperature_probe='C', verbosity=0)
+        md_return['temperature_D'] = self.temperature(temperature_probe='D', verbosity=0)
     
         for axis_name, axis in self._axes.items():
             md_return[axis_name] = axis.get_position(verbosity=0)
@@ -1159,6 +1175,15 @@ class Sample_Generic(CoordinateSystem):
 
         if attribute=='temperature':
             return 'T{:.3f}C'.format(self.get_attribute(attribute))
+        if attribute=='temperature_A':
+            return 'T{:.3f}C'.format(self.get_attribute(attribute))
+        if attribute=='temperature_B':
+            return 'T{:.3f}C'.format(self.get_attribute(attribute))
+        if attribute=='temperature_C':
+            return 'T{:.3f}C'.format(self.get_attribute(attribute))
+        if attribute=='temperature_D':
+            return 'T{:.3f}C'.format(self.get_attribute(attribute))
+
 
         if attribute=='extra':
             # Note: Don't eliminate this check; it will not be properly handled
@@ -1269,10 +1294,10 @@ class Sample_Generic(CoordinateSystem):
 
         #md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:SAXS}:cam1:FileNumber_RBV')
         #md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
-        if detector.name is 'pilatus300':
-            md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:SAXS}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
-        elif detector.name is 'pilatus2M':
-            md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:PIL2M}:cam1:FileNumber_RBV'.format(pilatus_Epicsname))
+        if get_beamline().detector[0].name is 'pilatus300':
+            md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:SAXS}:cam1:FileNumber_RBV')
+        elif get_beamline().detector[0].name is 'pilatus2M':
+            md_current['detector_sequence_ID'] = caget('XF:11BMB-ES{Det:PIL2M}:cam1:FileNumber_RBV')
           
         md_current.update(get_beamline().get_md())
         
@@ -1302,10 +1327,10 @@ class Sample_Generic(CoordinateSystem):
             #caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), exposure_time)
             #caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), exposure_time+0.1)
 
-            if detector.name is 'pilatus300':
+            if get_beamline().detector[0].name is 'pilatus300':
                 caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
                 caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
-            elif detector.name is 'pilatus2M':
+            elif get_beamline().detector[0].name is 'pilatus2M':
                 caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
                 caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
         
@@ -1331,6 +1356,7 @@ class Sample_Generic(CoordinateSystem):
 
     def expose(self, exposure_time=None, extra=None, verbosity=3, poling_period=0.1, **md):
         '''Internal function that is called to actually trigger a measurement.'''
+        '''TODO: **md doesnot work in RE(count). '''
         
         if 'measure_type' not in md:
             md['measure_type'] = 'expose'
@@ -1339,11 +1365,18 @@ class Sample_Generic(CoordinateSystem):
 
         # Set exposure time
         if exposure_time is not None:
-            for detector in gs.DETS:
-                detector.setExposureTime(exposure_time, verbosity=verbosity)
-        
-        
-        
+            #for detector in gs.DETS:
+            for detector in get_beamline().detector:
+                if detector.name is 'pilatus2M' and exposure_time != caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                    detector.setExposureTime(exposure_time, verbosity=verbosity)
+                    #extra wait time when changing the exposure time.  
+                    time.sleep(2)
+                elif detector.name is 'PhotonicSciences_CMS':
+                    detector.setExposureTime(exposure_time, verbosity=verbosity)
+       
+        #extra wait time for adjusting pilatus2M 
+        #time.sleep(2)
+
         # Do acquisition
         get_beamline().beam.on()
         
@@ -1356,14 +1389,15 @@ class Sample_Generic(CoordinateSystem):
         md['beam_int_bim5'] = beam.bim5.flux(verbosity=0)
         #md.update(md_current)
 
-        uids = RE(count(gs.DETS, 1), **md)
+        #uids = RE(count(get_beamline().detector, 1), **md)
+        uids = RE(count(get_beamline().detector), **md)
         
         #get_beamline().beam.off()
         #print('shutter is off')
 
         # Wait for detectors to be ready
         max_exposure_time = 0
-        for detector in gs.DETS:
+        for detector in get_beamline().detector:
             if detector.name is 'pilatus300':
                 current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
@@ -1385,7 +1419,7 @@ class Sample_Generic(CoordinateSystem):
                 time.sleep(poling_period)
                 
                 status = 1
-                for detector in gs.DETS:
+                for detector in get_beamline().detector:
                     if detector.name is 'pilatus300':
                         if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
                             status *= 0
@@ -1410,8 +1444,9 @@ class Sample_Generic(CoordinateSystem):
         
         get_beamline().beam.off()
         
-        for detector in gs.DETS:
-            self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+        for detector in get_beamline().detector:
+            #self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+            self.handle_file(detector, extra=extra, verbosity=verbosity)
 
 
 
@@ -1477,8 +1512,8 @@ class Sample_Generic(CoordinateSystem):
                 #savename = md['filename'][:-5]
                 
                 savename = self.get_savename(savename_extra=extra)
+                #link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
                 link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
-                #link_name = '{}/{}{}_{:04d}_saxs.cbf'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
                 
                 if os.path.isfile(link_name):
                     i = 1
@@ -1525,7 +1560,7 @@ class Sample_Generic(CoordinateSystem):
         self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)
         
         
-    def measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, **md):
+    def measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, stitchback=False, **md):
         '''Measure data by triggering the area detectors.
         
         Parameters
@@ -1545,15 +1580,24 @@ class Sample_Generic(CoordinateSystem):
             
             extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
             md['detector_position'] = 'lower'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, **md)
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
             
-            movr(SAXSy, 5.16) # move detector up by 30 pixels; 30*0.172 = 5.16
+            #movr(SAXSy, 5.16) # move detector up by 30 pixels; 30*0.172 = 5.16
+            SAXSy.move(SAXSy.user_readback.value + 5.16)
             extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
             md['detector_position'] = 'upper'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, **md)
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
             
-            movr(SAXSy, -5.16)
-        
+            #movr(SAXSy, -5.16)
+            SAXSy.move(SAXSy.user_readback.value + -5.16)
+
+            SAXSx.move(SAXSx.user_readback.value + 5.16)
+            extra_current = 'pos3' if extra is None else '{}_pos3'.format(extra)
+            md['detector_position'] = 'left'
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+ 
+            SAXSx.move(SAXSx.user_readback.value + -5.16)
+ 
         #if tiling is 'big':
             # TODO: Use multiple images to fill the entire detector motion range
         
@@ -1587,21 +1631,21 @@ class Sample_Generic(CoordinateSystem):
         if verbosity>=2 and (get_beamline().current_mode != 'measurement'):
             print("WARNING: Beamline is not in measurement mode (mode is '{}')".format(get_beamline().current_mode))
 
-        if verbosity>=1 and len(gs.DETS)<1:
-            print("ERROR: No detectors defined in gs.DETS")
+        if verbosity>=1 and len(get_beamline().detector)<1:
+            print("ERROR: No detectors defined in cms.detector")
             return
         
         md_current = self.get_md()
+        md_current.update(self.get_measurement_md())
         md_current['sample_savename'] = savename
         md_current['measure_type'] = measure_type
-        
-        md_current.update(self.get_measurement_md())
         #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
         md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
         md_current.update(md)
-        
+
        
         self.expose(exposure_time, extra=extra, verbosity=verbosity, **md_current)
+        #self.expose(exposure_time, extra=extra, verbosity=verbosity, **md)
         
         self.md['measurement_ID'] += 1
         
@@ -1638,8 +1682,8 @@ class Sample_Generic(CoordinateSystem):
         if verbosity>=2 and (get_beamline().current_mode != 'measurement'):
             print("WARNING: Beamline is not in measurement mode (mode is '{}')".format(get_beamline().current_mode))
 
-        if verbosity>=1 and len(gs.DETS)<1:
-            print("ERROR: No detectors defined in gs.DETS")
+        if verbosity>=1 and len(get_beamline().detector)<1:
+            print("ERROR: No detectors defined in cms.detector")
             return
         
         #print('2') #0.0004s
@@ -1677,7 +1721,7 @@ class Sample_Generic(CoordinateSystem):
 
         # Set exposure time
         if exposure_time is not None:
-            for detector in gs.DETS:
+            for detector in get_beamline().detector:
                 detector.setExposureTime(exposure_time, verbosity=verbosity)
         
         #print('1') #5e-5
@@ -1695,18 +1739,21 @@ class Sample_Generic(CoordinateSystem):
         
         md['plan_header_override'] = md['measure_type']
         start_time = time.time()
+        print('2') #3.0
+        print(self.clock())
         
-        uids = RE(count(gs.DETS, 1), **md)
-
-        #print('3') #4.3172
-        #print(self.clock())
+        #uids = RE(count(get_beamline().detector, 1), **md)
+        #uids = RE(count(get_beamline().detector), **md)
+        yield from (count(get_beamline().detector))
+        print('3') #4.3172
+        print(self.clock())
         
         #get_beamline().beam.off()
         #print('shutter is off')
 
         # Wait for detectors to be ready
         max_exposure_time = 0
-        for detector in gs.DETS:
+        for detector in get_beamline().detector:
             if detector.name is 'pilatus300' or 'pilatus2M':
                 current_exposure_time = caget('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname))
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
@@ -1717,27 +1764,37 @@ class Sample_Generic(CoordinateSystem):
                 if verbosity>=1:
                     print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
         
-        #print('4') #4.3193
-        #print(self.clock())
+        print('4') #4.3193
+        print(self.clock())
 
-            
         if verbosity>=2:
             status = 0
+            print('status1 = ', status)
+
             while (status==0) and (time.time()-start_time)<(max_exposure_time+20):
                 percentage = 100*(time.time()-start_time)/max_exposure_time
                 print( 'Exposing {:6.2f} s  ({:3.0f}%)      \r'.format((time.time()-start_time), percentage), end='')
+                print('status2 = ', status)
+                
                 time.sleep(poling_period)
                 
                 status = 1
-                for detector in gs.DETS:
+                for detector in get_beamline().detector:
                     if detector.name is 'pilatus300' or 'pilatus2M':
+                        print('status2.5 = ', status)
                         if caget('XF:11BMB-ES{}:cam1:Acquire'.format(pilatus_Epicsname))==1:
-                            status *= 0
+                            status = 0
+                            print('status3 = ', status)
+                        print('status3.5 = ', status)
+
                     elif detector.name is 'PhotonicSciences_CMS':
                         if not detector.detector_is_ready(verbosity=0):
-                            status *= 0
-            print('')
-                    
+                            status = 0
+                print('5') #3.0
+                print(self.clock())
+            print('6') #3.0
+            print(self.clock())
+                 
                 
         else:
             time.sleep(max_exposure_time)
@@ -1756,7 +1813,7 @@ class Sample_Generic(CoordinateSystem):
         #print('6') #4.9564
         #print(self.clock())
         
-        for detector in gs.DETS:
+        for detector in get_beamline().detector:
             self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
             
         #print('7') #4.9589
@@ -1815,7 +1872,7 @@ class Sample_Generic(CoordinateSystem):
             md['measure_series_current_frame'] = i+1
             self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, tiling=tiling, **md)
             if wait_time is not None:
-                sleep(wait_time)
+                time.sleep(wait_time)
     
     def measureTimeSeriesAngles(self, exposure_time=None, num_frames=10, wait_time=None, extra=None, measure_type='measureTimeSeries', verbosity=3, tiling=False, fix_name=True, **md):
 
@@ -1836,7 +1893,7 @@ class Sample_Generic(CoordinateSystem):
             print('Angles in measure include: {}'.format(sam.incident_angles_default))
             self.measureIncidentAngles(exposure_time=exposure_time, extra=extra, **md)
             if wait_time is not None:
-                sleep(wait_time)
+                time.sleep(wait_time)
             #if (i % 2 ==0):
             #    self.xr(-1)
             #else:
@@ -1844,15 +1901,15 @@ class Sample_Generic(CoordinateSystem):
             #self.pos()
         
         
-    def measureTemperature(self, temperature, exposure_time=None, wait_time=None, temperature_tolerance=0.4, extra=None, measure_type='measureTemperature', verbosity=3, tiling=False, poling_period=1.0, fix_name=True, **md):
+    def measureTemperature(self, temperature, exposure_time=None, wait_time=None, temperature_probe='A', temperature_tolerance=0.4, extra=None, measure_type='measureTemperature', verbosity=3, tiling=False, poling_period=1.0, fix_name=True, **md):
 
         # Set new temperature
-        self.setTemperature(temperature, verbosity=verbosity)
+        self.setTemperature(temperature, temperature_probe=temperature_probe, verbosity=verbosity)
         
         # Wait until we reach the temperature
-        while abs(self.temperature(verbosity=0) - temperature)>temperature_tolerance:
+        while abs(self.temperature(temperature_probe=temperature_probe, verbosity=0) - temperature)>temperature_tolerance:
             if verbosity>=3:
-                print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, self.temperature(verbosity=0)), end='')
+                print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(self.temperature_setpoint(temperature_probe=temperature_probe)-273.15, self.temperature(verbosity=0)), end='')
             time.sleep(poling_period)
             
         # Allow for additional equilibration at this temperature
@@ -1871,12 +1928,10 @@ class Sample_Generic(CoordinateSystem):
         #self.naming_scheme = self.naming_scheme_hold
 
 
-    def measureTemperatures(self, temperatures, exposure_time=None, wait_time=None, temperature_tolerance=0.4, extra=None, measure_type='measureTemperature', verbosity=3, tiling=False, poling_period=1.0, fix_name=True, **md):
+    def measureTemperatures(self, temperatures, exposure_time=None, wait_time=None, temperature_probe='A', temperature_tolerance=0.4, extra=None, measure_type='measureTemperature', verbosity=3, tiling=False, poling_period=1.0, fix_name=True, **md):
         
         for temperature in temperatures:
-            self.measureTemperature(temperature, exposure_time=exposure_time, wait_time=wait_time, temperature_tolerance=temperature_tolerance, measure_type=measure_type, verbosity=verbosity, tiling=tiling, poling_period=poling_period, fix_name=fix_name, **md)
-
-        
+            self.measureTemperature(temperature, exposure_time=exposure_time, wait_time=wait_time, temperature_probe=temperature_probe, temperature_tolerance=temperature_tolerance, measure_type=measure_type, verbosity=verbosity, tiling=tiling, poling_period=poling_period, fix_name=fix_name, **md)
         
 
     def do(self, step=0, verbosity=3, **md):
@@ -1907,23 +1962,74 @@ class Sample_Generic(CoordinateSystem):
 
     # Control methods
     ########################################
-    def setTemperature(self, temperature, verbosity=3):
+    def setTemperature(self, temperature, output_channel='1', verbosity=3):
         #if verbosity>=1:
             #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
-        if verbosity>=2:
-            print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, temperature))
-        caput('XF:11BM-ES{Env:01-Out:1}T-SP', temperature+273.15)
+        if output_channel == '1':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:1}T-SP', temperature+273.15)
         
+        if output_channel == '2':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:2}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:2}T-SP', temperature+273.15)
         
-    def temperature(self, verbosity=3):
-        #if verbosity>=1:
-            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+        if output_channel == '3':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:3}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:3}T-SP', temperature+273.15)
+
+        if output_channel == '4':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:4}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:4}T-SP', temperature+273.15)
             
-        current_temperature = caget('XF:11BM-ES{Env:01-Chan:A}T:C-I')
-        if verbosity>=3:
-            print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15 ) )
+            
+    def temperature(self, temperature_probe='A', output_channel='1', verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+ 
+        if temperature_probe == 'A':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:A}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
+            
+        if temperature_probe == 'B':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:B}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
+
+        if temperature_probe == 'C':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:C}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
+
+        if temperature_probe == 'D':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:D}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )            
             
         return current_temperature
+
+
+    def temperature_setpoint(self, output_channel='1', verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+ 
+        if output_channel == '1':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:1}T-SP')
+            
+        if output_channel == '2':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:2}T-SP')
+
+        if output_channel == '3':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:3}T-SP')
+
+        if output_channel == '4':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:4}T-SP')
+            
+        return setpoint_temperature
         
 
 
@@ -2045,8 +2151,9 @@ class SampleGISAXS_Generic(Sample_Generic):
             if True:
                 # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
                 self.yr(-2)
-                detector = gs.DETS[0]
-                value_name = gs.TABLE_COLS[0]
+                #detector = gs.DETS[0]
+                detector = get_beamline().detector[0]
+                value_name = get_beamline().TABLE_COLS[0]
                 RE(count([detector]))
                 value = detector.read()[value_name]['value']
                 self.yr(+2)
@@ -2061,13 +2168,14 @@ class SampleGISAXS_Generic(Sample_Generic):
             self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
         
         
-        #if step<=4:
-            #if verbosity>=4:
-                #print('    align: fitting')
-
-            #fit_scan(smy, 1.2, 21, fit='HMi')
-            #fit_scan(sth, 1.5, 21, fit='max')
+        if step<=4:
+            if verbosity>=4:
+                print('    align: fitting')
             
+            fit_scan(smy, 1.2, 21, fit='HMi')
+            #time.sleep(2)
+            fit_scan(sth, 1.5, 21, fit='max')
+            #time.sleep(2)            
             
         #if step<=5:
         #    #fit_scan(smy, 0.6, 17, fit='sigmoid_r')
@@ -2079,9 +2187,10 @@ class SampleGISAXS_Generic(Sample_Generic):
             #fit_scan(smy, 0.3, 21, fit='sigmoid_r')
             
             fit_edge(smy, 0.6, 21)
+            #time.sleep(2)
             #fit_edge(smy, 0.4, 21)
             fit_scan(sth, 0.8, 21, fit='COM')
-            
+            #time.sleep(2)            
             self.setOrigin(['y', 'th'])
         
         
@@ -2089,8 +2198,8 @@ class SampleGISAXS_Generic(Sample_Generic):
             # Final alignment using reflected beam
             if verbosity>=4:
                 print('    align: reflected beam')
-            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
-            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
+            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
             
             self.thabs(reflection_angle)
             
@@ -2098,11 +2207,11 @@ class SampleGISAXS_Generic(Sample_Generic):
             #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
             sth_target = result.values['x_max']-reflection_angle
             
-            if result.values['y_max']>10:
+            if result.values['y_max']>50:
                 th_target = self._axes['th'].motor_to_cur(sth_target)
                 self.thsetOrigin(th_target)
 
-            fit_edge(smy, 0.2, 21)
+            #fit_scan(smy, 0.2, 21, fit='max')
             self.setOrigin(['y'])            
 
         if step<=10:
@@ -2189,7 +2298,7 @@ class SampleGISAXS_Generic(Sample_Generic):
             #detselect(psccd)
             #detselect(pilatus300)
             detselect(pilatus2M)
-            for detector in gs.DETS:
+            for detector in get_beamline().detector:
                 detector.setExposureTime(self.md['exposure_time'])
             self.measureIncidentAngles(self.incident_angles_default, **md)
             self.thabs(0.0)
@@ -2513,23 +2622,74 @@ class Holder(Stage):
         
     # Control methods
     ########################################
-    def setTemperature(self, temperature, verbosity=3):
+    def setTemperature(self, temperature, output_channel='1', verbosity=3):
         #if verbosity>=1:
             #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
-        if verbosity>=2:
-            print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, temperature))
-        caput('XF:11BM-ES{Env:01-Out:1}T-SP', temperature+273.15)
+        if output_channel == '1':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:1}T-SP', temperature+273.15)
         
+        if output_channel == '2':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:2}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:2}T-SP', temperature+273.15)
         
-    def temperature(self, verbosity=3):
-        #if verbosity>=1:
-            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+        if output_channel == '3':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:3}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:3}T-SP', temperature+273.15)
+
+        if output_channel == '4':
+            if verbosity>=2:
+                print('  Changing temperature setpoint from {:.3f}°C  to {:.3f}°C'.format(caget('XF:11BM-ES{Env:01-Out:4}T-SP')-273.15, temperature))
+            caput('XF:11BM-ES{Env:01-Out:4}T-SP', temperature+273.15)
             
-        current_temperature = caget('XF:11BM-ES{Env:01-Chan:A}T:C-I')
-        if verbosity>=3:
-            print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15 ) )
+            
+    def temperature(self, temperature_probe='A', output_channel='1', verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+ 
+        if temperature_probe == 'A':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:A}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
+            
+        if temperature_probe == 'B':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:B}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
+
+        if temperature_probe == 'C':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:C}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
+
+        if temperature_probe == 'D':
+            current_temperature = caget('XF:11BM-ES{Env:01-Chan:D}T:C-I')
+            if verbosity>=3:
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )            
             
         return current_temperature
+
+    def temperature_setpoint(self, output_channel='1', verbosity=3):
+        #if verbosity>=1:
+            #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
+ 
+        if output_channel == '1':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:1}T-SP')
+            
+        if output_channel == '2':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:2}T-SP')
+
+        if output_channel == '3':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:3}T-SP')
+
+        if output_channel == '4':
+            setpoint_temperature = caget('XF:11BM-ES{Env:01-Out:4}T-SP')
+            
+        return setpoint_temperature
+        
         
         
     # Action (measurement) methods
@@ -2548,15 +2708,15 @@ class Holder(Stage):
             sample.do(verbosity=verbosity, **md)
             
             
-    def doTemperature(self, temperature, wait_time=None, temperature_tolerance=0.4, range=None, verbosity=3, poling_period=2.0, **md):
+    def doTemperature(self, temperature, wait_time=None, temperature_probe='A', output_channel='1', temperature_tolerance=0.4, range=None, verbosity=3, poling_period=2.0, **md):
         
         # Set new temperature
-        self.setTemperature(temperature, verbosity=verbosity)
+        self.setTemperature(temperature, output_channel=output_channel, verbosity=verbosity)
         
         # Wait until we reach the temperature
         while abs(self.temperature(verbosity=0) - temperature)>temperature_tolerance:
             if verbosity>=3:
-                print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(caget('XF:11BM-ES{Env:01-Out:1}T-SP')-273.15, self.temperature(verbosity=0)), end='')
+                print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(self.temperature_setpoint()-273.15, self.temperature(verbosity=0)), end='')
             time.sleep(poling_period)
             
             
@@ -2567,11 +2727,11 @@ class Holder(Stage):
         self.doSamples(range=range, verbosity=verbosity, **md)
             
 
-    def doTemperatures(self, temperatures,  wait_time=None, temperature_tolerance=0.4, range=None, verbosity=3, **md):
+    def doTemperatures(self, temperatures,  wait_time=None, temperature_probe='A', output_channel='1', temperature_tolerance=0.4, range=None, verbosity=3, **md):
         
         for temperature in temperatures:
             
-            self.doTemperature(temperature,  wait_time=wait_time, temperature_tolerance=temperature_tolerance, range=range, verbosity=verbosity, **md)
+            self.doTemperature(temperature,  wait_time=wait_time, temperature_probe=temperature_probe, output_channel=output_channel, temperature_tolerance=temperature_tolerance, range=range, verbosity=verbosity, **md)
                 
 
 
@@ -2708,8 +2868,9 @@ class CapillaryHolder(PositionalHolder):
         # slot 15; smx = -61.94
         
         # Set the x and y origin to be the center of slot 8
-        self.xsetOrigin(-17.49410+0.35)
+        #self.xsetOrigin(-16.7)
         self.ysetOrigin(-2.36985)
+        self.xsetOrigin(-16.7+2.0)
         
         self.mark('right edge', x=+54.4)
         self.mark('left edge', x=-54.4)
@@ -2740,8 +2901,8 @@ class CapillaryHolderHeated(CapillaryHolder):
                     self.setTemperature(temperature)
                     
                     while self.temperature(verbosity=0) < temperature-temp_tolerance:
-                        sleep(5)
-                    sleep(stabilization_time)
+                        time.sleep(5)
+                    time.sleep(stabilization_time)
                     
                     for sample in self.getSamples():
                         sample.gotoOrigin()
@@ -2761,8 +2922,8 @@ class CapillaryHolderHeated(CapillaryHolder):
                     self.setTemperature(temperature)
                 
                     while self.temperature(verbosity=0) > temperature+temp_tolerance:
-                        sleep(5)
-                    sleep(stabilization_time)
+                        time.sleep(5)
+                    time.sleep(stabilization_time)
 
                     for sample in self.getSamples():
                         sample.gotoOrigin()

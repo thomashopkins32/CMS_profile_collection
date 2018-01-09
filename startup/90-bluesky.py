@@ -1,16 +1,23 @@
-def detselect(detector_object, suffix="_stats1_total"):
+
+
+
+def detselect(detector_object, suffix='_stats4_total'):
     """Switch the active detector and set some internal state"""
 
     if isinstance(detector_object, (list, tuple)):
-        gs.DETS = detector_object
-        gs.PLOT_Y = detector_object[0].name + suffix
-        gs.TABLE_COLS = [gs.PLOT_Y] 
+        #gs.DETS = detector_object
+        #gs.PLOT_Y = detector_object[0].name + suffix
+        #gs.TABLE_COLS = [gs.PLOT_Y] 
+        cms.detector = detector_object
+        cms.PLOT_Y = detector_object[0].name + suffix
+        cms.TABLE_COLS = [cms.PLOT_Y] 
 
     else:
-        gs.DETS =[detector_object]
-        gs.PLOT_Y = detector_object.name + suffix
-        gs.TABLE_COLS = [gs.PLOT_Y] 
-
+        cms.detector = [detector_object]
+        cms.PLOT_Y = detector_object.name + suffix
+        cms.TABLE_COLS = [cms.PLOT_Y] 
+    
+    return cms.detector
 
 
 ##### I/O devices 
@@ -153,7 +160,7 @@ def set_atten_trans(tr):
         for i in np.arange(8):
             io_atten(i+1,N[i],q=1)
 
-        sleep(1.); return(get_atten_trans())
+        time.sleep(1.); return(get_atten_trans())
 
 
 ### 1-stage valves
@@ -188,17 +195,17 @@ def dual_valve(cmd,pv_r_soft,pv_op_soft,pv_cl_soft,pv_r,pv_op,pv_cl,ss1,quiet):
             ss2 = 'main closed and soft closed'
     if cmd=='o' or cmd=='open':
         caput(pv_cl_soft,1)
-        sleep(0.2)
+        time.sleep(0.2)
         caput(pv_op,1)
         ss2 = 'main has been opened (soft closed)'
     if cmd=='so' or cmd=='soft':
         caput(pv_cl,1)
-        sleep(0.5)
+        time.sleep(0.5)
         caput(pv_op_soft,1)
         ss2 = 'soft has been opened (main closed)'
     if cmd=='c' or cmd=='close':
         caput(pv_cl,1)
-        sleep(0.2)
+        time.sleep(0.2)
         caput(pv_cl_soft,1)
         ss2 = 'valve has been closed'
     if quiet==0:
@@ -293,7 +300,7 @@ def pump_fp(onoff, q=0):
     pv_w = 'XF:11BMB-VA{BT:SAXS-Pmp:1}Cmd:Enbl-Cmd'
     if onoff == 1:
         caput(pv_w,0)
-        sleep(0.2)
+        time.sleep(0.2)
         caput(pv_w,1)	
         ss='Flightpath pump has been turned ON'
     elif onoff == 0:
@@ -313,7 +320,7 @@ def pump_chm(onoff, q=0):
     pv_w = 'XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd'
     if onoff == 1:
         caput(pv_w,0)
-        sleep(0.2)
+        time.sleep(0.2)
         caput(pv_w,1)	
         ss='Chamber pump has been turned ON'
     elif onoff == 0:
@@ -328,6 +335,80 @@ def pump_chm(onoff, q=0):
         print(ss)
 
 
+## CMS config file
+import pandas as pds
+def config_update():
 
+    cms.bsx_pos=bsx.position
 
+    #collect the current positions of motors
+    
+    current_config = {'bsx_pos': cms.bsx_pos, 
+        '_delta_y_hover': robot._delta_y_hover, 
+        '_delta_y_slot': robot._delta_y_slot, 
+        '_delta_garage_x': robot._delta_garage_x, 
+        '_delta_garage_y': robot._delta_garage_y, 
+        '_position_safe': [robot._position_safe], 
+        '_position_sample_gripped': [robot._position_sample_gripped], 
+        '_position_hold': [robot._position_hold], 
+        '_position_garage': [robot._position_garage],
+        '_position_stg_exchange': [robot._position_stg_exchange], 
+        '_position_stg_safe': [robot._position_stg_safe], 
+        'time':time.ctime() }
+    
+    current_config_DF = pds.DataFrame(data=current_config, index=[1])
+    
+    #load the previous config file
+    cms_config = pds.read_csv('.cms_config', index_col=0)
+    cms_config_update = cms_config.append(current_config_DF, ignore_index=True)    
+    
+    #save to file
+    cms_config_update.to_csv('.cms_config')
+    
+    
+def config_load():
+
+    #collect the current positions of motors
+    cms_config = pds.read_csv('.cms_config', index_col=0)
+    cms.bsx_pos = cms_config.bsx_pos.values[-1]
+    
+    #robot positions --- with single value
+    robot._delta_y_hover = cms_config._delta_y_hover.values[-1]
+    robot._delta_y_slot = cms_config._delta_y_slot.values[-1]
+    robot._delta_garage_x = cms_config._delta_garage_x.values[-1] 
+    robot._delta_garage_y = cms_config._delta_garage_y.values[-1]
+    
+    #robot positions --- with multiple values in (x, y, r, z, phi)
+    
+    #tmp = cms_config._position_safe.values[-1]
+    #robot._position_safe = [float(pos) for pos in tmp[1:-1].split(',')]
+
+    robot._position_safe = [float(pos) for pos in cms_config._position_safe.values[-1][1:-1].split(',')]
+
+    #robot._position_safe = cms_config._position_safe.values[-1] 
+    robot._position_sample_gripped = [float(pos) for pos in cms_config._position_sample_gripped.values[-1][1:-1].split(',')] 
+    robot._position_hold = [float(pos) for pos in cms_config._position_hold.values[-1][1:-1].split(',')] 
+    robot._position_garage = [float(pos) for pos in cms_config._position_garage.values[-1][1:-1].split(',')]
+    robot._position_stg_exchange = [float(pos) for pos in cms_config._position_stg_exchange.values[-1][1:-1].split(',')]
+    robot._position_stg_safe = [float(pos) for pos in cms_config._position_stg_safe.values[-1][1:-1].split(',')]
+    
+
+## output the scan data and save them in user_folder/data. 
+def data_output(experimet_cycle=None, experiment_alias_directory=None): 
+    
+    """
+    To output the scan data with the scan_id as name
+    Please first create "data" folder under user_folder. 
+    """
+    
+    #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/GPFS/xf11bm/data/2017_3/IHerman' )
+    if experimet_cycle is not None:
+        headers = db( experiment_cycle=experiment_cycle, experiment_alias_directory=experiment_alias_directory)
+    else:
+        headers = db( experiment_alias_directory=experiment_alias_directory)
+        
+    for header in headers:
+        
+        dtable = header.table() 
+        dtable.to_csv('{}/data/{}.csv'.format(header.get('start').get('experiment_alias_directory') , header.get('start').get('scan_id')))
 
