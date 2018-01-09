@@ -335,6 +335,9 @@ def pump_chm(onoff, q=0):
         print(ss)
 
 
+PROFILE_ROOT = os.path.dirname(__file__)
+CMS_CONFIG_FILENAME =  PROFILE_ROOT + "/.cms_config"
+
 ## CMS config file
 import pandas as pds
 def config_update():
@@ -359,17 +362,17 @@ def config_update():
     current_config_DF = pds.DataFrame(data=current_config, index=[1])
     
     #load the previous config file
-    cms_config = pds.read_csv('.cms_config', index_col=0)
+    cms_config = pds.read_csv(CMS_CONFIG_FILENAME, index_col=0)
     cms_config_update = cms_config.append(current_config_DF, ignore_index=True)    
     
     #save to file
-    cms_config_update.to_csv('.cms_config')
+    cms_config_update.to_csv(CMS_CONFIG_FILENAME)
     
     
 def config_load():
 
     #collect the current positions of motors
-    cms_config = pds.read_csv('.cms_config', index_col=0)
+    cms_config = pds.read_csv(CMS_CONFIG_FILENAME, index_col=0)
     cms.bsx_pos = cms_config.bsx_pos.values[-1]
     
     #robot positions --- with single value
