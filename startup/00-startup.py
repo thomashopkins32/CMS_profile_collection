@@ -1,6 +1,8 @@
 import nslsii
 nslsii.configure_base(get_ipython().user_ns, 'cms')
 
+from bluesky.magics import BlueskyMagics
+
 # At the end of every run, verify that files were saved and
 # print a confirmation message.
 from bluesky.callbacks.broker import verify_files_saved

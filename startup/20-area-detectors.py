@@ -57,7 +57,7 @@ class Pilatus(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
                root='/GPFS/xf11bm',
-               fs=db.fs)
+               reg=db.reg)
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
@@ -88,7 +88,7 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
                root='/GPFS/xf11bm',
-               fs=db.fs)
+               reg=db.reg)
     
     
     def setExposureTime(self, exposure_time, verbosity=3):
@@ -106,7 +106,7 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
 #               suffix='TIFF1:',
 #               write_path_template='/GPFS/xf11bm/data/%Y/%m/%d/',
 #               root='/GPFS/xf11bm/',
-#               fs=db.fs)
+#               reg=db.reg)
 
 
 
