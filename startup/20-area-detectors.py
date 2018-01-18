@@ -89,16 +89,35 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
                write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
                root='/GPFS/xf11bm',
                reg=db.reg)
-    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._hints = None
+        self._default_hints = {'fields': ['stats3',
+                                          'stats4']}
+
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
-
+    
     @property
     def hints(self):
-        return {'fields': [self.stats3.total.name,
-                           self.stats4.total.name]}
+        if self._hints is None:
+            # i.e. ["pilatus2M_stats1_total"]
+            return self._default_hints
+        else:
+            return self._hints
+
+    @hints.setter
+    def hints(self, val):
+        if val is not None:
+            read_keys = list(self.describe())
+            for key in val.get('fields', []):
+                if key not in read_keys:
+                    raise ValueError("{} is not allowed -- must be one of {}"
+                                     .format(key, read_keys))
+        self._hints = val
+        
 
 
 #class StandardProsilicaWithTIFF(StandardProsilica):
@@ -160,15 +179,20 @@ for camera in all_standard_pros:
     #stats_plugin.read_attrs = ['total']
 '''
 
+
 pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
 pilatus2M.tiff.read_attrs = []
 STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
 pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
 #pilatus2M.read_attrs = ['cbf'] + STATS_NAMES2M
 
+
+
 for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']
+
+pilatus2M.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total']}
 
 #define the current pilatus detector: pilatus_name and _Epicsname, instead of pilatus300 or pilatus2M
 pilatus_name = pilatus2M
