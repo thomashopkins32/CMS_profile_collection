@@ -91,12 +91,37 @@ class CMS_SAXS_Detector(BeamlineDetector):
         position_defined_x, position_defined_y = self.detector_position
         position_current_x, position_current_y = SAXSx.user_readback.value, SAXSy.user_readback.value
         
-        
+            
         md_return['name'] = self.detector.name
-        md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
-        md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
+
+        #if pilatus_name==pilatus300k:
+            #md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
+            #md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
+        if pilatus_name==pilatus2M:
+            md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
+            md_return['y0_pix'] = round( y0 - (position_current_y-position_defined_y)/self.pixel_size , 2 )
         md_return['distance_m'] = self.distance
     
+        md_return['ROI1_X_min'] = caget('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname))
+        md_return['ROI1_X_size'] = caget('XF:11BMB-ES{}:ROI1:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI1_Y_min'] = caget('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname))
+        md_return['ROI1_Y_size'] = caget('XF:11BMB-ES{}:ROI1:SizeY'.format(pilatus_Epicsname))
+
+        md_return['ROI2_X_min'] = caget('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname))
+        md_return['ROI2_X_size'] = caget('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI2_Y_min'] = caget('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname))
+        md_return['ROI2_Y_size'] = caget('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname))
+
+        md_return['ROI3_X_min'] = caget('XF:11BMB-ES{}:ROI3:MinX'.format(pilatus_Epicsname))
+        md_return['ROI3_X_size'] = caget('XF:11BMB-ES{}:ROI3:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI3_Y_min'] = caget('XF:11BMB-ES{}:ROI3:MinY'.format(pilatus_Epicsname))
+        md_return['ROI3_Y_size'] = caget('XF:11BMB-ES{}:ROI3:SizeY'.format(pilatus_Epicsname))
+
+        md_return['ROI4_X_min'] = caget('XF:11BMB-ES{}:ROI4:MinX'.format(pilatus_Epicsname))
+        md_return['ROI4_X_size'] = caget('XF:11BMB-ES{}:ROI4:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI4_Y_min'] = caget('XF:11BMB-ES{}:ROI4:MinY'.format(pilatus_Epicsname))
+        md_return['ROI4_Y_size'] = caget('XF:11BMB-ES{}:ROI4:SizeY'.format(pilatus_Epicsname))
+        
         # Include the user-specified metadata
         md_return.update(md)
 
@@ -393,7 +418,7 @@ class DiagnosticScreen(Monitor):
         
 class PointDiode_CMS(Monitor):
     
-    def __init__(self, name='bim6 point diode', zposition=58.3, description="Bar holding a point-diode, downstream of sample.", pv='XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV', epics_signal=None, **args):
+    def __init__(self, name='bim6 point diode', zposition=59.1, description="Bar holding a point-diode, downstream of sample.", pv='XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV', epics_signal=None, **args):
         
         super().__init__(name=name, zposition=zposition, description=description, pv=pv, **args)
         self.has_flux = True
@@ -637,7 +662,13 @@ class Scintillator_CMS(Monitor):
         # For unslitted, unattenuated beam at 13.5 keV, 
         # BIM4 yields 2.86E5 cts/sec for 1.85E11 ph/s at BIM3:
         # 1.85E11 / 2.86E5 = 647000 (ph/s)/(cts/sec).
-        cps_to_flux_factor = 647000.
+        #cps_to_flux_factor = 647000.
+        
+        ### Ratio between estimated beam flux to raw scintillator counts (see Olog entry on January 18, 2018)
+        # For unslitted beam with absorber 4 and evacuated chamber, 
+        # BIM4 yields 1.978E5 cts/sec for 1.73E11 ph/s at BIM3 and 1.55e11 ph/s at Pilatus2M:
+        # Scale factor = (1.545e11 ph/sec) / (1.978e+05 ph/s) = 7.786e5.
+        cps_to_flux_factor = 7.786E5
 
         flux = cps_to_flux_factor * cps
 
@@ -734,8 +765,14 @@ class DiamondDiode_CMS(Monitor):
         # 1.38E11 / 4.8E-8 = 0.29E19 (ph/s)/A.
         # With dark current (total = 9.3e-10 A = 0.093e-8 A) taken into account, 
         # 1.38E11 / 4.7E-8 = 0.294E19 (ph/s)/A.
+        #current_to_flux_factor = 2.94E18
 
-        current_to_flux_factor = 2.94E18
+        ### Ratio between estimated beam flux to raw TOTAL current for the 4 quadrants 
+        # (see Olog entry on January 18, 2018).
+        # For unslitted beam with absorber 4 and evacuated chamber, 
+        # BIM5 yields 5.09e-8 A for for 1.73E11 ph/s at BIM3 and 1.55e11 ph/s at Pilatus2M:
+        # Scale factor = (1.545e11 ph/sec) / (5.0902e-08 A) = 3.025e+18
+        current_to_flux_factor = 3.025E18
 
         flux = current_to_flux_factor * current
 
@@ -805,7 +842,19 @@ class CMSBeam(object):
             return self.transmission(verbosity=verbosity)
         self.attenuator.reading = reading
         self.attenuator.transmission = self.transmission
-
+        
+        self.attenuator2 = BeamlineElement('attenuator2', 58.6, description="Nb foil absorber")
+        self.attenuator2.has_flux = False
+        def reading(verbosity=0):
+            return self.absorber(verbosity=verbosity)[1]
+        self.attenuator2.reading = reading
+        self.attenuator2.transmission = reading
+        #define the original position of aborber (6 Nb foils for XRR)
+        #the position is defined in 'config_update'. This position is a good reference. 
+        self.armr_absorber_o = -55.1
+        self.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
+        #TODO: make this energy dependent
+        
         if False:
             self.fs1 = DiagnosticScreen( 'fs1', 27.2, pv='XF:11BMA-BI{FS:1}', epics_signal=StandardProsilica('XF:11BMA-BI{FS:1-Cam:1}', name='fs1') )
             #self.fs2 = DiagnosticScreen( 'fs2', 29.1, pv='XF:11BMA-BI{FS:2}', epics_signal=StandardProsilica('XF:11BMA-BI{FS:2-Cam:1}', name='fs2') )
@@ -866,7 +915,7 @@ class CMSBeam(object):
         self.elements.append(self.bim5) # diamond diode BPM
         # im4
         #self.elements.append(GateValve('GV us small', 58.5, pv='XF:11BMB-VA{Slt:4-GV:1}'))
-        
+        self.elements.append(self.attenuator2)
         
         self.elements.append(BeamlineElement('sample', 58.8))
         self.elements.append(self.bim6) # dsmon
@@ -1531,10 +1580,89 @@ class CMSBeam(object):
         
         return self.transmission(verbosity=verbosity)
 
+    
+    ## Nb foil absorber, before slit s5
+    ########################################
+    
+    def absorber(self, verbosity=3):
+        """
+        Returns the current absorber position and absorption transmission.
+        To change the absorption for XRR, use 'setabsorber'.
+        """
+        
+        energy_keV = self.energy(verbosity=0)
+        
+        if energy_keV < 6.0 or energy_keV > 18.0:
+            print('Transmission data not available at the current X-ray energy ({.2f} keV).'.format(energy_keV))
+            
+        else:
+            
+            # The foil layers 
+            slot = np.floor((armr.position - self.armr_absorber_o+3-.1)/6)
+                    
+            return self.absorberCalcTransmission(slot, verbosity=verbosity)
 
+    def absorberCalcTransmission(self, slot, verbosity=3):
+        
+        energy_keV = self.energy(verbosity=0)
+        
+        E = energy_keV
+        E2 = np.square(E)
+        E3 = np.power(E, 3)
+            
+        d_Nb = 0.110      # Thickness [mm] of one Nb foil (nominally 0.1 mm); this yields one-foil transmission of 0.041 at 13.5 keV, close to measured value 
 
+        # Absorption length [mm] based on fits to LBL CXRO data for 6 < E < 19 keV
+        l_Nb = 1.4476e-3 - 5.6011e-4 * E + 1.0401e-4 * E2 + 8.7961e-6 * E3
+        d_l_Nb = d_Nb/l_Nb
 
+        absorber_transmission = exp(-slot*d_l_Nb)
+        
+        if abs(E - 13.5) < 0.01:
+            self.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
+        else:
+            tmp_list = []
+            for i in np.arange(6+1):
+                tmp_list.append(exp(-i*d_l_Nb))
+            self.absorber_transmission_list = tmp_list
 
+        if verbosity>=1:
+            print('transmission = {:.6g}'.format(absorber_transmission))
+        
+        return slot, absorber_transmission
+        
+    def setAbsorber(self, slot, retries=3, tolerance=0.5, verbosity=3):
+        """
+        Set the aborber of Nb foils for XRR measurements.
+        There are 6 layers of foil which gives the attenuation rate ~5-6% at 13.5kev.
+        """
+        
+        energy_keV = self.energy(verbosity=0)
+        
+        if energy_keV < 6.0 or energy_keV > 18.0:
+            print('Transmission data not available at the current X-ray energy ({.2f} keV).'.format(energy_keV))
+        elif slot < 0 or slot > 6:
+            print('Absorber cannot move beyond [0, 6]')
+                          
+        else:
+            
+            #move to slot # for correct attenuation.
+            armr.move(self.armr_absorber_o+slot*6)  # 6 mm wide per slot
+                
+        # Check that absorber was actually correctly moved
+        if abs(armr.position-(self.armr_absorber_o+slot*6)) > tolerance:
+            if retries>0:
+                #time.sleep(0.5)
+                # Try again
+                return self.absorberCalcTransmission(slot), self.setAbsorber(transmission, retries=retries-1, tolerance=tolerance, verbosity=verbosity)
+            
+            else:
+                print("WARNING: transmission didn't update correctly (request: {}; actual: {})".format(transmission, self.transmission(verbosity=0)))        
+
+        else:
+            return self.absorberCalcTransmission(slot)
+        
+        
     # Flux estimates at various points along the beam
     ########################################
     
@@ -1767,7 +1895,7 @@ class CMS_Beamline(Beamline):
         self.detector = [] 
         self.PLOT_Y = []
         self.TABLE_COLS = []
-        self.bsx_pos = -16.74
+        self.bsx_pos = -15.74
     
     
     def modeAlignment_bim6(self, verbosity=3):
@@ -2576,10 +2704,132 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         
         detselect(pilatus_name, suffix='_stats3_total')
 
+    def setSpecularReflectivityROI(self, total_angle=0.16, size=[10,10], default_SAXSy=None, verbosity=3):
+        '''Update the ROIs (stats1, stats2) for the specular reflected beam on the Pilatus
+        detector. This (should) update correctly based on the current SAXSx, SAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). 
+        
+        stats1 is centered on the specular reflected beam and has the size specified in 
+        the size argument.
+        
+        stats2 is centered on the specular reflected beam and has the size that is twice
+        as wide as specified in the size argument, for capturing background.
+        
+        The background-subtracted intensity for specular reflection is equal to: 
+        2 * stats1 - stats2 
+        '''
+         
+        detector = self.SAXS
+        
+        if default_SAXSy is not None: 
+            if abs(default_SAXSy - SAXSy.position) > 0.01: 
+                SAXSy.move(default_SAXSy)
+                print('SAXS detector has been shifted to default SAXSy = {:.3f} mm.'.format(SAXSy.position)) 
+        
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_SAXS_x0_pix']
+        y0 = det_md['detector_SAXS_y0_pix']
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        #for pilatus300k
+        #y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #for pilatus2M, placed up-side down
+        y_pos = int( y0 - size[1]/2 + y_offset_pix )
 
+        #y pixels for intermodule gaps, for pilatus2M (195 pixels high module, 17 pixels high gap)
+        y_gap_2M = []
+        for i in np.arange(7): 
+            for j in np.arange(17): 
+                y_gap_2M.append((195+17)*(i+1)-17+j)
+         
+        #y pixels for Spectular Reflectivity ROI
+        y_roi = []
+        for i in np.arange(int(size[1]+1)):
+            y_roi.append(y_pos+i)
+         
+        #flag for whether the ROI falls on intermodule gap 
+        flag_ROIonGap = len(np.unique(y_gap_2M + y_roi)) < (len(y_gap_2M)+len(y_roi)) 
+         
+        #Move SAXSy if ROI falls on intermodule gap; if not, move on 
+        if flag_ROIonGap == True: 
+            y_shift = 17+size[1]+1	# intermodule gap is 17 pixels high 
+            y_shift_mm = pixel_size*y_shift # mm
+            SAXSy.move(SAXSy.position+y_shift_mm) 
+            print('SAXS detector has been shifted to SAXSy = {:.3f} mm (by {:.3f} mm or {} pixels) to avoid a gap.'.format(SAXSy.position,y_shift_mm,y_shift)) 
+         
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_SAXS_x0_pix']
+            y0 = det_md['detector_SAXS_y0_pix']
+           
+            #for pilatus2M, placed up-side down
+            y_pos = int( y0 - size[1]/2 + y_offset_pix )
+        
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinX', int(x0-size[0]/2))
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeX', int(size[0]))
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinY', y_pos)
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeY', int(size[1]))
+        
+        #detselect(pilatus300, suffix='_stats3_total')
+            
+        # ROI1: Raw signal 
+        caput('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname), int(x0-size[0]/2))
+        caput('XF:11BMB-ES{}:ROI1:SizeX'.format(pilatus_Epicsname), int(size[0]))
+        caput('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI1:SizeY'.format(pilatus_Epicsname), int(size[1]))
+        
+        # ROI2: Raw signal+background (same as ROI1 for y, but twice as large for x) 
+        caput('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname), int(x0-size[0]))
+        caput('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname), int(2*size[0]))
+        caput('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname), int(size[1]))
+        
+        detselect(pilatus_name, suffix='_stats1_total')
+    
+    
+    def out_of_beamstop(self, total_angle, size=[12,12], default_SAXSy=None):
 
+        detector = self.SAXS
+        
+        #if default_SAXSy is not None: 
+            #if abs(default_SAXSy - SAXSy.position) > 0.01: 
+                #SAXSy.move(default_SAXSy)
+                #print('SAXS detector has been shifted to default SAXSy = {:.3f} mm.'.format(SAXSy.position)) 
+        
+        # These positions are updated based on current detector position
+        #det_md = detector.get_md()
+        #y0 = det_md['detector_SAXS_y0_pix']
+        
+        #y_shift_mm = SAXSy.position - detector.detector_position[1]
+        #y_shift_pixel = y_shift_mm/pixel_size
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
 
+        ##for pilatus2M, placed up-side down
+        #y_pos = int( y0 - size[1]/2 + y_offset_pix )
 
+        #y pixels for the size of circle beamstop, for pilatus2M (radius 27~28 pixels)
+        y_beamstop = 15
+                
+        #ROI_ymin = caget('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname))
+        
+        #return abs(y0 - y_shift_pixel - ROI_ymin) > y_beamstop
+
+        return y_offset_pix  - size[1]/2 > y_beamstop
+    
 #cms = CMS_Beamline()
 cms = CMS_Beamline_GISAXS()
 

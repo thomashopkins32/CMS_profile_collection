@@ -3,8 +3,8 @@
 # a custom function.
 
 import glob
-
 from bluesky.callbacks import CallbackBase
+
 class SavingCallback(CallbackBase):
 	''' This call back saves data in a data element.
 

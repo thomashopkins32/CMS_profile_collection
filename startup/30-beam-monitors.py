@@ -56,7 +56,13 @@ def get_bim4(q=0):
     ### Ratio between estimated beam flux to raw scintillator counts (see Olog entry on July 7, 2017)
     # For unslitted, unattenuated beam, BIM4 yields 2.86E5 cts/sec for 1.85E11 ph/s at BIM3:
     # 1.85E11 / 2.86E5 = 647000 (ph/s)/(cts/sec).
-    bim4_factor = 647000.
+    # bim4_factor = 647000.
+
+    ### Ratio between estimated beam flux to raw scintillator counts (see Olog entry on January 18, 2018)
+    # For unslitted beam with absorber 4 and evacuated chamber, 
+    # BIM4 yields 1.978E5 cts/sec for 1.73E11 ph/s at BIM3 and 1.55e11 ph/s at Pilatus2M:
+    # Scale factor = (1.545e11 ph/sec) / (1.978e+05 ph/s) = 7.786e5.
+    bim4_factor = 7.786E5
 
     if bim4_sec != 0.0:
         bim4_cps = bim4_cts/bim4_sec
@@ -95,7 +101,14 @@ def get_bim5(q=0):
     # 1.38E11 / 4.8E-8 = 0.29E19 (ph/s)/A.
     # With dark current (total = 9.3e-10 A = 0.093e-8 A) taken into account, 
     # 1.38E11 / 4.7E-8 = 0.294E19 (ph/s)/A.
-    bim5_curr_to_flux = 2.94E18
+    # bim5_curr_to_flux = 2.94E18
+
+    ### Ratio between estimated beam flux to raw TOTAL current for the 4 quadrants 
+    # (see Olog entry on January 18, 2018).
+    # For unslitted beam with absorber 4 and evacuated chamber, 
+    # BIM5 yields 5.09e-8 A for for 1.73E11 ph/s at BIM3 and 1.55e11 ph/s at Pilatus2M:
+    # Scale factor = (1.545e11 ph/sec) / (5.0902e-08 A) = 3.025e+18
+    bim5_curr_to_flux = 3.025E18
 
     bim5_T = bim5_i0+bim5_i1
     bim5_B = bim5_i2+bim5_i3

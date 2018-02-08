@@ -27,6 +27,8 @@ import re
 import os
 import shutil
 
+
+
 class CoordinateSystem(object):
     """
     A generic class defining a coordinate system. Several coordinate systems
@@ -1558,7 +1560,7 @@ class Sample_Generic(CoordinateSystem):
         self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)
         
         
-    def measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, stitchback=False, **md):
+    def measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, **md):
         '''Measure data by triggering the area detectors.
         
         Parameters
@@ -1578,13 +1580,13 @@ class Sample_Generic(CoordinateSystem):
             
             extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
             md['detector_position'] = 'lower'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, **md)
             
             #movr(SAXSy, 5.16) # move detector up by 30 pixels; 30*0.172 = 5.16
             SAXSy.move(SAXSy.user_readback.value + 5.16)
             extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
             md['detector_position'] = 'upper'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, **md)
             
             #movr(SAXSy, -5.16)
             SAXSy.move(SAXSy.user_readback.value + -5.16)
@@ -1592,7 +1594,7 @@ class Sample_Generic(CoordinateSystem):
             SAXSx.move(SAXSx.user_readback.value + 5.16)
             extra_current = 'pos3' if extra is None else '{}_pos3'.format(extra)
             md['detector_position'] = 'left'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, **md)
  
             SAXSx.move(SAXSx.user_readback.value + -5.16)
  
@@ -1639,7 +1641,7 @@ class Sample_Generic(CoordinateSystem):
         md_current['measure_type'] = measure_type
         #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
         md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
-        md_current.update(md)
+        #md_current.update(md)
 
        
         self.expose(exposure_time, extra=extra, verbosity=verbosity, **md_current)
@@ -2033,69 +2035,8 @@ class Sample_Generic(CoordinateSystem):
 
 class SampleTSAXS_Generic(Sample_Generic):
     
-    ################# Direct beam transmission measurement ####################
-    def intMeasure(self, output_file, exposure_time):
-        '''Measure the transmission intensity of the sample by ROI4.
-        The intensity will be saved in output_file
-        '''        
-        if abs(beam.energy(verbosity=0) - 13.5) < 0.1:
-            beam.setAbsorber(4)
-        elif abs(beam.energy(verbosity=0) - 17) < 0.1:
-            beam.setAbsorber(6)
+    pass
 
-        print('Absorber is moved to position {}'.format(beam.absorber()[0]))
-
-        detselect([pilatus2M])
-        if beam.absorber()[0]>=4:
-            bsx.move(bsx.position+6)
-            beam.setTransmission(1)
-            
-        self.measure(exposure_time)
-        
-        cms.modeMeasurement()
-        beam.setAbsorber(0)
-       
-        temp_data = self.transmission_data_output(beam.absorber()[0])
-        #output_data = output_data.iloc[0:0]
-
-        #create a data file to save the INT data
-        INT_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , output_file)            
-        
-        if os.path.isfile(INT_FILENAME):
-            output_data = pds.read_csv(INT_FILENAME, index_col=0)
-            output_data = output_data.append(temp_data, ignore_index=True)    
-            output_data.to_csv(INT_FILENAME)
-        else:
-            temp_data.to_csv(INT_FILENAME)
-            
-    def transmission_data_output(self, slot_pos):
-        
-        h = db[-1]
-        dtable = h.table()
-        
-        #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
-
-            
-        scan_id = h.start['scan_id']     
-        I_bim5 = h.start['beam_int_bim5']  #beam intensity from bim5
-        I0 = dtable.pilatus2M_stats4_total
-        filename = h.start['sample_name']
-        exposure_time = h.start['sample_exposure_time']
-        #I2 = dtable.pilatus2M_stats2_total
-        #I3 = 2*dtable.pilatus2M_stats1_total - dtable.pilatus2M_stats2_total
-        #In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
-
-        current_data = {'a_filename': filename,
-                        'b_scanID': scan_id,
-                        'c_I0': I0,
-                        'd_I_bim5': I_bim5,
-                        'e_absorber_slot': slot_pos,
-                        #'f_absorber_ratio': beam.absorber_transmission_list[slot_pos],
-                        'f_absorber_ratio': beam.absorber()[1],
-                        'g_exposure_seconds': exposure_time}
-        
-
-        return pds.DataFrame(data=current_data)
 
 class SampleGISAXS_Generic(Sample_Generic):
     
@@ -2208,7 +2149,7 @@ class SampleGISAXS_Generic(Sample_Generic):
             # Estimate full-beam intensity
             value = None
             if True:
-                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
+    q            # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
                 self.yr(-2)
                 #detector = gs.DETS[0]
                 detector = get_beamline().detector[0]
@@ -2266,7 +2207,7 @@ class SampleGISAXS_Generic(Sample_Generic):
             #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
             sth_target = result.values['x_max']-reflection_angle
             
-            if result.values['y_max']>50:
+            if result.values['y_max']>10:
                 th_target = self._axes['th'].motor_to_cur(sth_target)
                 self.thsetOrigin(th_target)
 
@@ -2293,41 +2234,39 @@ class SampleGISAXS_Generic(Sample_Generic):
         
         #TODO: Move this code. (This should be a property of the GIBar object.)
         
-        #level sample by checking bar height at pos_left and pos_right
-        print('checking the level of Sample')
-        if step<=1:
-           cms.modeAlignment()
-        self.xabs(pos_x_left)
-        beam.on()
-        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
-        pos_y_left=smy.user_readback.value
+        #level GIBar by checking bar height at pos_left and pos_right
+        print('checking the level of GIBar')
+        #if step<=1:
+        #    cms.modeAlignment()
+        #sam.xabs(pos_x_left)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')  #it's better not to move smy after scan but only the center position
+        #pos_y_left=smy.user_readback.value
         
-        self.xabs(pos_x_right)
-        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
-        pos_y_right=smy.user_readback.value
+        #
+        #sam.xabs(pos_x_right)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')
+        #pos_y_right=smy.user_readback.value
 
-        offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
-        print('The schi offset is {} degrees'.format(np.rad2deg(offset_schi)))
-        schi.move(schi.position + offset_schi)
+        #offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
+        #movr(sch, offset_schi)
         
         
         #double-check the chi offset
-        self.xabs(pos_x_left)
-        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
-        pos_y_left=smy.user_readback.value
+        #sam.xabs(pos_x_left)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')  #it's better not to move smy after scan but only the center position
+        #pos_y_left=smy.user_readback.value
         
-        self.xabs(pos_x_right)
-        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
-        pos_y_right=smy.user_readback.value
-        beam.off()
+        #sam.xabs(pos_x_right)
+        #fit_scan(smy, .6, 17, fit='sigmooid_r')
+        #pos_y_right=smy.user_readback.value
         
-        self.xo()
-        offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
+        #offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
 
-        if offset_schi<=0.1:
-            print('schi offset is aligned successfully!')
-        else:
-            print('schi offset is WRONG. Please redo the level command')
+        #if offset_schi<=0.1:
+            #print('schi offset is aligned successfully!')
+        #else:
+            #print('schi offset is WRONG. Please redo the level command')
+        pass
         
         
     
@@ -2363,6 +2302,7 @@ class SampleGISAXS_Generic(Sample_Generic):
                 detector.setExposureTime(self.md['exposure_time'])
             self.measureIncidentAngles(self.incident_angles_default, **md)
             self.thabs(0.0)
+        
 
 
 class SampleCDSAXS_Generic(Sample_Generic):
@@ -2402,281 +2342,7 @@ class SampleCDSAXS_Generic(Sample_Generic):
         for angle in angles:
             self.measureAngle(angle, exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
         
-class SampleXR(SampleGISAXS_Generic):
 
-    ################# Specular reflectivity (XR) measurement ####################
-
-    def XR_scan(self, theta_range=[0,0.1], theta_delta=0.1, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XRR_scan', output_file=None):
-        ''' Run x-ray reflectivity measurement for thin film samples. 
-        
-        '''
-        #TODO:
-        #if theta_end < theta_start:
-        #    print("The theta_end is larger than theta_start!!!")
-        
-        #disable the besteffortcallback and plot all ROIs
-        #bec.disable_table()
-        bec.disable_plots()
-
-        pilatus_name.hints = {'fields': ['pilatus2M_stats1_total', 'pilatus2M_stats2_total']}
-
-        self.naming_scheme_hold = self.naming_scheme
-        self.naming_scheme = ['name', 'extra', 'th']
-
-        #initial exposure period
-        #N = 1
-        
-        #move in absorber and move out the beamstop
-        slot_pos = 6
-        beam.setAbsorber(slot_pos)
-        if beam.absorber()[0]>=4:
-            bsx.move(bsx.position+6)
-            beam.setTransmission(1)
-        
-        #list the sth positions in scan
-        theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
-        
-        #create a clean dataframe and a direct beam images
-        self.yr(-2)
-        self.tho()
-        direct_beam_slot = 4
-        beam.setAbsorber(direct_beam_slot)
-        get_beamline().setSpecularReflectivityROI(total_angle=0,size=roi_size,default_SAXSy=-73)
-        self.measure(exposure_time, extra='direct_beam')
-        self.yo()
-        
-        output_data = self.XRR_data_output(direct_beam_slot, exposure_time)
-        #output_data = output_data.iloc[0:0]
-
-        #create a data file to save the XRR data
-        if output_file is None:
-            header = db[-1]
-            XRR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
-        else:
-            XRR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , output_file)            
-        
-        for theta in theta_list:
-            
-            self.thabs(theta)
-            get_beamline().setSpecularReflectivityROI(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
-
-            if cms.out_of_beamstop(total_angle=theta*2, size=roi_size):
-                cms.modeMeasurement()       
-                print('=========The beamstop is inserted to block the direct beam.=============')
-            
-            self.measure(exposure_time, extra=extra)
-            temp_data = self.XRR_data_output(slot_pos, exposure_time)
-            
-            #initial exposure period
-            N = 1
-            if threshold is not None and type(threshold) == int :
-                    
-                    
-                while temp_data['e_I1'][temp_data.index[-1]] < threshold and N < max_exposure_time:   
-                    if slot_pos > 0:
-                        if temp_data['e_I1'][temp_data.index[-1]] < 10: #The count is too small to evaluate the next slot_pos.
-                            slot_pos = slot_pos - 1
-                        else:
-                           slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
-                           for slot_no in np.arange(6, 0, -1):
-                               if slot_current > beam.absorber_transmission_list[slot_no]:
-                                   slot_pos = slot_no - 1 
-                              
-                        beam.setAbsorber(slot_pos)
-                        print('The absorber is slot {}\n'.format(slot_pos))
-                        print('The theta is {}\n'.format(theta))
-                        self.measure(exposure_time, extra=extra)
-                        temp_data = self.XRR_data_output(slot_pos, exposure_time)
-                    else:
-                        if threshold/temp_data['e_I1'][temp_data.index[-1]] < max_exposure_time:
-                            N = np.ceil(threshold/temp_data['e_I1'][temp_data.index[-1]])
-                        else:  
-                            N = max_exposure_time
-                        print('The absorber is slot {}\n'.format(slot_pos))
-                        print('The theta is {}\n'.format(theta))
-                        self.measure(N*exposure_time, extra=extra)                        
-                        temp_data = self.XRR_data_output(slot_pos, N*exposure_time)
-                        N_last = N
-                        
-            elif len(threshold)>1 and temp_data['e_I1'][temp_data.index[-1]] > threshold[-1]:
-                slot_pos = slot_pos+1
-                print('The absorber is slot {}\n'.format(slot_pos))
-                print('The theta is {}\n'.format(theta))
-                beam.setAbsorber(slot_pos)
-                self.measure(exposure_time, extra=extra)
-                temp_data = self.XRR_data_output(slot_pos, exposure_time)
-
-
-            output_data = output_data.append(temp_data, ignore_index=True)    
-            #save to file 
-            output_data.to_csv(XRR_FILENAME)
-        
-        #reset the changed items
-        bec.enable_plots()
-        #bec.enable_table()
-        self.naming_scheme = self.naming_scheme_hold
-
-        pilatus_name.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total']}
-       
-    def XR_abort(self):        
-        '''Reset the beamline status back to origin before XRR measurement.
-        '''        
-        beam.off()        
-        cms.modeMeasurement()
-        beam.setAbsorber(0)
-        
-        self.xo()
-        self.yo()
-        self.tho()
-
-        bec.enable_plots()
-        #bec.enable_table()
-        pilatus_name.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total']}
-        
-    def XR_data_output(self, slot_pos, exposure_time):
-        '''XRR data output in DataFrame format
-        '''
-        h = db[-1]
-        dtable = h.table()
-        
-        #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
-
-            
-        sth_pos = h.start['sample_th']
-        qz = 4*np.pi*np.sin(np.deg2rad(sth_pos))/h.start['calibration_wavelength_A']
-        scan_id = h.start['scan_id']     
-        I0 = h.start['beam_int_bim5']  #beam intensity from bim5
-        I1 = dtable.pilatus2M_stats1_total
-        I2 = dtable.pilatus2M_stats2_total
-        I3 = 2*dtable.pilatus2M_stats1_total - dtable.pilatus2M_stats2_total
-        In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
-
-        current_data = {'a_qz': qz,
-                        'b_th':sth_pos, 
-                        'c_scanID': scan_id,
-                        'd_I0': I0,
-                        'e_I1': I1,
-                        'f_I2': I2,
-                        'g_I3': I3,
-                        'h_In': In,
-                        'i_absorber_slot': slot_pos,
-                        'j_exposure_seconds': exposure_time}
-
-        return pds.DataFrame(data=current_data)
-        
-    def XR_align(self, step=0, reflection_angle=0.12, verbosity=3):
-        '''Specific alignment for XRR
-        
-        Align the sample with respect to the beam. GISAXS alignment involves
-        vertical translation to the beam center, and rocking theta to get the
-        sample plane parralel to the beam. Finally, the angle is re-optimized
-        in reflection mode.
-        
-        The 'step' argument can optionally be given to jump to a particular
-        step in the sequence.'''
-
-        if verbosity>=4:
-            print('  Aligning {}'.format(self.name))
-        
-        if step<=0:
-            # Prepare for alignment
-            cms.modeAlignment()
-            
-            if RE.state!='idle':
-                RE.abort()
-                
-            if get_beamline().current_mode!='alignment':
-                if verbosity>=2:
-                    print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
-                #get_beamline().modeAlignment()
-                
-                
-            get_beamline().setDirectBeamROI()
-            
-            beam.on()
-
-        
-        if step<=2:
-            if verbosity>=4:
-                print('    align: searching')
-                
-            # Estimate full-beam intensity
-            value = None
-            if True:
-                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
-                self.yr(-2)
-                #detector = gs.DETS[0]
-                detector = get_beamline().detector[0]
-                value_name = get_beamline().TABLE_COLS[0]
-                RE(count([detector]))
-                value = detector.read()[value_name]['value']
-                self.yr(+2)
-            
-            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
-                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
-                
-            # Find the step-edge
-            self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
-            
-            # Find the peak
-            self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
-        
-        
-        if step<=4:
-            if verbosity>=4:
-                print('    align: fitting')
-            
-            fit_scan(smy, 1.2, 21, fit='HMi')
-            #time.sleep(2)
-            fit_scan(sth, 1.5, 21, fit='max')
-            #time.sleep(2)            
-            
-        if step<=8:
-            #fit_scan(smy, 0.3, 21, fit='sigmoid_r')
-            
-            fit_edge(smy, 0.6, 21)
-            #time.sleep(2)
-            #fit_edge(smy, 0.4, 21)
-            fit_scan(sth, 0.8, 21, fit='COM')
-            #time.sleep(2)            
-            self.setOrigin(['y', 'th'])
-        
-        
-        if step<=9 and reflection_angle is not None:
-            # Final alignment using reflected beam
-            if verbosity>=4:
-                print('    align: reflected beam')
-            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
-            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
-            
-            self.thabs(reflection_angle)
-            
-            result = fit_scan(sth, 0.1, 41, fit='max') 
-            #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
-            sth_target = result.values['x_max']-reflection_angle
-            
-            if result.values['y_max']>50:
-                th_target = self._axes['th'].motor_to_cur(sth_target)
-                self.thsetOrigin(th_target)
-
-            fit_scan(smy, 0.2, 21, fit='max')
-            self.setOrigin(['y'])            
-
-        if step<=10:
-            self.thabs(0.0)
-            beam.off()
-
-    def XR_check_alignment(self, total_angle=0.5):
-        ''' Check the alignment of the XR.
-        The total_angle is the incident angle. 
-        The reflection spot should be located in the center of ROI2'''
-        cms.modeMeasurement()
-        cms.setSpecularReflectivityROI(total_angle=0.5*2, size = [12, 15],  default_SAXSy=-73)                    
-        sam.thabs(0.5)
-        sam.measure(1)
-        print('===========sam.th moves to 0.5deg and ROI1 is set at 1deg. ============')
-        print('======Please check the ROI whether at the reflected position. =======')
-        print('========If not, modify sam.th to meet the reflected beam. ===========')
 
 
 class Stage(CoordinateSystem):
@@ -3048,8 +2714,7 @@ class Holder(Stage):
         self.setTemperature(temperature, output_channel=output_channel, verbosity=verbosity)
         
         # Wait until we reach the temperature
-        #while abs(self.temperature(verbosity=0) - temperature)>temperature_tolerance:
-        while abs(self.temperature(temperature_probe=temperature_probe, verbosity=0) - temperature)>temperature_tolerance:
+        while abs(self.temperature(verbosity=0) - temperature)>temperature_tolerance:
             if verbosity>=3:
                 print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(self.temperature_setpoint()-273.15, self.temperature(verbosity=0)), end='')
             time.sleep(poling_period)
@@ -3147,38 +2812,7 @@ class PositionalHolder(Holder):
             print('Out of the range in Garage (4 x 3)')
                     
         self.GaragePosition=[shelf_num, spot_num]
-
-    def intMeasure(self, output_file, exposure_time):
         
-        for sample in self.getSamples():
-            sample.gotoOrigin()
-            sample.intMeasure(output_file, exposure_time)
-
-    def saveSampleStates(self, output_file = None):
-        '''Print a list of the current samples associated with this holder/bar. 
-        
-        It can be saved in the output_file under setup'''
-        
-        states = {}
-        for sample_number, sample in sorted(self._samples.items()):
-            states[sample_number]  = sample.save_state()
-        
-        cms.samples_states = states
-        if output_file is not None:
-            with open(output_file, 'wb') as handle:
-                pickle.dump(states, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                
-        return states
-    
-    def restoreSampleStates(self, input_file = None):
-        
-        if input_file is not None:
-            with open(input_file,'rb') as handle:
-                cms.samples_states = pickle.load(handle)
-            
-        for sample_number, sample in sorted(self._samples.items()):            
-            sample.restore_state(cms.samples_states[sample_number])
-            print(sample.save_state())        
 
 class GIBar(PositionalHolder):
     '''This class is a sample bar for grazing-incidence (GI) experiments.'''
@@ -3212,70 +2846,9 @@ class GIBar(PositionalHolder):
             sample.ysetOrigin( -1.0*sample.md['substrate_thickness'] )
         
         sample.detector=detector_opt
-        
-        
-        
-   #def _testing_level(self, step=0,pos_x_left=-5, pos_x_right=5):
-        
-        ##TODO: Move this code. (This should be a property of the GIBar object.)
-        
-        ##level GIBar by checking bar height at pos_left and pos_right
-        #print('checking the level of GIBar')
-        #if step<=1:
-           #cms.modeAlignment()
-           
-        #self.xabs(pos_x_left)
-        #fit_scan(smy, .6, 17, fit='sigmooid_r')  #it's better not to move smy after scan but only the center position
-        #pos_y_left=smy.user_readback.value
-        
-        
-        #self.xabs(pos_x_right)
-        #fit_scan(smy, .6, 17, fit='sigmooid_r')
-        #pos_y_right=smy.user_readback.value
 
-        #offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
-        #movr(sch, offset_schi)
         
-        
-        ##double-check the chi offset
-        #self.xabs(pos_x_left)
-        #fit_scan(smy, .6, 17, fit='sigmooid_r')  #it's better not to move smy after scan but only the center position
-        #pos_y_left=smy.user_readback.value
-        
-        #self.xabs(pos_x_right)
-        #fit_scan(smy, .6, 17, fit='sigmooid_r')
-        #pos_y_right=smy.user_readback.value
-        
-        #offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)
 
-        #self.xo()
-        #self.yo()
-        #if offset_schi<=0.1:
-            #print('schi offset is aligned successfully!')
-        #else:
-            #print('schi offset is WRONG. Please redo the level command')
-
-
-class GIBar_long_thermal(GIBar):
-    '''This class is a sample bar with heating/cooling feature and 6" long bar for grazing-incidence (GI) experiments.'''
-    
-    # Core methods
-    ########################################
-
-    def __init__(self, name='GIBar', base=None, **kwargs):
-        
-        super().__init__(name=name, base=base, **kwargs)
-        
-        self._positional_axis = 'x'
-        
-        # Set the x and y origin to be the center of slot 8
-        self.xsetOrigin(-71.89405-22.1)
-        self.ysetOrigin(10.37925)
-        
-        self.mark('right edge', x=+152.4)
-        self.mark('left edge', x=0)
-        self.mark('center', x=76.2, y=0)
-             
 class CapillaryHolder(PositionalHolder):
     '''This class is a sample holder that has 15 slots for capillaries.'''
 
@@ -3295,9 +2868,8 @@ class CapillaryHolder(PositionalHolder):
         # slot 15; smx = -61.94
         
         # Set the x and y origin to be the center of slot 8
-        #self.xsetOrigin(-16.7)
+        self.xsetOrigin(-16.7)
         self.ysetOrigin(-2.36985)
-        self.xsetOrigin(-16.7+-0.3)
         
         self.mark('right edge', x=+54.4)
         self.mark('left edge', x=-54.4)

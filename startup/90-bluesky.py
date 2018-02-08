@@ -335,18 +335,21 @@ def pump_chm(onoff, q=0):
         print(ss)
 
 
-PROFILE_ROOT = os.path.dirname(__file__)
+#PROFILE_ROOT = os.path.dirname(__file__)
+PROFILE_ROOT = os.getcwd()
 CMS_CONFIG_FILENAME =  PROFILE_ROOT + "/.cms_config"
 
 ## CMS config file
 import pandas as pds
 def config_update():
 
-    cms.bsx_pos=bsx.position
+    cms.bsx_pos = bsx.position
+    beam.armr_absorber_o = armr.position
 
     #collect the current positions of motors
     
-    current_config = {'bsx_pos': cms.bsx_pos, 
+    current_config = {'bsx_pos': cms.bsx_pos,
+        'armr_absorber_o':beam.armr_absorber_o,
         '_delta_y_hover': robot._delta_y_hover, 
         '_delta_y_slot': robot._delta_y_slot, 
         '_delta_garage_x': robot._delta_garage_x, 
@@ -374,7 +377,8 @@ def config_load():
     #collect the current positions of motors
     cms_config = pds.read_csv(CMS_CONFIG_FILENAME, index_col=0)
     cms.bsx_pos = cms_config.bsx_pos.values[-1]
-    
+    beam.armr_absorber_o = cms_config.armr_absorber_o.values[-1]
+   
     #robot positions --- with single value
     robot._delta_y_hover = cms_config._delta_y_hover.values[-1]
     robot._delta_y_slot = cms_config._delta_y_slot.values[-1]
@@ -397,7 +401,7 @@ def config_load():
     
 
 ## output the scan data and save them in user_folder/data. 
-def data_output(experimet_cycle=None, experiment_alias_directory=None): 
+def data_output(experiment_cycle=None, experiment_alias_directory=None): 
     
     """
     To output the scan data with the scan_id as name
@@ -405,7 +409,7 @@ def data_output(experimet_cycle=None, experiment_alias_directory=None):
     """
     
     #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/GPFS/xf11bm/data/2017_3/IHerman' )
-    if experimet_cycle is not None:
+    if experiment_cycle is not None:
         headers = db( experiment_cycle=experiment_cycle, experiment_alias_directory=experiment_alias_directory)
     else:
         headers = db( experiment_alias_directory=experiment_alias_directory)
@@ -414,4 +418,13 @@ def data_output(experimet_cycle=None, experiment_alias_directory=None):
         
         dtable = header.table() 
         dtable.to_csv('{}/data/{}.csv'.format(header.get('start').get('experiment_alias_directory') , header.get('start').get('scan_id')))
-
+        
+        
+#def XRR_data_output(experiment_ids=None)
+    
+    #headers = db( experiement_ids )
+    #for header in headers: 
+        #dtable = header.table()
+        
+    
+    
