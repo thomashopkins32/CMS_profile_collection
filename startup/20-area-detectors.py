@@ -169,15 +169,16 @@ for camera in all_standard_pros:
 #    camera.tiff.read_attrs = []
 
 #pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL 
+#pilatus300 section is unmarked.  032018-MF
 '''
-#pilatus300 = Pilatus('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
-#pilatus300.tiff.read_attrs = []
-#STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
-#pilatus300.read_attrs = ['tiff'] + STATS_NAMES
-#for stats_name in STATS_NAMES:
-    #stats_plugin = getattr(pilatus300, stats_name)
-    #stats_plugin.read_attrs = ['total']
 '''
+pilatus300 = Pilatus('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
+pilatus300.tiff.read_attrs = []
+STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
+pilatus300.read_attrs = ['tiff'] + STATS_NAMES
+for stats_name in STATS_NAMES:
+    stats_plugin = getattr(pilatus300, stats_name)
+    stats_plugin.read_attrs = ['total']
 
 
 pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
@@ -197,3 +198,7 @@ pilatus2M.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total'
 #define the current pilatus detector: pilatus_name and _Epicsname, instead of pilatus300 or pilatus2M
 pilatus_name = pilatus2M
 pilatus_Epicsname = '{Det:PIL2M}'
+
+
+#pilatus_name = pilatus300
+#pilatus_Epicsname = '{Det:SAXS}'

@@ -993,7 +993,7 @@ class Sample_Generic(CoordinateSystem):
                             #'hint': None,
                             #},
                             #{'name': 'phi',
-                            #'motor': None,
+                            #'motor': srot,
                             #'enabled': True,
                             #'scaling': +1.0,
                             #'units': 'deg',
@@ -1369,6 +1369,10 @@ class Sample_Generic(CoordinateSystem):
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
                     #extra wait time when changing the exposure time.  
                     time.sleep(2)
+                if detector.name is 'pilatus300' and exposure_time != caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'):
+                    detector.setExposureTime(exposure_time, verbosity=verbosity)
+                    #extra wait time when changing the exposure time.  
+                    time.sleep(2)
                 elif detector.name is 'PhotonicSciences_CMS':
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
        
@@ -1463,7 +1467,7 @@ class Sample_Generic(CoordinateSystem):
                 print('  Data saved to: {}'.format(filename))
 
             if subdirs:
-                subdir = '/saxs/'
+                subdir = '/maxs/'
 
             #if md['measure_type'] is not 'snap':
             if True:
@@ -1475,7 +1479,7 @@ class Sample_Generic(CoordinateSystem):
                 #savename = md['filename'][:-5]
                 
                 savename = self.get_savename(savename_extra=extra)
-                link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                link_name = '{}/{}{}_{:04d}_maxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
                 
                 if os.path.isfile(link_name):
                     i = 1
@@ -2052,10 +2056,11 @@ class SampleTSAXS_Generic(Sample_Generic):
             
         self.measure(exposure_time)
         
+        temp_data = self.transmission_data_output(beam.absorber()[0])
+
         cms.modeMeasurement()
         beam.setAbsorber(0)
        
-        temp_data = self.transmission_data_output(beam.absorber()[0])
         #output_data = output_data.iloc[0:0]
 
         #create a data file to save the INT data
@@ -2406,7 +2411,7 @@ class SampleXR(SampleGISAXS_Generic):
 
     ################# Specular reflectivity (XR) measurement ####################
 
-    def XR_scan(self, theta_range=[0,0.1], theta_delta=0.1, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XRR_scan', output_file=None):
+    def XR_scan(self, scan_type='theta_scan', theta_range=[0,0.1], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None):
         ''' Run x-ray reflectivity measurement for thin film samples. 
         
         '''
@@ -2421,7 +2426,7 @@ class SampleXR(SampleGISAXS_Generic):
         pilatus_name.hints = {'fields': ['pilatus2M_stats1_total', 'pilatus2M_stats2_total']}
 
         self.naming_scheme_hold = self.naming_scheme
-        self.naming_scheme = ['name', 'extra', 'th']
+        self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
 
         #initial exposure period
         #N = 1
@@ -2433,27 +2438,40 @@ class SampleXR(SampleGISAXS_Generic):
             bsx.move(bsx.position+6)
             beam.setTransmission(1)
         
-        #list the sth positions in scan
-        theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
-        
         #create a clean dataframe and a direct beam images
         self.yr(-2)
         self.tho()
-        direct_beam_slot = 4
+        #Energy = 13.5kev
+        if abs(beam.energy(verbosity=1)-13.5) < 0.1:
+            direct_beam_slot = 4
+        #Energy = 17kev
+        if abs(beam.energy(verbosity=1)-17) < 0.1:
+            direct_beam_slot = 6
         beam.setAbsorber(direct_beam_slot)
         get_beamline().setSpecularReflectivityROI(total_angle=0,size=roi_size,default_SAXSy=-73)
         self.measure(exposure_time, extra='direct_beam')
         self.yo()
         
-        output_data = self.XRR_data_output(direct_beam_slot, exposure_time)
+        output_data = self.XR_data_output(direct_beam_slot, exposure_time)
         #output_data = output_data.iloc[0:0]
 
         #create a data file to save the XRR data
         if output_file is None:
             header = db[-1]
-            XRR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
+            #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
+            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
         else:
-            XRR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , output_file)            
+            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
+
+        if scan_type == 'theta_scan':
+            #list the sth positions in scan
+            theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+        elif scan_type == 'qz_scan':
+            if qz_list is not None:
+                qz_list = qz_list
+            else:
+               qz_list = self.qz_list_default
+            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A'] /4*np.pi))
         
         for theta in theta_list:
             
@@ -2465,7 +2483,7 @@ class SampleXR(SampleGISAXS_Generic):
                 print('=========The beamstop is inserted to block the direct beam.=============')
             
             self.measure(exposure_time, extra=extra)
-            temp_data = self.XRR_data_output(slot_pos, exposure_time)
+            temp_data = self.XR_data_output(slot_pos, exposure_time)
             
             #initial exposure period
             N = 1
@@ -2486,16 +2504,16 @@ class SampleXR(SampleGISAXS_Generic):
                         print('The absorber is slot {}\n'.format(slot_pos))
                         print('The theta is {}\n'.format(theta))
                         self.measure(exposure_time, extra=extra)
-                        temp_data = self.XRR_data_output(slot_pos, exposure_time)
+                        temp_data = self.XR_data_output(slot_pos, exposure_time)
                     else:
-                        if threshold/temp_data['e_I1'][temp_data.index[-1]] < max_exposure_time:
-                            N = np.ceil(threshold/temp_data['e_I1'][temp_data.index[-1]])
+                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time:
+                            N = np.ceil(threshold/float(temp_data['e_I1'][temp_data.index[-1]]))+1
                         else:  
                             N = max_exposure_time
                         print('The absorber is slot {}\n'.format(slot_pos))
                         print('The theta is {}\n'.format(theta))
                         self.measure(N*exposure_time, extra=extra)                        
-                        temp_data = self.XRR_data_output(slot_pos, N*exposure_time)
+                        temp_data = self.XR_data_output(slot_pos, N*exposure_time)
                         N_last = N
                         
             elif len(threshold)>1 and temp_data['e_I1'][temp_data.index[-1]] > threshold[-1]:
@@ -2504,12 +2522,12 @@ class SampleXR(SampleGISAXS_Generic):
                 print('The theta is {}\n'.format(theta))
                 beam.setAbsorber(slot_pos)
                 self.measure(exposure_time, extra=extra)
-                temp_data = self.XRR_data_output(slot_pos, exposure_time)
+                temp_data = self.XR_data_output(slot_pos, exposure_time)
 
 
             output_data = output_data.append(temp_data, ignore_index=True)    
             #save to file 
-            output_data.to_csv(XRR_FILENAME)
+            output_data.to_csv(XR_FILENAME)
         
         #reset the changed items
         bec.enable_plots()
@@ -2541,6 +2559,17 @@ class SampleXR(SampleGISAXS_Generic):
         
         #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
 
+        #Energy = 13.5kev
+        if abs(beam.energy(verbosity=1)-13.5) < 0.1:        
+            beam.absorber_transmission_list = beam.absorber_transmission_list_13p5kev
+
+        #Energy = 17kev
+        elif abs(beam.energy(verbosity=1)-17) < 0.1:        
+            beam.absorber_transmission_list = beam.absorber_transmission_list_17kev
+        
+        else: 
+            print("The absorber has not been calibrated under current Energy!!!")
+            
             
         sth_pos = h.start['sample_th']
         qz = 4*np.pi*np.sin(np.deg2rad(sth_pos))/h.start['calibration_wavelength_A']
@@ -2646,6 +2675,10 @@ class SampleXR(SampleGISAXS_Generic):
             # Final alignment using reflected beam
             if verbosity>=4:
                 print('    align: reflected beam')
+                
+            if abs(beam.energy(verbosity)-17)<0.1:
+                reflection_angle = 0.15
+
             get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
             #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
             
@@ -2659,21 +2692,21 @@ class SampleXR(SampleGISAXS_Generic):
                 th_target = self._axes['th'].motor_to_cur(sth_target)
                 self.thsetOrigin(th_target)
 
-            fit_scan(smy, 0.2, 21, fit='max')
-            self.setOrigin(['y'])            
+            #fit_scan(smy, 0.2, 21, fit='max')
+            #self.setOrigin(['y'])            
 
         if step<=10:
             self.thabs(0.0)
             beam.off()
 
-    def XR_check_alignment(self, total_angle=0.5):
+    def XR_check_alignment(self, int_angle=0.5, exposure_time=1):
         ''' Check the alignment of the XR.
         The total_angle is the incident angle. 
         The reflection spot should be located in the center of ROI2'''
         cms.modeMeasurement()
-        cms.setSpecularReflectivityROI(total_angle=0.5*2, size = [12, 15],  default_SAXSy=-73)                    
-        sam.thabs(0.5)
-        sam.measure(1)
+        cms.setSpecularReflectivityROI(total_angle=int_angle*2, size = [12, 15],  default_SAXSy=-73)                    
+        sam.thabs(int_angle)
+        sam.measure(exposure_time)
         print('===========sam.th moves to 0.5deg and ROI1 is set at 1deg. ============')
         print('======Please check the ROI whether at the reflected position. =======')
         print('========If not, modify sam.th to meet the reflected beam. ===========')
@@ -3192,7 +3225,6 @@ class GIBar(PositionalHolder):
         
         self._positional_axis = 'x'
         
-        # Set the x and y origin to be the center of slot 8
         self.xsetOrigin(-71.89405)
         self.ysetOrigin(10.37925)
         
@@ -3214,6 +3246,124 @@ class GIBar(PositionalHolder):
         sample.detector=detector_opt
         
         
+
+
+
+    def alignSamples(self, range=None, step=0, x_offset=0, verbosity=3, **md):
+        '''Iterates through the samples on the holder, aligning each one.'''
+        
+        if step<=0:
+            get_beamline().modeAlignment()
+        
+        
+        if step<=5:
+            for sample in self.getSamples(range=range):
+                sample.gotoOrigin(['x','y','th'])
+                sample.xr(x_offset)
+                sample.align()
+            
+            
+        if step<=10:
+            if verbosity>=3:
+                print('Alignment complete.')
+                for i, sample in enumerate(self.getSamples()):
+                    print('Sample {} ({})'.format(i+1, sample.name))
+                    print(sample.save_state())
+
+
+    def alignSamplesQuick(self, range=None, step=0, x_offset=0, verbosity=3, **md):
+        '''Iterates through the samples on the holder, aligning each one.'''
+        
+        if step<=0:
+            get_beamline().modeAlignment()
+        
+        
+        if step<=5:
+            for sample in self.getSamples(range=range):
+                sample.gotoOrigin(['x','y','th'])
+                sample.xr(x_offset)
+                sample.alignQuick(reflection_angle=0.07)
+            
+            
+        if step<=10:
+            if verbosity>=3:
+                print('Alignment complete.')
+                for i, sample in enumerate(self.getSamples()):
+                    print('Sample {} ({})'.format(i+1, sample.name))
+                    print(sample.save_state())
+                
+
+    def alignSamplesVeryQuick(self, range=None, step=0, x_offset=0, verbosity=3, **md):
+        '''Iterates through the samples on the holder, aligning each one.'''
+        
+        if step<=0:
+            get_beamline().modeAlignment()
+            beam.on()
+            caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.25)
+            caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.30)
+        
+        
+        if step<=5:
+            for sample in self.getSamples(range=range):
+                sample.gotoOrigin(['x','y','th'])
+                sample.xr(x_offset)
+                sample.alignVeryQuick(intensity=INTENSITY_EXPECTED_025, mode_control=False)
+                
+             
+        if step<=10:
+            if verbosity>=3:
+                print('Alignment complete.')
+                for i, sample in enumerate(self.getSamples()):
+                    print('Sample {} ({})'.format(i+1, sample.name))
+                    print(sample.save_state())
+                
+
+                
+    def measureSamples(self, range=None, step=0, angles=None, exposure_time=15, x_offset=0, verbosity=3, **md):
+        '''Measures all the samples.
+        
+        If the optional range argument is provided (2-tuple), then only sample
+        numbers within that range (inclusive) are run. If range is instead a 
+        string, then all samples with names that match are returned.'''
+
+        if step<=0:
+            get_beamline().modeMeasurement()
+
+        if step<=5:
+            for sample in self.getSamples(range=range):
+                if verbosity>=3:
+                    print('Measuring sample {}...'.format(sample.name))
+                
+                sample.gotoOrigin(['x','y','th'])
+                sample.xr(x_offset)
+                sample.measureIncidentAngles(angles=angles, verbosity=verbosity, exposure_time=exposure_time, **md)
+            
+            
+            
+    def printSaveStates(self, range=None, verbosity=3, **md):
+        
+        if range is None:
+            range_start = 0
+        else:
+            range_start = range[0]
+        
+        save_string = 'origins = [\n'
+        
+        for i, sample in enumerate(self.getSamples(range=range)):
+            
+            sample_id = range_start + i + 1
+            
+            save_string += '    {} , # Sample {}\n'.format(sample.save_state(), sample_id)
+            #save_string += '    {} , # Sample {} ({})\n'.format(sample.save_state(), sample_id, sample.name)
+            
+            
+        save_string += '    ]\n'
+        save_string += 'for origin, sample in zip(origins, hol.getSamples()):\n'
+        save_string += '    sample.restore_state(origin)\n'
+        
+        print(save_string)
+        
+                
         
    #def _testing_level(self, step=0,pos_x_left=-5, pos_x_right=5):
         

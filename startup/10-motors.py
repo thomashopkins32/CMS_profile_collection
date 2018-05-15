@@ -7,6 +7,9 @@ from ophyd import EpicsMotor, Device, Component as Cpt
 #    top = Cpt(EpicsMotor, '-Ax:T}Mtr')
 #    bottom = Cpt(EpicsMotor, '-Ax:B}Mtr')
 
+#beamline_stage = 'open_MAXS'  
+beamline_stage = 'default'  
+
 
 #slits = Slits('XF:11BMA-OP{Slt:0', name='slits') 
 
@@ -82,8 +85,15 @@ bim4y = EpicsMotor('XF:11BMB-BI{IM:4-Ax:Y}Mtr', name='bim4y')
 bim5y = EpicsMotor('XF:11BMB-BI{IM:5-Ax:Y}Mtr', name='bim5y')
 
 ## stages for sample positioning
-smx = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:X}Mtr', name='smx')
-smy = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:Z}Mtr', name='smy')
+#beamline_stage is defined by the current sample stage. 'default' is the regular vacuum chamber
+#'open_WAXS' is the alternative stage position with Pilatus300k as the WAXS detector. 
+if beamline_stage == 'default':
+    smx = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:X}Mtr', name='smx')
+    smy = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:Z}Mtr', name='smy')
+elif beamline_stage == 'open_MAXS':
+    smx = EpicsMotor('XF:11BMB-ES{Chm:Smpl2-Ax:X}Mtr', name='smx')
+    smy = EpicsMotor('XF:11BMB-ES{Chm:Smpl2-Ax:Y}Mtr', name='smy')
+    
 smy2 = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:Y}Mtr', name='smy2')
 sth = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:theta}Mtr', name='sth')
 schi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:chi}Mtr', name='schi')

@@ -540,6 +540,7 @@ class LiveFitPlot_Custom(LiveFitPlot):
         
         super().__init__(livefit, legend_keys=legend_keys, xlim=xlim, ylim=ylim, ax=ax, **kwargs_update)
         
+        self.y_guess = 0
         self.scan_range = scan_range
 
 
@@ -1141,6 +1142,7 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
     else:
         x0 = lm_result.params['x0'].value
     
+    print('Moving to x = {:.3f}'.format(x0))
     motor.move(x0)
 
     return lm_result.values

@@ -39,8 +39,8 @@
 
 #define pilatus_name and _Epicsname, instead of pilatus300 or pilatus2M
 #moved to 20-area-detectors.py
-pilatus_name = pilatus2M
-pilatus_Epicsname = '{Det:PIL2M}'
+#pilatus_name = pilatus2M
+#pilatus_Epicsname = '{Det:PIL2M}'
 
 
 class BeamlineDetector(object):
@@ -852,7 +852,8 @@ class CMSBeam(object):
         #define the original position of aborber (6 Nb foils for XRR)
         #the position is defined in 'config_update'. This position is a good reference. 
         self.armr_absorber_o = -55.1
-        self.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
+        self.absorber_transmission_list_13p5kev = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
+        self.absorber_transmission_list_17kev = [1, 1.847e-1, 3.330e-2, 6.064e-3, 1.101e-3, 1.966e-4, 3.633e-5]    # at E = 13.5keV
         #TODO: make this energy dependent
         
         if False:
@@ -1896,6 +1897,7 @@ class CMS_Beamline(Beamline):
         self.PLOT_Y = []
         self.TABLE_COLS = []
         self.bsx_pos = -15.74
+        self.FM_donefiles = []
     
     
     def modeAlignment_bim6(self, verbosity=3):
@@ -1998,6 +2000,7 @@ class CMS_Beamline(Beamline):
         #detselect(pilatus300)
         #detselect([pilatus300, psccd])
         detselect(pilatus_name)
+        #detselect(psccd)
         
         #if RE.state is not 'idle':
         #    RE.abort()
@@ -2102,7 +2105,7 @@ class CMS_Beamline(Beamline):
 
         # Close small gate valve (upstream side of sample chamber)
         #caput('XF:11BMB-VA{Slt:4-GV:1}Cmd:Cls-Cmd',1)
-        #self._actuate_close('XF:11BMB-VA{Slt:4-GV:1}', verbosity=verbosity)
+        self._actuate_close('XF:11BMB-VA{Slt:4-GV:1}', verbosity=verbosity)
 
         # Close valve connecting sample chamber to vacuum pump
         #caput('XF:11BMB-VA{Chm:Det-IV:1}Cmd:Cls-Cmd',1)
@@ -2139,7 +2142,7 @@ class CMS_Beamline(Beamline):
         #caput('XF:11BMB-VA{Chm:Det-VV:1}Cmd:Opn-Cmd', 1)
         self._actuate_open('XF:11BMB-VA{Chm:Det-VV:1}', verbosity=verbosity)
         
-        self.chamberPressure(range_high=1000)
+        self.chamberPressure(range_high=950)
         
         if verbosity>=1:
             print('Sample chamber is ready to be opened.')
@@ -2626,6 +2629,7 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #detselect(pilatus300)
         #detselect([pilatus300, psccd]) 
         detselect(pilatus_name)
+        #detselect(psccd)
         
         
         self.current_mode = 'measurement'

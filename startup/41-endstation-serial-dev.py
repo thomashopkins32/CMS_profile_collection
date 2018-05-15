@@ -333,7 +333,7 @@ class Keithley_2000(Device):
     def readOhm(self, channel, verbosity = 1):
 
         self.selectChannel(channel, verbosity=1)
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.send_socket(':SENS:FUNC \'RES\'\r')    
         time.sleep(0.1)
         self.send_socket(':SENS:DATA?\r')    
@@ -350,7 +350,7 @@ class Keithley_2000(Device):
     def readDCV(self, channel, verbosity = 1):
 
         self.selectChannel(channel, verbosity=1)
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.send_socket(':SENS:FUNC \'VOLT:DC\'\r')    
         time.sleep(0.1)
         self.send_socket(':SENS:DATA?\r')    
@@ -420,7 +420,7 @@ class Keithley_2000(Device):
         c7 = -1.3601e-6 
 
         Temp = ohm * (c1 + ohm * (c2 + ohm * (c3 + c4 * ohm)))
-        Temp /= 1.0 + ohm * (c5 * ohm * (c6 + c7 * ohm))
+        Temp /= 1.0 + ohm * (c5 + ohm * (c6 + c7 * ohm))
         Temp += c0
 
         if (verbosity > 1):

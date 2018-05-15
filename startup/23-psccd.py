@@ -80,7 +80,9 @@ class PhotonicSciences_CMS(Device):
     def connect_socket(self):
         
         self.server_address= '10.11.129.11 '
-        #self.server_IP = '10.11.129.2'
+        #self.server_address= '10.11.129.12 ' #The backup computer
+
+        #self.server_IP = '10.11.129.11' 
         self.server_port = 27015
         
         import socket
@@ -255,8 +257,10 @@ class PhotonicSciences_CMS(Device):
     
     
     
+
     
 psccd = PhotonicSciences_CMS()
+#psccd = None
 
 #psccd.detector_is_ready()
 #psccd.detector_temperature()

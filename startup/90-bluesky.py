@@ -349,7 +349,7 @@ def config_update():
     #collect the current positions of motors
     
     current_config = {'bsx_pos': cms.bsx_pos,
-        'armr_absorber_o':beam.armr_absorber_o,
+        #'armr_absorber_o':beam.armr_absorber_o,
         '_delta_y_hover': robot._delta_y_hover, 
         '_delta_y_slot': robot._delta_y_slot, 
         '_delta_garage_x': robot._delta_garage_x, 
@@ -377,7 +377,7 @@ def config_load():
     #collect the current positions of motors
     cms_config = pds.read_csv(CMS_CONFIG_FILENAME, index_col=0)
     cms.bsx_pos = cms_config.bsx_pos.values[-1]
-    beam.armr_absorber_o = cms_config.armr_absorber_o.values[-1]
+    #beam.armr_absorber_o = cms_config.armr_absorber_o.values[-1]
    
     #robot positions --- with single value
     robot._delta_y_hover = cms_config._delta_y_hover.values[-1]
