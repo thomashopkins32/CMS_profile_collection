@@ -236,19 +236,6 @@ class CoordinateSystem(object):
             
         return out
                   
-    def hints(self, verbosity=3):
-        '''Return (and print) the hints of all axes associated with this
-        stage/sample.'''
-        
-        out = {}
-        for axis_name, axis_object in sorted(self._axes.items()):
-            if verbosity>=2: print('{:s}'.format(axis_name))
-            out[axis_name] = axis_object.get_hint(verbosity=verbosity)
-            if verbosity>=2: print('') # \n
-            
-        return out
-    
-    
     def origin(self, verbosity=3):
         '''Returns the origin for axes.'''
         
@@ -2423,7 +2410,8 @@ class SampleXR(SampleGISAXS_Generic):
         #bec.disable_table()
         bec.disable_plots()
 
-        pilatus_name.hints = {'fields': ['pilatus2M_stats1_total', 'pilatus2M_stats2_total']}
+        pilatus_name.stats1.total.kind = 'hinted'
+        pilatus_name.stats2.total.kind = 'hinted'
 
         self.naming_scheme_hold = self.naming_scheme
         self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
@@ -2534,7 +2522,8 @@ class SampleXR(SampleGISAXS_Generic):
         #bec.enable_table()
         self.naming_scheme = self.naming_scheme_hold
 
-        pilatus_name.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total']}
+        pilatus_name.stats3.total.kind = 'hinted'
+        pilatus_name.stats4.total.kind = 'hinted'
        
     def XR_abort(self):        
         '''Reset the beamline status back to origin before XRR measurement.

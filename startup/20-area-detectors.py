@@ -56,19 +56,11 @@ class Pilatus(SingleTrigger, PilatusDetector):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
-               root='/GPFS/xf11bm',
-               reg=db.reg)
+               root='/GPFS/xf11bm')
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
-
-    @property
-    def hints(self):
-        return {'fields': [self.stats3.total.name,
-                           self.stats4.total.name]}
-
-
 
 
 class Pilatus2M(SingleTrigger, PilatusDetector):
@@ -87,45 +79,18 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
-               root='/GPFS/xf11bm',
-               reg=db.reg)
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._hints = None
-        self._default_hints = {'fields': ['stats3',
-                                          'stats4']}
-
+               root='/GPFS/xf11bm')
     
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
     
-    @property
-    def hints(self):
-        if self._hints is None:
-            # i.e. ["pilatus2M_stats1_total"]
-            return self._default_hints
-        else:
-            return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        if val is not None:
-            read_keys = list(self.describe())
-            for key in val.get('fields', []):
-                if key not in read_keys:
-                    raise ValueError("{} is not allowed -- must be one of {}"
-                                     .format(key, read_keys))
-        self._hints = val
-        
-
 
 #class StandardProsilicaWithTIFF(StandardProsilica):
 #    tiff = Cpt(TIFFPluginWithFileStore,
 #               suffix='TIFF1:',
 #               write_path_template='/GPFS/xf11bm/data/%Y/%m/%d/',
-#               root='/GPFS/xf11bm/',
-#               reg=db.reg)
+#               root='/GPFS/xf11bm/')
 
 
 
@@ -185,6 +150,10 @@ pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
 pilatus2M.tiff.read_attrs = []
 STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
 pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
+pilatus300.stats3.total.kind = 'hinted'
+pilatus300.stats4.total.kind = 'hinted'
+pilatus2M.stats3.total.kind = 'hinted'
+pilatus2M.stats4.total.kind = 'hinted'
 #pilatus2M.read_attrs = ['cbf'] + STATS_NAMES2M
 
 
@@ -192,8 +161,6 @@ pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
 for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']
-
-pilatus2M.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total']}
 
 #define the current pilatus detector: pilatus_name and _Epicsname, instead of pilatus300 or pilatus2M
 pilatus_name = pilatus2M
