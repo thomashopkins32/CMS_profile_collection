@@ -31,8 +31,11 @@ Metadata
 
 
 #single_motor_template = """{{- start.plan_name}} :  {{ start.motors[0]}} {{start.plan_args.start}} {{start.plan_args.stop}} {{start.plan_args.num}} ['{{ start.uid[:6] }}'] (scan num: {{ start.scan_id }})
-single_motor_template = """{% if 'plan_header_override' in start -%}{{start.plan_header_override}}{% else %}{{start.plan_name}}{% endif %} :  {{ start.motors[0]}}  {{'%0.3f' %start.plan_args.start|float}}    {{'%0.3f' %start.plan_args.stop|float}} {{start.plan_args.num}} ['{{ start.uid[:6] }}'] (scan num: {{ start.scan_id }})
 
+# FIX: remove start and stop motors for now in template. Need to fix
+#single_motor_template = """{% if 'plan_header_override' in start -%}{{start.plan_header_override}}{% else %}{{start.plan_name}}{% endif %} :  {{ start.motors[0]}}  {{'%0.3f' %start.plan_args.start|float}}    {{'%0.3f' %start.plan_args.stop|float}} {{start.plan_args.num}} ['{{ start.uid[:6] }}'] (scan num: {{ start.scan_id }})
+
+single_motor_template = """{% if 'plan_header_override' in start -%}{{start.plan_header_override}}{% else %}{{start.plan_name}}{% endif %} :  {{ start.motors[0]}}  {{start.plan_args.num}} ['{{ start.uid[:6] }}'] (scan num: {{ start.scan_id }})
 
 Scan Plan
 ----------------------------------------
@@ -89,5 +92,7 @@ logbook = simple_olog_client
 #logbook_cb = logbook_cb_factory(configured_logbook_func)
 logbook_cb = logbook_cb_factory(configured_logbook_func, desc_dispatch=TEMPLATES)
 
+# uncomment this for debugging and comment the next two lines
+#RE.subscribe(logbook_cb)
 import nslsii
 nslsii.configure_olog(get_ipython().user_ns, callback=logbook_cb)
