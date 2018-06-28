@@ -167,5 +167,54 @@ pilatus_name = pilatus2M
 pilatus_Epicsname = '{Det:PIL2M}'
 
 
+#######################################################
+# These are test functions added by Julien
+# We should remove them once we find the source of the 
+# current "None"type bug at CMS (TRAC ticket [2284]
+def get_stage_sigs(dev, dd):
+    for cpt_name in dev.component_names:
+        cpt = getattr(dev, cpt_name)
+        if hasattr(cpt, 'stage_sigs'):
+            dd.update(cpt.stage_sigs)
+        if hasattr(cpt, 'component_names'):
+            get_stage_sigs(cpt, dd)
+
+def stage_unstage_forever_plan(det):
+    i = 0
+    print("Started the stage_unstage_plan, running infinite loop...")
+    while True:
+        i += 1
+        #print(f"Staging {i}th time")
+        yield from bps.stage(det)
+        yield from bps.unstage(det)
+
+def trigger_forever_plan(det):
+    i = 0
+    print("Started the stage_unstage_plan, running infinite loop...")
+    while True:
+        i += 1
+        #print(f"Staging {i}th time")
+        yield from bps.stage(det)
+        yield from bps.trigger(det, group="det")
+        yield from bps.wait("det")
+        yield from bps.unstage(det)
+
+def count_forever_plan(det):
+    i = 0
+    print("Started the count_forever plan, running infinite loop...")
+    while True:
+        i += 1
+        #print(f"Staging {i}th time")
+        yield from bp.count([det])
+    
+
+# to get stage sigs
+#from collections import OrderedDict
+#stage_sigs = OrderedDict()
+#get_stage_sigs(pilatus2M, stage_sigs)
+        
+
+#######################################################
+
 #pilatus_name = pilatus300
 #pilatus_Epicsname = '{Det:SAXS}'
