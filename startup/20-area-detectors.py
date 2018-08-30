@@ -1,9 +1,9 @@
 #import time as ttime  # tea time
 #from datetime import datetime
-from ophyd import (ProsilicaDetector, SingleTrigger, TIFFPlugin,
-                   ImagePlugin, StatsPlugin, DetectorBase, HDF5Plugin,
-                   AreaDetector, EpicsSignal, EpicsSignalRO, ROIPlugin,
-                   TransformPlugin, ProcessPlugin, PilatusDetector)
+from ophyd import (ProsilicaDetector, SingleTrigger, SingleTrigger33,
+                   TIFFPlugin, ImagePlugin, StatsPlugin, DetectorBase,
+                   HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
+                   ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector)
 from ophyd.areadetector.cam import AreaDetectorCam
 from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
@@ -22,7 +22,7 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
 
 
-class StandardProsilica(SingleTrigger, ProsilicaDetector):
+class StandardProsilica(SingleTrigger33, ProsilicaDetector):
     # tiff = Cpt(TIFFPluginWithFileStore,
     #           suffix='TIFF1:',
     #           write_path_template='/XF11ID/data/')
@@ -40,7 +40,7 @@ class StandardProsilica(SingleTrigger, ProsilicaDetector):
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
 
-class Pilatus(SingleTrigger, PilatusDetector):
+class Pilatus(SingleTrigger33, PilatusDetector):
     image = Cpt(ImagePlugin, 'image1:')
     stats1 = Cpt(StatsPlugin, 'Stats1:')
     stats2 = Cpt(StatsPlugin, 'Stats2:')
@@ -57,13 +57,13 @@ class Pilatus(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
                root='/GPFS/xf11bm')
-    
+
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
-class Pilatus2M(SingleTrigger, PilatusDetector):
+class Pilatus2M(SingleTrigger33, PilatusDetector):
     image = Cpt(ImagePlugin, 'image1:')
     stats1 = Cpt(StatsPlugin, 'Stats1:')
     stats2 = Cpt(StatsPlugin, 'Stats2:')
@@ -80,11 +80,11 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
                root='/GPFS/xf11bm')
-    
+
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
-    
+
 
 #class StandardProsilicaWithTIFF(StandardProsilica):
 #    tiff = Cpt(TIFFPluginWithFileStore,
@@ -162,14 +162,15 @@ for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']
 
-#define the current pilatus detector: pilatus_name and _Epicsname, instead of pilatus300 or pilatus2M
+#define the current pilatus detector: pilatus_name and _Epicsname, instead of
+#pilatus300 or pilatus2M
 pilatus_name = pilatus2M
 pilatus_Epicsname = '{Det:PIL2M}'
 
 
 #######################################################
 # These are test functions added by Julien
-# We should remove them once we find the source of the 
+# We should remove them once we find the source of the
 # current "None"type bug at CMS (TRAC ticket [2284]
 def get_stage_sigs(dev, dd):
     for cpt_name in dev.component_names:
@@ -206,13 +207,13 @@ def count_forever_plan(det):
         i += 1
         #print(f"Staging {i}th time")
         yield from bp.count([det])
-    
+
 
 # to get stage sigs
 #from collections import OrderedDict
 #stage_sigs = OrderedDict()
 #get_stage_sigs(pilatus2M, stage_sigs)
-        
+
 
 #######################################################
 
