@@ -1,6 +1,6 @@
 #import time as ttime  # tea time
 #from datetime import datetime
-from ophyd import (ProsilicaDetector, SingleTrigger, SingleTrigger33,
+from ophyd import (ProsilicaDetector, SingleTrigger,
                    TIFFPlugin, ImagePlugin, StatsPlugin, DetectorBase,
                    HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
                    ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector)
@@ -9,6 +9,7 @@ from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt, Signal
 from ophyd.utils import set_and_wait
+from nslsii import SingleTriggerV33
 #import filestore.api as fs
 
 
