@@ -1,7 +1,7 @@
 #import time as ttime  # tea time
 #from datetime import datetime
 from ophyd import (ProsilicaDetector, SingleTrigger,
-                   TIFFPlugin, ImagePlugin, StatsPlugin, DetectorBase,
+                   TIFFPlugin, ImagePlugin, DetectorBase,
                    HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
                    ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector)
 from ophyd.areadetector.cam import AreaDetectorCam
@@ -9,7 +9,7 @@ from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt, Signal
 from ophyd.utils import set_and_wait
-from nslsii import SingleTriggerV33
+from nslsii.ad33 import SingleTriggerV33
 #import filestore.api as fs
 
 
@@ -23,16 +23,16 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
 
 
-class StandardProsilica(SingleTrigger33, ProsilicaDetector):
+class StandardProsilica(SingleTriggerV33, ProsilicaDetector):
     # tiff = Cpt(TIFFPluginWithFileStore,
     #           suffix='TIFF1:',
     #           write_path_template='/XF11ID/data/')
     image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPlugin, 'Stats1:')
-    stats2 = Cpt(StatsPlugin, 'Stats2:')
-    stats3 = Cpt(StatsPlugin, 'Stats3:')
-    stats4 = Cpt(StatsPlugin, 'Stats4:')
-    stats5 = Cpt(StatsPlugin, 'Stats5:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
     trans1 = Cpt(TransformPlugin, 'Trans1:')
     roi1 = Cpt(ROIPlugin, 'ROI1:')
     roi2 = Cpt(ROIPlugin, 'ROI2:')
@@ -41,13 +41,13 @@ class StandardProsilica(SingleTrigger33, ProsilicaDetector):
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
 
-class Pilatus(SingleTrigger33, PilatusDetector):
+class Pilatus(SingleTriggerV33, PilatusDetector):
     image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPlugin, 'Stats1:')
-    stats2 = Cpt(StatsPlugin, 'Stats2:')
-    stats3 = Cpt(StatsPlugin, 'Stats3:')
-    stats4 = Cpt(StatsPlugin, 'Stats4:')
-    stats5 = Cpt(StatsPlugin, 'Stats5:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
     roi1 = Cpt(ROIPlugin, 'ROI1:')
     roi2 = Cpt(ROIPlugin, 'ROI2:')
     roi3 = Cpt(ROIPlugin, 'ROI3:')
@@ -64,13 +64,13 @@ class Pilatus(SingleTrigger33, PilatusDetector):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
-class Pilatus2M(SingleTrigger33, PilatusDetector):
+class Pilatus2M(SingleTriggerV33, PilatusDetector):
     image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPlugin, 'Stats1:')
-    stats2 = Cpt(StatsPlugin, 'Stats2:')
-    stats3 = Cpt(StatsPlugin, 'Stats3:')
-    stats4 = Cpt(StatsPlugin, 'Stats4:')
-    stats5 = Cpt(StatsPlugin, 'Stats5:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
     roi1 = Cpt(ROIPlugin, 'ROI1:')
     roi2 = Cpt(ROIPlugin, 'ROI2:')
     roi3 = Cpt(ROIPlugin, 'ROI3:')
