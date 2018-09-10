@@ -99,7 +99,7 @@ class CMS_SAXS_Detector(BeamlineDetector):
             #md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
         if pilatus_name==pilatus2M:
             md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
-            md_return['y0_pix'] = round( y0 - (position_current_y-position_defined_y)/self.pixel_size , 2 )
+            md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
         md_return['distance_m'] = self.distance
     
         md_return['ROI1_X_min'] = caget('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname))
@@ -851,7 +851,9 @@ class CMSBeam(object):
         self.attenuator2.transmission = reading
         #define the original position of aborber (6 Nb foils for XRR)
         #the position is defined in 'config_update'. This position is a good reference. 
-        self.armr_absorber_o = -55.1
+        #self.armr_absorber_o = -55.1
+        self.armr_absorber_o = -9.8
+        self.armr_absorber_out = -55.1
         self.absorber_transmission_list_13p5kev = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
         self.absorber_transmission_list_17kev = [1, 1.847e-1, 3.330e-2, 6.064e-3, 1.101e-3, 1.966e-4, 3.633e-5]    # at E = 13.5keV
         #TODO: make this energy dependent
@@ -1603,6 +1605,17 @@ class CMSBeam(object):
                     
             return self.absorberCalcTransmission(slot, verbosity=verbosity)
 
+    def absorber_out(self, verbosity=3):
+        """
+        Returns the current absorber position and absorption transmission.
+        To change the absorption for XRR, use 'setabsorber'.
+        """
+        
+        energy_keV = self.energy(verbosity=0)
+        
+        armr.move(self.armr_absorber_out)
+        print('The absorber is completely out of the beam')
+        
     def absorberCalcTransmission(self, slot, verbosity=3):
         
         energy_keV = self.energy(verbosity=0)
@@ -1964,7 +1977,7 @@ class CMS_Beamline(Beamline):
             self.beam.setTransmission(1e-8)
             
         #mov(bsx, -10.95)
-        bsx.move(self.bsx_pos+3)
+        bsx.move(self.bsx_pos+5)
             
         #detselect(pilatus300, suffix='_stats4_total')
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)
@@ -2692,7 +2705,10 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #for pilatus2M, placed up-side down
-        y_pos = int( y0 - size[1]/2 + y_offset_pix )
+        #y_pos = int( y0 - size[1]/2 + y_offset_pix )
+
+        #for pilatus2M, with pattern rotated 180deg. changed at 052918
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinX', int(x0-size[0]/2))
         #caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeX', int(size[0]))
@@ -2747,8 +2763,11 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #for pilatus2M, placed up-side down
-        y_pos = int( y0 - size[1]/2 + y_offset_pix )
+        #y_pos = int( y0 - size[1]/2 + y_offset_pix )
 
+        #for pilatus2M, with pattern rotated 180deg. changed at 052918
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
         #y pixels for intermodule gaps, for pilatus2M (195 pixels high module, 17 pixels high gap)
         y_gap_2M = []
         for i in np.arange(7): 
@@ -2775,8 +2794,11 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
             x0 = det_md['detector_SAXS_x0_pix']
             y0 = det_md['detector_SAXS_y0_pix']
            
-            #for pilatus2M, placed up-side down
-            y_pos = int( y0 - size[1]/2 + y_offset_pix )
+            ##for pilatus2M, placed up-side down
+            #y_pos = int( y0 - size[1]/2 + y_offset_pix )
+
+            #for pilatus2M, with pattern rotated 180deg. changed at 052918
+            y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinX', int(x0-size[0]/2))
         #caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeX', int(size[0]))

@@ -77,12 +77,20 @@ class Pilatus2M(SingleTrigger33, PilatusDetector):
     roi4 = Cpt(ROIPlugin, 'ROI4:')
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
+    trans1 = Cpt(TransformPlugin, 'Trans1:')
+
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
                root='/GPFS/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
+        # how to do this with stage_sigs (warning, need to change this every time
+        # if you set)
+        #self.cam.stage_sigs['acquire_time'] = exposure_time
+        #self.cam.stage_sigs['acquire_period'] = exposure_time+.1
+        #self.cam.acquire_time.set(exposure_time)
+        #self.cam.acquire_period.set(exposure_time+.1)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
 
@@ -134,7 +142,7 @@ for camera in all_standard_pros:
 #    camera.read_attrs.append('tiff')
 #    camera.tiff.read_attrs = []
 
-#pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL 
+#pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL
 #pilatus300 section is unmarked.  032018-MF
 '''
 '''
@@ -209,6 +217,16 @@ def count_forever_plan(det):
         #print(f"Staging {i}th time")
         yield from bp.count([det])
 
+def stage_unstage_once_plan(det):
+    #print(f"Staging {i}th time")
+    yield from bps.stage(det)
+    yield from bps.unstage(det)
+
+def count_no_save_plan(det):
+    #print(f"Staging {i}th time")
+    yield from bps.stage(det)
+    yield from bps.trigger(det)
+    yield from bps.unstage(det)
 
 # to get stage sigs
 #from collections import OrderedDict
