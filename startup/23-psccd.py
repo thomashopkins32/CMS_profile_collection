@@ -258,7 +258,6 @@ class PhotonicSciences_CMS(Device):
     
     
 
-    
 psccd = PhotonicSciences_CMS()
 #psccd = None
 

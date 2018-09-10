@@ -791,9 +791,9 @@ class SyringePump(Device):
         return degC
 
 
-#agilent = Agilent_34970A()
+agilent = Agilent_34970A()
 #keithley = Keithley_2000()
-#ttl = TTL_control()
+ttl = TTL_control()
 #Sypump = SringePump()
 #chiller = Minichiller()
     
