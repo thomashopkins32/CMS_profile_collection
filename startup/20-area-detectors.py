@@ -160,8 +160,10 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
                root='/GPFS/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
-        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
-        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
+        self.cam.acquire_time.put(exposure_time)
+        self.cam.acquire_period.put(exposure_time+.1)
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
 class Pilatus2M(SingleTrigger, PilatusDetector):
@@ -190,10 +192,10 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
         # if you set)
         #self.cam.stage_sigs['acquire_time'] = exposure_time
         #self.cam.stage_sigs['acquire_period'] = exposure_time+.1
-        #self.cam.acquire_time.set(exposure_time)
-        #self.cam.acquire_period.set(exposure_time+.1)
-        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
-        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+        self.cam.acquire_time.put(exposure_time)
+        self.cam.acquire_period.put(exposure_time+.1)
+        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
 class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
@@ -216,8 +218,10 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
                root='/GPFS/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
-        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
-        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+        self.cam.acquire_time.put(exposure_time)
+        self.cam.acquire_period.put(exposure_time+.1)
+        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
 
@@ -261,6 +265,7 @@ for camera in all_standard_pros:
 
     #camera.stage_sigs[camera.roi1.blocking_callbacks] = 1
     #camera.stage_sigs[camera.trans1.blocking_callbacks] = 1
+    camera.cam.ensure_nonblocking()
     camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
 
 
@@ -280,6 +285,7 @@ for stats_name in STATS_NAMES:
     stats_plugin = getattr(pilatus300, stats_name)
     stats_plugin.read_attrs = ['total']
 
+pilatus300.cam.ensure_nonblocking()
 
 pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
 pilatus2M.tiff.read_attrs = []
@@ -290,7 +296,7 @@ pilatus300.stats4.total.kind = 'hinted'
 pilatus2M.stats3.total.kind = 'hinted'
 pilatus2M.stats4.total.kind = 'hinted'
 #pilatus2M.read_attrs = ['cbf'] + STATS_NAMES2M
-
+pilatus2M.cam.ensure_nonblocking()
 
 
 for stats_name in STATS_NAMES2M:
