@@ -3,13 +3,14 @@
 from ophyd import (ProsilicaDetector, SingleTrigger,
                    TIFFPlugin, ImagePlugin, StatsPlugin, DetectorBase,
                    HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
-                   ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector)
+                   ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector,
+                   ProsilicaDetectorCam, PilatusDetectorCam)
 from ophyd.areadetector.cam import AreaDetectorCam
 from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt, Signal
 from ophyd.utils import set_and_wait
-from nslsii import SingleTriggerV33
+from nslsii.ad33 import SingleTriggerV33,  StatsPluginV33, CamV33mixin
 #import filestore.api as fs
 
 
@@ -22,8 +23,12 @@ from nslsii import SingleTriggerV33
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
 
+class ProsilicaDetectorCamV33(CamV33mixin, ProsilicaDetectorCam):
+    '''This is used to update the standard prosilica to AD33.
+    '''
+    pass
 
-class StandardProsilica(SingleTrigger33, ProsilicaDetector):
+class StandardProsilica(SingleTrigger, ProsilicaDetector):
     # tiff = Cpt(TIFFPluginWithFileStore,
     #           suffix='TIFF1:',
     #           write_path_template='/XF11ID/data/')
@@ -41,7 +46,31 @@ class StandardProsilica(SingleTrigger33, ProsilicaDetector):
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
 
-class Pilatus(SingleTrigger33, PilatusDetector):
+class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
+    # tiff = Cpt(TIFFPluginWithFileStore,
+    #           suffix='TIFF1:',
+    #           write_path_template='/XF11ID/data/')
+    cam = Cpt(ProsilicaDetectorCamV33, 'cam1:')
+    image = Cpt(ImagePlugin, 'image1:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
+    trans1 = Cpt(TransformPlugin, 'Trans1:')
+    roi1 = Cpt(ROIPlugin, 'ROI1:')
+    roi2 = Cpt(ROIPlugin, 'ROI2:')
+    roi3 = Cpt(ROIPlugin, 'ROI3:')
+    roi4 = Cpt(ROIPlugin, 'ROI4:')
+    proc1 = Cpt(ProcessPlugin, 'Proc1:')
+
+class PilatusDetectorCamV33(CamV33mixin, PilatusDetectorCam):
+    '''This is used to update the standard prosilica to AD33.
+    '''
+    pass
+
+
+class Pilatus(SingleTrigger, PilatusDetector):
     image = Cpt(ImagePlugin, 'image1:')
     stats1 = Cpt(StatsPlugin, 'Stats1:')
     stats2 = Cpt(StatsPlugin, 'Stats2:')
@@ -63,8 +92,31 @@ class Pilatus(SingleTrigger33, PilatusDetector):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
 
+class PilatusV33(SingleTriggerV33, PilatusDetector):
+    cam = Cpt(PilatusDetectorCamV33, 'cam1:')
+    image = Cpt(ImagePlugin, 'image1:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
+    roi1 = Cpt(ROIPlugin, 'ROI1:')
+    roi2 = Cpt(ROIPlugin, 'ROI2:')
+    roi3 = Cpt(ROIPlugin, 'ROI3:')
+    roi4 = Cpt(ROIPlugin, 'ROI4:')
+    proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
-class Pilatus2M(SingleTrigger33, PilatusDetector):
+    tiff = Cpt(TIFFPluginWithFileStore,
+               suffix='TIFF1:',
+               write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
+               root='/GPFS/xf11bm')
+
+    def setExposureTime(self, exposure_time, verbosity=3):
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
+        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
+
+
+class Pilatus2M(SingleTrigger, PilatusDetector):
     image = Cpt(ImagePlugin, 'image1:')
     stats1 = Cpt(StatsPlugin, 'Stats1:')
     stats2 = Cpt(StatsPlugin, 'Stats2:')
@@ -85,6 +137,31 @@ class Pilatus2M(SingleTrigger33, PilatusDetector):
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+
+
+class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
+    cam = Cpt(PilatusDetectorCamV33, 'cam1:')
+    image = Cpt(ImagePlugin, 'image1:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
+    roi1 = Cpt(ROIPlugin, 'ROI1:')
+    roi2 = Cpt(ROIPlugin, 'ROI2:')
+    roi3 = Cpt(ROIPlugin, 'ROI3:')
+    roi4 = Cpt(ROIPlugin, 'ROI4:')
+    proc1 = Cpt(ProcessPlugin, 'Proc1:')
+
+    tiff = Cpt(TIFFPluginWithFileStore,
+               suffix='TIFF1:',
+               write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
+               root='/GPFS/xf11bm')
+
+    def setExposureTime(self, exposure_time, verbosity=3):
+        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+
 
 
 #class StandardProsilicaWithTIFF(StandardProsilica):
@@ -123,10 +200,10 @@ for camera in all_standard_pros:
     for stats_name in ['stats1', 'stats2','stats3','stats4','stats5']:
         stats_plugin = getattr(camera, stats_name)
         stats_plugin.read_attrs = ['total']
-        camera.stage_sigs[stats_plugin.blocking_callbacks] = 1
+        #camera.stage_sigs[stats_plugin.blocking_callbacks] = 1
 
-    camera.stage_sigs[camera.roi1.blocking_callbacks] = 1
-    camera.stage_sigs[camera.trans1.blocking_callbacks] = 1
+    #camera.stage_sigs[camera.roi1.blocking_callbacks] = 1
+    #camera.stage_sigs[camera.trans1.blocking_callbacks] = 1
     camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
 
 
