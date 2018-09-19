@@ -23,9 +23,12 @@ from nslsii.ad33 import SingleTriggerV33,  StatsPluginV33, CamV33mixin
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
 
-class ProsilicaDetectorCamV33(CamV33mixin, ProsilicaDetectorCam):
+class ProsilicaDetectorCamV33(ProsilicaDetectorCam):
     '''This is used to update the standard prosilica to AD33.
     '''
+    wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
+                           string=True, kind='config')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stage_sigs['wait_for_plugins'] = 'Yes'
@@ -99,9 +102,12 @@ class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
     roi4 = Cpt(ROIPlugin, 'ROI4:')
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
-class PilatusDetectorCamV33(CamV33mixin, PilatusDetectorCam):
+class PilatusDetectorCamV33(PilatusDetectorCam):
     '''This is used to update the standard prosilica to AD33.
     '''
+    wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
+                           string=True, kind='config')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stage_sigs['wait_for_plugins'] = 'Yes'
