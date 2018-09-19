@@ -26,7 +26,41 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
 class ProsilicaDetectorCamV33(CamV33mixin, ProsilicaDetectorCam):
     '''This is used to update the standard prosilica to AD33.
     '''
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stage_sigs['wait_for_plugins'] = 'Yes'
+
+    def ensure_nonblocking(self):
+        self.stage_sigs['wait_for_plugins'] = 'Yes'
+        for c in self.parent.component_names:
+            cpt = getattr(self.parent, c)
+            if cpt is self:
+                continue
+            if hasattr(cpt, 'ensure_nonblocking'):
+                cpt.ensure_nonblocking()
+
+class Pilatus2M(SingleTrigger, PilatusDetector):
+    image = Cpt(ImagePlugin, 'image1:')
+    stats1 = Cpt(StatsPlugin, 'Stats1:')
+    stats2 = Cpt(StatsPlugin, 'Stats2:')
+    stats3 = Cpt(StatsPlugin, 'Stats3:')
+    stats4 = Cpt(StatsPlugin, 'Stats4:')
+    stats5 = Cpt(StatsPlugin, 'Stats5:')
+    roi1 = Cpt(ROIPlugin, 'ROI1:')
+    roi2 = Cpt(ROIPlugin, 'ROI2:')
+    roi3 = Cpt(ROIPlugin, 'ROI3:')
+    roi4 = Cpt(ROIPlugin, 'ROI4:')
+    proc1 = Cpt(ProcessPlugin, 'Proc1:')
+
+    tiff = Cpt(TIFFPluginWithFileStore,
+               suffix='TIFF1:',
+               write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
+               root='/GPFS/xf11bm')
+
+    def setExposureTime(self, exposure_time, verbosity=3):
+        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+
 
 class StandardProsilica(SingleTrigger, ProsilicaDetector):
     # tiff = Cpt(TIFFPluginWithFileStore,
@@ -68,7 +102,19 @@ class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
 class PilatusDetectorCamV33(CamV33mixin, PilatusDetectorCam):
     '''This is used to update the standard prosilica to AD33.
     '''
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stage_sigs['wait_for_plugins'] = 'Yes'
+
+    def ensure_nonblocking(self):
+        self.stage_sigs['wait_for_plugins'] = 'Yes'
+        for c in self.parent.component_names:
+            cpt = getattr(self.parent, c)
+            if cpt is self:
+                continue
+            if hasattr(cpt, 'ensure_nonblocking'):
+                cpt.ensure_nonblocking()
+
 
 
 class Pilatus(SingleTrigger, PilatusDetector):
