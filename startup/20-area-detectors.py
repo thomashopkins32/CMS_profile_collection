@@ -1,7 +1,7 @@
 #import time as ttime  # tea time
 #from datetime import datetime
 from ophyd import (ProsilicaDetector, SingleTrigger,
-                   TIFFPlugin, ImagePlugin, StatsPlugin, DetectorBase,
+                   TIFFPlugin, ImagePlugin, DetectorBase,
                    HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
                    ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector,
                    ProsilicaDetectorCam, PilatusDetectorCam)
@@ -33,17 +33,18 @@ class StandardProsilica(SingleTrigger, ProsilicaDetector):
     #           suffix='TIFF1:',
     #           write_path_template='/XF11ID/data/')
     image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPlugin, 'Stats1:')
-    stats2 = Cpt(StatsPlugin, 'Stats2:')
-    stats3 = Cpt(StatsPlugin, 'Stats3:')
-    stats4 = Cpt(StatsPlugin, 'Stats4:')
-    stats5 = Cpt(StatsPlugin, 'Stats5:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
     trans1 = Cpt(TransformPlugin, 'Trans1:')
     roi1 = Cpt(ROIPlugin, 'ROI1:')
     roi2 = Cpt(ROIPlugin, 'ROI2:')
     roi3 = Cpt(ROIPlugin, 'ROI3:')
     roi4 = Cpt(ROIPlugin, 'ROI4:')
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
+
 
 
 class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
@@ -72,11 +73,11 @@ class PilatusDetectorCamV33(CamV33mixin, PilatusDetectorCam):
 
 class Pilatus(SingleTrigger, PilatusDetector):
     image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPlugin, 'Stats1:')
-    stats2 = Cpt(StatsPlugin, 'Stats2:')
-    stats3 = Cpt(StatsPlugin, 'Stats3:')
-    stats4 = Cpt(StatsPlugin, 'Stats4:')
-    stats5 = Cpt(StatsPlugin, 'Stats5:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
     roi1 = Cpt(ROIPlugin, 'ROI1:')
     roi2 = Cpt(ROIPlugin, 'ROI2:')
     roi3 = Cpt(ROIPlugin, 'ROI3:')
@@ -106,6 +107,7 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
     roi4 = Cpt(ROIPlugin, 'ROI4:')
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
+
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
                write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
@@ -117,17 +119,20 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
 
 
 class Pilatus2M(SingleTrigger, PilatusDetector):
+
     image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPlugin, 'Stats1:')
-    stats2 = Cpt(StatsPlugin, 'Stats2:')
-    stats3 = Cpt(StatsPlugin, 'Stats3:')
-    stats4 = Cpt(StatsPlugin, 'Stats4:')
-    stats5 = Cpt(StatsPlugin, 'Stats5:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
     roi1 = Cpt(ROIPlugin, 'ROI1:')
     roi2 = Cpt(ROIPlugin, 'ROI2:')
     roi3 = Cpt(ROIPlugin, 'ROI3:')
     roi4 = Cpt(ROIPlugin, 'ROI4:')
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
+
+    trans1 = Cpt(TransformPlugin, 'Trans1:')
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
@@ -135,6 +140,12 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
                root='/GPFS/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
+        # how to do this with stage_sigs (warning, need to change this every time
+        # if you set)
+        #self.cam.stage_sigs['acquire_time'] = exposure_time
+        #self.cam.stage_sigs['acquire_period'] = exposure_time+.1
+        #self.cam.acquire_time.set(exposure_time)
+        #self.cam.acquire_period.set(exposure_time+.1)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
 
@@ -211,7 +222,7 @@ for camera in all_standard_pros:
 #    camera.read_attrs.append('tiff')
 #    camera.tiff.read_attrs = []
 
-#pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL 
+#pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL
 #pilatus300 section is unmarked.  032018-MF
 '''
 '''
@@ -286,6 +297,16 @@ def count_forever_plan(det):
         #print(f"Staging {i}th time")
         yield from bp.count([det])
 
+def stage_unstage_once_plan(det):
+    #print(f"Staging {i}th time")
+    yield from bps.stage(det)
+    yield from bps.unstage(det)
+
+def count_no_save_plan(det):
+    #print(f"Staging {i}th time")
+    yield from bps.stage(det)
+    yield from bps.trigger(det)
+    yield from bps.unstage(det)
 
 # to get stage sigs
 #from collections import OrderedDict

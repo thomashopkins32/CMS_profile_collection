@@ -45,7 +45,7 @@ class SampleExchangeRobot(Stage):
         self._delta_y_slot = 4.0
 
         #'SAFE' position of gripper
-        self._position_safe = [0, -104.9, 0.0, 0.0, +90] # x, y, z, r, phi
+        self._position_safe = [0, -104.9, 0.0, +90] # x, y, z, r, phi
         
         #self._position_sample_gripped = [-100, -104.9, -94.8, 18.0, +90] # x, y, z, r, phi
         #self._position_hold = [0, -104.9, -94.8, 0.0, +90] # x, y, z, r, phi
@@ -58,10 +58,13 @@ class SampleExchangeRobot(Stage):
         #self._position_sample_gripped = [ -99, -107, -94, 0.0, 91 ] # x, y, z, r, phi
         #self._position_hold = [ 0, -107, -94, 0, 91 ] # x, y, z, r, phi
 
-        #tested with the gripper with spring. smx=50; smy=-2.37
-        self._position_sample_gripped = [ -98, -103, -94.5, 0.0, 91 ] # x, y, z, r, phi
-        self._position_hold = [ 0, -103, -94.5, 0, 91 ] # x, y, z, r, phi
+        ##tested with the gripper with spring. smx=50; smy=-2.37
+        #self._position_sample_gripped = [ -98, -103, -94.5, 0.0, 91 ] # x, y, z, r, phi
+        #self._position_hold = [ 0, -103, -94.5, 0, 91 ] # x, y, z, r, phi
 
+        #tested with the gripper with spring. smx=50; smy=-2.37
+        self._position_sample_gripped = [ -98, -103, -94.5, 91 ] # x, y, z,  phi
+        self._position_hold = [ 0, -103, -94.5, 91 ] # x, y, z,  phi
 
         #defacult position of gripper to pick up from Garage(1,1)
         #self._position_garage = [-96, -200, -129.5, 0.0, 0.0] # x, y, z, r, phi
@@ -73,7 +76,7 @@ class SampleExchangeRobot(Stage):
         #self._position_garage = [ -96, -197.5, -127, 0.0, 1 ] # x, y, z, r, phi
         
         # Manual tweak KY (2017-11-28)
-        self._position_garage = [ -96, -197.5-0.5, -128.5, 0.0, 1 ] # x, y, z, r, phi
+        self._position_garage = [ -96, -197.5-0.5, -128.5, 1 ] # x, y, z, phi
         
         
 
@@ -119,14 +122,14 @@ class SampleExchangeRobot(Stage):
                             'units': 'mm',
                             'hint': 'positive moves left/outboard',
                             },
-                            {'name': 'r',
-                            'motor': armr,
-                            #'motor': strans,
-                            'enabled': True,
-                            'scaling': +1.0,
-                            'units': 'mm',
-                            'hint': 'positive moves radial arm outwards',
-                            },        
+                            #{'name': 'r',
+                            #'motor': armr,
+                            ##'motor': strans,
+                            #'enabled': True,
+                            #'scaling': +1.0,
+                            #'units': 'mm',
+                            #'hint': 'positive moves radial arm outwards',
+                            #},        
                             {'name': 'y',
                             'motor': army,
                             'enabled': True,
@@ -251,10 +254,10 @@ class SampleExchangeRobot(Stage):
         
         
         #caput('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr.HOMF',1) # armr home forward
-        caput('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr.HOMR',1) # armr home reverse
-        time.sleep(delays)
-        while self._axes['r'].motor.moving:
-            time.sleep(delays)
+        #caput('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr.HOMR',1) # armr home reverse
+        #time.sleep(delays)
+        #while self._axes['r'].motor.moving:
+            #time.sleep(delays)
         
         self._region = 'safe'
         return True
@@ -281,19 +284,19 @@ class SampleExchangeRobot(Stage):
         x = self.xpos(verbosity=0)
         y = self.ypos(verbosity=0)
         z = self.zpos(verbosity=0)
-        r = self.rpos(verbosity=0)
+        #r = self.rpos(verbosity=0)
         phi = self.phipos(verbosity=0)
-        self._position_sample_gripped = x, y, z, r, phi # x, y, z, r, phi
+        self._position_sample_gripped = x, y, z, phi # x, y, z, phi
 
-        print("self._position_sample_gripped = [ {}, {}, {}, {}, {} ] # x, y, z, r, phi".format(x, y, z, r, phi))
+        print("self._position_sample_gripped = [ {}, {}, {}, {} ] # x, y, z, phi".format(x, y, z, phi))
 
         #if hasattr(gs, 'robot'):
             #gs.robot['_position_sample_gripped'] = self._position_sample_gripped
 
         
-        self._position_hold = 0, y, z, 0, phi # x, y, z, r, phi
+        self._position_hold = 0, y, z, phi # x, y, z, phi
         
-        print("self._position_hold = [ {}, {}, {}, {}, {} ] # x, y, z, r, phi".format(0, y, z, 0, phi))
+        print("self._position_hold = [ {}, {}, {}, {} ] # x, y, z, phi".format(0, y, z, phi))
 
         #if hasattr(gs, 'robot'):
             #gs.robot['_position_hold'] = self._position_hold
@@ -305,12 +308,12 @@ class SampleExchangeRobot(Stage):
         x = self.xpos(verbosity=0)
         y = self.ypos(verbosity=0)
         z = self.zpos(verbosity=0)
-        r = self.rpos(verbosity=0)
+        #r = self.rpos(verbosity=0)
         phi = self.phipos(verbosity=0)
         
-        self._position_garage = x, y, z, r, phi # x, y, z, r, phi
+        self._position_garage = x, y, z, phi # x, y, z, phi
         
-        print("self._position_garage = [ {}, {}, {}, {}, {} ] # x, y, z, r, phi".format(x, y, z, r, phi))
+        print("self._position_garage = [ {}, {}, {}, {} ] # x, y, z, phi".format(x, y, z, phi))
 
         #if hasattr(gs, 'robot'):
             #gs.robot['_position_garage'] = self._position_garage
@@ -324,7 +327,7 @@ class SampleExchangeRobot(Stage):
         
     def sequenceGotoSafe(self, verbosity=3):
         
-        x, y, z, r, phi = self._position_safe
+        x, y, z, phi = self._position_safe
         
         #if abs( self.phipos(verbosity=verbosity) - 90 ) < 0.1:
             ## phi = 90deg, prongs pointed at stage
@@ -363,7 +366,7 @@ class SampleExchangeRobot(Stage):
         smy.move(y)
         
         
-        x, y, z, r, phi = self._position_sample_gripped
+        x, y, z, phi = self._position_sample_gripped
         
         # Pre-align the arm in (y,z)
         self.phiabs(phi, verbosity=verbosity)
@@ -397,7 +400,7 @@ class SampleExchangeRobot(Stage):
         smy.move(y)
         sth.move(0)
         
-        x, y, z, r, phi = self._position_sample_gripped
+        x, y, z, phi = self._position_sample_gripped
         
         # Pre-align the arm in (y,z)
         self.phiabs(phi, verbosity=verbosity)
@@ -419,7 +422,7 @@ class SampleExchangeRobot(Stage):
         self._sample = None
         
         # Move away from stage
-        x, y, z, r, phi = self._position_hold
+        x, y, z, phi = self._position_hold
         #mov([armx, self._axes['r'].motor], [x, r])
         # r is removed without SmarAct motor
         #mov(armx, x)
@@ -449,7 +452,7 @@ class SampleExchangeRobot(Stage):
         smy.move(y)
         sth.move(0)
         
-        x, y, z, r, phi = self._position_sample_gripped
+        x, y, z, phi = self._position_sample_gripped
         
         # Pre-align the arm in (y,z)
         self.phiabs(phi, verbosity=verbosity)
@@ -470,7 +473,7 @@ class SampleExchangeRobot(Stage):
         self.yr(+self._delta_y_hover, verbosity=verbosity)
         
         # Move away from stage
-        x, y, z, r, phi = self._position_hold
+        x, y, z, phi = self._position_hold
         #mov([armx, self._axes['r'].motor], [x, r])
         # r is removed without SmarAct motor
         #mov(armx, x)
@@ -497,7 +500,7 @@ class SampleExchangeRobot(Stage):
             print('Getting sample from garage ({}, {})'.format(shelf_num, spot_num))
         
         
-        x, y, z, r, phi = self._position_garage
+        x, y, z, phi = self._position_garage
         
         self.phiabs(phi)
         
@@ -546,7 +549,7 @@ class SampleExchangeRobot(Stage):
             print('Putting sample into garage ({}, {})'.format(shelf_num, spot_num))
         
         
-        x, y, z, r, phi = self._position_garage
+        x, y, z, phi = self._position_garage
         
         self.phiabs(phi)
         
@@ -597,7 +600,7 @@ class SampleExchangeRobot(Stage):
         if abs(self.phipos(verbosity=0))>1:
             print("ERROR: phi ({}) position unsafe.".format(self.phipos(verbosity=0)))
         
-        x, y, z, r, phi = self._position_garage
+        x, y, z, phi = self._position_garage
         
         x += (spot_num-1)*self._delta_garage_x
         y += (shelf_num-1)*self._delta_garage_y
@@ -651,7 +654,7 @@ class SampleExchangeRobot(Stage):
         smx.move(x)
         smy.move(y)        
         
-        x, y, z, r, phi = self._position_sample_gripped
+        x, y, z, phi = self._position_sample_gripped
         
         # Pre-align the arm in (y,z)
         self.phiabs(phi, verbosity=verbosity)
@@ -660,7 +663,7 @@ class SampleExchangeRobot(Stage):
         
         # Move to a position x is away from sample bar
         self.xabs(-40, verbosity=verbosity)
-        self.rabs(0, verbosity=verbosity)
+        #self.rabs(0, verbosity=verbosity)
          
     def calibrationGarage(self, verbosity=3):
         
@@ -676,7 +679,7 @@ class SampleExchangeRobot(Stage):
             print('Approaching to garage ({}, {})'.format(shelf_num, spot_num))
         
         
-        x, y, z, r, phi = self._position_garage
+        x, y, z, phi = self._position_garage
         
         self.phiabs(phi)
         
@@ -698,7 +701,7 @@ class SampleExchangeRobot(Stage):
         if not self.checkSafe():
             return
         
-        self.home()
+        #self.home()
         
         if not self.checkSafe():
             return
@@ -746,16 +749,19 @@ class SampleExchangeRobot(Stage):
     
                     
                     self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+                    time.sleep(2)
                     self.sequencePutSampleOntoStage(verbosity=verbosity)
 
                     hol.listSamples()
-                    time.sleep(3)
+                    time.sleep(2)
                     hol.doSamples()
                     
                     
                     self.sequenceGetSampleFromStage(verbosity=verbosity)
+                    time.sleep(2)
                     self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
-        
+                    time.sleep(2)
+                    
     def listGarage(self, verbosity=3):
 
         for hol in Garage_holders:

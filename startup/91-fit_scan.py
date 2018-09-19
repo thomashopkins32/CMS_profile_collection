@@ -822,7 +822,7 @@ class LiveFit_Custom(LiveFit):
 
 import lmfit
 
-def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi', background=None, per_step=None, wait_time=None, md={}, save_flg=0):
+def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', exposure_time=0.5, toggle_beam=True,  fit='HMi', background=None, per_step=None, wait_time=None, md={}, save_flg=0):
     """
     Scans the specified motor, and attempts to fit the data as requested.
     
@@ -852,6 +852,9 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
     
     # TODO: Normalize per ROI pixel and per count_time?
     # TODO: save scan data with save_flg=1.
+
+    if toggle_beam:
+        beam.on()
     
     if not beam.is_on():
         print('WARNING: Experimental shutter is not open.')
@@ -935,9 +938,15 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
         
     md['plan_header_override'] = 'fit_scan'
     md['scan'] = 'fit_scan'
+    md['measure_type'] = 'fit_scan_{}'.format(motor.name)
     md['fit_function'] = fit
     md['fit_background'] = background
 
+    cms.SAXS.detector.setExposureTime(exposure_time)
+
+    #exposure_time_last = md['exposure_time'] 
+    #md['exposure_time'] = exposure_time
+    
     # Perform the scan
     
     bec.disable_plots()
@@ -947,16 +956,22 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
     #RE(scan(list(detectors), motor, start, stop, num, per_step=per_step, md=md), [livefit])
    
     
-    
+    #md['exposure_time'] = exposure_time_last
     #if plot_y=='pilatus300_stats4_total' or plot_y=='pilatus300_stats3_total':
     if plot_y=='pilatus2M_stats4_total' or plot_y=='pilatus2M_stats3_total':
         remove_last_Pilatus_series()
     
     #check save_flg and save the scan data thru databroker
-    #header = db[-1]
-    #dtable = header.table[]
-    #filename=###
-    #dtable.to_csv(filename)
+    if save_flg == 1:
+        header = db[-1]
+        dtable = header.table()
+        filename = '{}/{}'.format(RE.md['experiment_alias_directory'],header.start['scan_id'])
+        dtable.to_csv(filename)
+
+
+    if toggle_beam:
+        beam.off()
+
     
     if fit is None:
         # Return to start position
@@ -975,7 +990,7 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit='HMi',
 
 
 
-def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True, wait_time=None, md={}):
+def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True, toggle_beam=True, wait_time=None, md={}):
     """
     Optimized fit_scan for finding a (decreasing) step-edge.
     
@@ -993,6 +1008,9 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
         metadata        
     """
     
+    if toggle_beam:
+        beam.on()
+
     if not beam.is_on():
         print('WARNING: Experimental shutter is not open.')
     
@@ -1144,6 +1162,9 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
     
     print('Moving to x = {:.3f}'.format(x0))
     motor.move(x0)
+
+    if toggle_beam:
+        beam.off()
 
     return lm_result.values
 

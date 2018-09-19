@@ -1,6 +1,3 @@
-
-
-
 def detselect(detector_object, suffix='_stats4_total'):
     """Switch the active detector and set some internal state"""
 
@@ -16,8 +13,15 @@ def detselect(detector_object, suffix='_stats4_total'):
         cms.detector = [detector_object]
         cms.PLOT_Y = detector_object.name + suffix
         cms.TABLE_COLS = [cms.PLOT_Y] 
-    
     return cms.detector
+    #only return the detector name than the long list with
+    #all attributes since bluesky upgrade in cycle 201802
+    detector_list = []
+    for detector in cms.detector:
+        detector_list.append(detector.name)
+    return detector_list
+    #return cms.detector
+
 
 
 ##### I/O devices 
@@ -419,6 +423,21 @@ def data_output(experiment_cycle=None, experiment_alias_directory=None):
         dtable = header.table() 
         dtable.to_csv('{}/data/{}.csv'.format(header.get('start').get('experiment_alias_directory') , header.get('start').get('scan_id')))
         
+
+## output the scan data and save them in user_folder/data. 
+def data_output_seires(id_range): 
+    
+    """
+    To output the scan data with the scan_id as name
+    Please first create "data" folder under user_folder. 
+    id_range = np.arange(55123, 56354)
+    """
+       
+    for ii in id_range:
+        
+        header = db[scan_id]
+        dtable = header.table() 
+        dtable.to_csv('{}/data/{}.csv'.format(header.get('start').get('experiment_alias_directory') , header.get('start').get('scan_id')))
         
 #def XRR_data_output(experiment_ids=None)
     
@@ -426,5 +445,40 @@ def data_output(experiment_cycle=None, experiment_alias_directory=None):
     #for header in headers: 
         #dtable = header.table()
         
+def metadata_output(output_file, SAF=None, experiment_alias_directory=None): 
+    
+    """
+    To output the scan data with the scan_id as name
+    Please first create "data" folder under user_folder. 
+    SAF: SAF number, like '302914'
+    """
+    
+    #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/GPFS/xf11bm/data/2017_3/IHerman' )
+    #if experiment_cycle is not None:
+        #headers = db( experiment_cycle=experiment_cycle, experiment_alias_directory=experiment_alias_directory)
+    #else:
+        #headers = db( experiment_alias_directory=experiment_alias_directory)
+
+
+    headers= db(experiment_SAF_number=SAF) 
+    output_data = pds.DataFrame()
     
     
+    for header in headers:
+        
+        if 'sample_name' in header.start and 'sample_x' in header.start and 'sample_clock' in header.start:
+
+            current_data = {'a_scan_id':header.start['scan_id'],
+                            'b_sample_name': header.start['sample_name'],
+                            'c_clock':header.start['sample_clock'], 
+                            'd_pos_x': header.start['sample_x'],
+                            'e_pos_th': header.start['sample_th'],
+                            'f_temperature': header.start['sample_temperature_A']
+                            }    
+            current = pds.DataFrame(data=current_data, index=[1])
+
+        output_data = output_data.append(current_data, ignore_index=True)    
+        
+        #output_data = output_data.iloc[0:0]
+    
+    output_data.to_csv(output_file)

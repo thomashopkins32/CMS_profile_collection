@@ -1355,11 +1355,11 @@ class Sample_Generic(CoordinateSystem):
                 if detector.name is 'pilatus2M' and exposure_time != caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
                     #extra wait time when changing the exposure time.  
-                    time.sleep(2)
+                    #time.sleep(2)
                 if detector.name is 'pilatus300' and exposure_time != caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'):
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
                     #extra wait time when changing the exposure time.  
-                    time.sleep(2)
+                    #time.sleep(2)
                 elif detector.name is 'PhotonicSciences_CMS':
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
        
@@ -1536,17 +1536,12 @@ class Sample_Generic(CoordinateSystem):
             if verbosity>=1:
                 print("WARNING: Can't do file handling for detector '{}'.".format(detector.name))
                 return
-            
-
-
-        
-        
-        
-        
+                    
     def snap(self, exposure_time=None, extra=None, measure_type='snap', verbosity=3, **md):
         '''Take a quick exposure (without saving data).'''
         
         self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)
+        remove_last_Pilatus_series()
         
         
     def measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, stitchback=False, **md):
@@ -1562,30 +1557,28 @@ class Sample_Generic(CoordinateSystem):
         tiling : string
             Controls the detector tiling mode.
               None : regular measurement (single detector position)
-              'ygaps' : try to cover the vertical gaps in the Pilatus300k
+              'ygaps' : try to cover the vertical gaps in the Pilatus detector
         '''           
         
         if tiling is 'ygaps':
-            
             extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
             md['detector_position'] = 'lower'
             self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
             
-            #movr(SAXSy, 5.16) # move detector up by 30 pixels; 30*0.172 = 5.16
             SAXSy.move(SAXSy.user_readback.value + 5.16)
+            
+            #extra x movement is needed for pilatus2M. 
+            if cms.detector == Pilatus2M:
+                SAXSx.move(SAXSx.user_readback.value + 5.16)
+
             extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
             md['detector_position'] = 'upper'
             self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
             
             #movr(SAXSy, -5.16)
             SAXSy.move(SAXSy.user_readback.value + -5.16)
-
-            SAXSx.move(SAXSx.user_readback.value + 5.16)
-            extra_current = 'pos3' if extra is None else '{}_pos3'.format(extra)
-            md['detector_position'] = 'left'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
- 
-            SAXSx.move(SAXSx.user_readback.value + -5.16)
+            if cms.detector == Pilatus2M:
+                SAXSx.move(SAXSx.user_readback.value + -5.16)
  
         #if tiling is 'big':
             # TODO: Use multiple images to fill the entire detector motion range
@@ -2494,7 +2487,7 @@ class SampleXR(SampleGISAXS_Generic):
                         self.measure(exposure_time, extra=extra)
                         temp_data = self.XR_data_output(slot_pos, exposure_time)
                     else:
-                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time:
+                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time-1:
                             N = np.ceil(threshold/float(temp_data['e_I1'][temp_data.index[-1]]))+1
                         else:  
                             N = max_exposure_time
@@ -2521,6 +2514,8 @@ class SampleXR(SampleGISAXS_Generic):
         bec.enable_plots()
         #bec.enable_table()
         self.naming_scheme = self.naming_scheme_hold
+        #remove the absorber completely out of the beam
+        beam.absorber_out()
 
         pilatus_name.stats3.total.kind = 'hinted'
         pilatus_name.stats4.total.kind = 'hinted'
@@ -2531,14 +2526,17 @@ class SampleXR(SampleGISAXS_Generic):
         beam.off()        
         cms.modeMeasurement()
         beam.setAbsorber(0)
+        #remove the absorber completely out of the beam
+        beam.absorber_out()
         
         self.xo()
         self.yo()
         self.tho()
 
         bec.enable_plots()
-        #bec.enable_table()
+        bec.enable_table()
         pilatus_name.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total']}
+
         
     def XR_data_output(self, slot_pos, exposure_time):
         '''XRR data output in DataFrame format
@@ -2924,7 +2922,7 @@ class Holder(Stage):
             print('Error: Sample designation "{}" not understood.'.format(sample_number))
             return None
     
-    
+    import string
     def getSamples(self, range=None, verbosity=3):
         '''Get the list of samples associated with this holder.
         
@@ -2939,11 +2937,25 @@ class Holder(Stage):
                 samples.append(self._samples[sample_number])
                 
         elif type(range) is list:
-            start, stop = range
-            for sample_number in sorted(self._samples):
-                if sample_number>=start and sample_number<=stop:
-                    samples.append(self._samples[sample_number])
-                    
+            if type(range[0]) is int:
+                if len(range) == 2:
+                    start, stop = range
+                    for sample_number in sorted(self._samples):
+                        if sample_number>=start and sample_number<=stop:
+                            samples.append(self._samples[sample_number])
+                else: 
+                    for sample_number in sorted(self._samples):
+                        for ii in range: 
+                            if sample_number == ii:
+                                samples.append(self._samples[sample_number])                
+ 
+            elif type(range[0]) is str: #For 96 well holder, format: A1, D2 ...
+                for sample_number in sorted(self._samples):
+                    sample_row = string.ascii_lowercase(sample_number[0])
+                    sample_column = int(sample_number[1:])
+                    sample_number = sample_row*12 + sample_column
+                    samples.append(self._samples[sample_number])                 
+
         elif type(range) is str:
             for sample_number, sample in sorted(self._samples.items()):
                 if range in sample.name:
@@ -3202,6 +3214,12 @@ class PositionalHolder(Holder):
             sample.restore_state(cms.samples_states[sample_number])
             print(sample.save_state())        
 
+    
+    def checkPositions(self):
+        for sample in self.getSamples():
+            sample.gotoOrigin()
+            time.sleep(1)
+            
 class GIBar(PositionalHolder):
     '''This class is a sample bar for grazing-incidence (GI) experiments.'''
     
@@ -3215,7 +3233,8 @@ class GIBar(PositionalHolder):
         self._positional_axis = 'x'
         
         self.xsetOrigin(-71.89405)
-        self.ysetOrigin(10.37925)
+        #self.ysetOrigin(10.37925)
+        self.ysetOrigin(5.38)
         
         self.mark('right edge', x=+108.2)
         self.mark('left edge', x=0)
@@ -3408,8 +3427,10 @@ class GIBar_long_thermal(GIBar):
         self._positional_axis = 'x'
         
         # Set the x and y origin to be the center of slot 8
-        self.xsetOrigin(-71.89405-22.1)
-        self.ysetOrigin(10.37925)
+
+        #self.xsetOrigin(-71.89405-22.1) # TODO: Update this value
+        #self._axes['y'].origin = 7.06
+        self._axes['y'].origin = 2.06
         
         self.mark('right edge', x=+152.4)
         self.mark('left edge', x=0)
@@ -3435,7 +3456,8 @@ class CapillaryHolder(PositionalHolder):
         
         # Set the x and y origin to be the center of slot 8
         #self.xsetOrigin(-16.7)
-        self.ysetOrigin(-2.36985)
+        #self.ysetOrigin(-2.36985)
+        self.ysetOrigin(-2.36985)  
         self.xsetOrigin(-16.7+-0.3)
         
         self.mark('right edge', x=+54.4)
