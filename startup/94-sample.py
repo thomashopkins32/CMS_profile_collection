@@ -1356,15 +1356,26 @@ class Sample_Generic(CoordinateSystem):
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
                     #extra wait time when changing the exposure time.  
                     #time.sleep(2)
+                    ############################################
+                    #extra wait time for adjusting pilatus2M 
+                    #this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
+                    #Note by 091918
+                    ############################################
+                    time.sleep(2)
                 if detector.name is 'pilatus300' and exposure_time != caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'):
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
                     #extra wait time when changing the exposure time.  
                     #time.sleep(2)
+                    ############################################
+                    #extra wait time for adjusting pilatus2M 
+                    #this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
+                    #Note by 091918
+                    ############################################
+                    time.sleep(2)
                 elif detector.name is 'PhotonicSciences_CMS':
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
        
-        #extra wait time for adjusting pilatus2M 
-        #time.sleep(2)
+
 
         # Do acquisition
         get_beamline().beam.on()
@@ -1380,6 +1391,7 @@ class Sample_Generic(CoordinateSystem):
 
         #uids = RE(count(get_beamline().detector, 1), **md)
         uids = RE(count(get_beamline().detector), **md)
+        #yield from (count(get_beamline().detector), **md)
         
         #get_beamline().beam.off()
         #print('shutter is off')
@@ -2391,9 +2403,35 @@ class SampleXR(SampleGISAXS_Generic):
 
     ################# Specular reflectivity (XR) measurement ####################
 
-    def XR_scan(self, scan_type='theta_scan', theta_range=[0,0.1], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None):
+    def XR_scan(self, scan_type='theta_scan', theta_range=[0,1.6], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None):
         ''' Run x-ray reflectivity measurement for thin film samples. 
-        
+        Parameters
+        ----------
+        scan_type : list
+            theta_scan: in step of theta
+            q_scan: in step of q
+        theta_range: list 
+            The scanning range. It can be single section or multiple sections with various step_size.
+            Examples:  
+            [0, 1.6] or 
+            [[0, .3],[0.3, 1], [1, 1.6]]                    
+        theta_delta: float or list
+            The scaning step. Examples:
+            0.02    or
+            [0.005, 0.1, 0.2]
+        roi_size: float
+            The szie of ROI1.
+        exposure_time: float
+            The mininum exposure time
+        min_step : float
+            The final (minimum) step size to try
+        intensity : float
+            The expected full-beam intensity readout
+        threshold : float
+            The threshold of minimum intensity. Exposure time increases automatically if < max_exposure_time 
+        max_exposure_time : float
+            The maximum of exposure time to limit the total time.
+ 
         '''
         #TODO:
         #if theta_end < theta_start:
@@ -2401,6 +2439,8 @@ class SampleXR(SampleGISAXS_Generic):
         
         #disable the besteffortcallback and plot all ROIs
         #bec.disable_table()
+        cms.modeMeasurement()
+        
         bec.disable_plots()
 
         pilatus_name.stats1.total.kind = 'hinted'
@@ -2408,7 +2448,7 @@ class SampleXR(SampleGISAXS_Generic):
 
         self.naming_scheme_hold = self.naming_scheme
         self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
-
+        default_SAXSy = SAXSy.position
         #initial exposure period
         #N = 1
         
@@ -2427,7 +2467,8 @@ class SampleXR(SampleGISAXS_Generic):
             direct_beam_slot = 4
         #Energy = 17kev
         if abs(beam.energy(verbosity=1)-17) < 0.1:
-            direct_beam_slot = 6
+            direct_beam_slot = 5
+            slot_pos = 5
         beam.setAbsorber(direct_beam_slot)
         get_beamline().setSpecularReflectivityROI(total_angle=0,size=roi_size,default_SAXSy=-73)
         self.measure(exposure_time, extra='direct_beam')
@@ -2440,24 +2481,50 @@ class SampleXR(SampleGISAXS_Generic):
         if output_file is None:
             header = db[-1]
             #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
-            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
+            #XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
+            XR_FILENAME='{}/data/{}_{}.csv'.format(header.start['experiment_alias_directory'],header.start['sample_name'], header.get('start').get('scan_id')+1)
         else:
             XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
 
+        #load theta positions in scan
         if scan_type == 'theta_scan':
             #list the sth positions in scan
             theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            
+            #
+            '''
+            if np.size(theta_range) == 2:
+                theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            #multiple sections for measurement
+            else: 
+                theta_list=[]
+                if np.shape(theta_range)[0] != np.size(theta_delta):
+                    print("The theta_range does not match theta_delta")
+                    return
+                if np.shape(theta_range)[-1] != 2:
+                    print("The input of theta_range is incorrect.")
+                    return                
+                for number, item in enumerate(theta_range):
+                    theta_list_temp = np.arange(item[0], item[1], theta_delta[number])
+                    theta_list.append(theta_list_temp)
+                theta_list = np.hstack(theta_list)
+            
+            '''
         elif scan_type == 'qz_scan':
             if qz_list is not None:
                 qz_list = qz_list
             else:
                qz_list = self.qz_list_default
             theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A'] /4*np.pi))
-        
+
+       
         for theta in theta_list:
-            
+
             self.thabs(theta)
-            get_beamline().setSpecularReflectivityROI(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
+            #get_beamline().setSpecularReflectivityROI(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
+
+            get_beamline().setSpecularReflectivityROI_update(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
+
 
             if cms.out_of_beamstop(total_angle=theta*2, size=roi_size):
                 cms.modeMeasurement()       
@@ -2468,6 +2535,7 @@ class SampleXR(SampleGISAXS_Generic):
             
             #initial exposure period
             N = 1
+            N_last = 1
             if threshold is not None and type(threshold) == int :
                     
                     
@@ -2477,7 +2545,7 @@ class SampleXR(SampleGISAXS_Generic):
                             slot_pos = slot_pos - 1
                         else:
                            slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
-                           for slot_no in np.arange(6, 0, -1):
+                           for slot_no in np.arange(5, 0, -1):
                                if slot_current > beam.absorber_transmission_list[slot_no]:
                                    slot_pos = slot_no - 1 
                               
@@ -2487,12 +2555,18 @@ class SampleXR(SampleGISAXS_Generic):
                         self.measure(exposure_time, extra=extra)
                         temp_data = self.XR_data_output(slot_pos, exposure_time)
                     else:
-                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time-1:
-                            N = np.ceil(threshold/float(temp_data['e_I1'][temp_data.index[-1]]))+1
+                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time and N_last < max_exposure_time:
+                            N = np.ceil(N_last*threshold/float(temp_data['e_I1'][temp_data.index[-1]]))
+                            print('e_I1={}'.format(float(temp_data['e_I1'][temp_data.index[-1]])))
+                            print('N={}'.format(N))
+                            print('exposure time  = {}'.format(N*exposure_time))
                         else:  
                             N = max_exposure_time
+                            print('exposure time is MAX')
                         print('The absorber is slot {}\n'.format(slot_pos))
                         print('The theta is {}\n'.format(theta))
+
+
                         self.measure(N*exposure_time, extra=extra)                        
                         temp_data = self.XR_data_output(slot_pos, N*exposure_time)
                         N_last = N
@@ -2519,7 +2593,9 @@ class SampleXR(SampleGISAXS_Generic):
 
         pilatus_name.stats3.total.kind = 'hinted'
         pilatus_name.stats4.total.kind = 'hinted'
-       
+        
+        SAXSy.move(default_SAXSy)
+
     def XR_abort(self):        
         '''Reset the beamline status back to origin before XRR measurement.
         '''        
@@ -2539,8 +2615,19 @@ class SampleXR(SampleGISAXS_Generic):
 
         
     def XR_data_output(self, slot_pos, exposure_time):
-        '''XRR data output in DataFrame format
+        '''XRR data output in DataFrame format, including: 
+                        'a_qz': qz,                  #qz
+                        'b_th':sth_pos,              #incident angle 
+                        'c_scanID': scan_id,         #scan ID
+                        'd_I0': I0,                  #bim5 flux
+                        'e_I1': I1,                  #ROI1
+                        'f_I2': I2,                  #ROI2
+                        'g_I3': I3,                  #2*ROI1-ROI2
+                        'h_In': In,                  #reflectivity
+                        'i_absorber_slot': slot_pos, #absorption slot No.
+                        'j_exposure_seconds': exposure_time}   #exposure time
         '''
+        
         h = db[-1]
         dtable = h.table()
         
@@ -2567,23 +2654,23 @@ class SampleXR(SampleGISAXS_Generic):
         I3 = 2*dtable.pilatus2M_stats1_total - dtable.pilatus2M_stats2_total
         In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
 
-        current_data = {'a_qz': qz,
-                        'b_th':sth_pos, 
-                        'c_scanID': scan_id,
-                        'd_I0': I0,
-                        'e_I1': I1,
-                        'f_I2': I2,
-                        'g_I3': I3,
-                        'h_In': In,
-                        'i_absorber_slot': slot_pos,
-                        'j_exposure_seconds': exposure_time}
+        current_data = {'a_qz': qz,                  #qz
+                        'b_th':sth_pos,              #incident angle 
+                        'c_scanID': scan_id,         #scan ID
+                        'd_I0': I0,                  #bim5 flux
+                        'e_I1': I1,                  #ROI1
+                        'f_I2': I2,                  #ROI2
+                        'g_I3': I3,                  #2*ROI1-ROI2
+                        'h_In': In,                  #reflectivity
+                        'i_absorber_slot': slot_pos, #absorption slot No.
+                        'j_exposure_seconds': exposure_time}   #exposure time
 
         return pds.DataFrame(data=current_data)
         
-    def XR_align(self, step=0, reflection_angle=0.12, verbosity=3):
+    def XR_align(self, step=0, reflection_angle=0.15, verbosity=3):
         '''Specific alignment for XRR
         
-        Align the sample with respect to the beam. GISAXS alignment involves
+        Align the sample with respect to the beam. XR alignment involves
         vertical translation to the beam center, and rocking theta to get the
         sample plane parralel to the beam. Finally, the angle is re-optimized
         in reflection mode.
@@ -2591,26 +2678,22 @@ class SampleXR(SampleGISAXS_Generic):
         The 'step' argument can optionally be given to jump to a particular
         step in the sequence.'''
 
+        cms.modeAlignment()
+
         if verbosity>=4:
             print('  Aligning {}'.format(self.name))
         
         if step<=0:
             # Prepare for alignment
             cms.modeAlignment()
-            
             if RE.state!='idle':
                 RE.abort()
-                
             if get_beamline().current_mode!='alignment':
                 if verbosity>=2:
                     print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
                 #get_beamline().modeAlignment()
-                
-                
             get_beamline().setDirectBeamROI()
-            
             beam.on()
-
         
         if step<=2:
             if verbosity>=4:
@@ -2648,9 +2731,10 @@ class SampleXR(SampleGISAXS_Generic):
             #time.sleep(2)            
             
         if step<=8:
-            #fit_scan(smy, 0.3, 21, fit='sigmoid_r')
             
-            fit_edge(smy, 0.6, 21)
+            fit_scan(smy, 0.6, 21, fit='sigmoid_r')
+            
+            #fit_edge(smy, 0.6, 21)
             #time.sleep(2)
             #fit_edge(smy, 0.4, 21)
             fit_scan(sth, 0.8, 21, fit='COM')
@@ -2686,17 +2770,19 @@ class SampleXR(SampleGISAXS_Generic):
             self.thabs(0.0)
             beam.off()
 
-    def XR_check_alignment(self, int_angle=0.5, exposure_time=1):
+    def XR_check_alignment(self, int_angle=1, exposure_time=1, roi_size=[12, 30]):
         ''' Check the alignment of the XR.
         The total_angle is the incident angle. 
         The reflection spot should be located in the center of ROI2'''
         cms.modeMeasurement()
-        cms.setSpecularReflectivityROI(total_angle=int_angle*2, size = [12, 15],  default_SAXSy=-73)                    
+        cms.setSpecularReflectivityROI(total_angle=int_angle*2, size=roi_size,  default_SAXSy=-73)                    
+        #sam.xo()
+        sam.yo()
         sam.thabs(int_angle)
         sam.measure(exposure_time)
-        print('===========sam.th moves to 0.5deg and ROI1 is set at 1deg. ============')
+        print('===========sam.th moves to {}deg and ROI1 is set at {}deg. ============'.format(int_angle, int_angle*2))
         print('======Please check the ROI whether at the reflected position. =======')
-        print('========If not, modify sam.th to meet the reflected beam. ===========')
+        print('========If not, modify sam.th or schi to meet the reflected beam. ===========')
 
 
 class Stage(CoordinateSystem):

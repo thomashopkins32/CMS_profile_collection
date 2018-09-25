@@ -1909,7 +1909,7 @@ class CMS_Beamline(Beamline):
         self.detector = [] 
         self.PLOT_Y = []
         self.TABLE_COLS = []
-        self.bsx_pos = -15.74
+        self.bsx_pos = []
         self.FM_donefiles = []
     
     
@@ -2588,10 +2588,12 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #detselect(pilatus300, suffix='_stats4_total')
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.6)
-        
+
+        #self.setMonitor(monitor=['stats3', 'stats4'])        
         detselect(pilatus_name, suffix='_stats4_total')
         caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), 0.5)
         caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), 0.6)
+
 
         #TODO: Update ROI based on current SAXSx, SAXSy and the md in cms object
         
@@ -2644,7 +2646,8 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         detselect(pilatus_name)
         #detselect(psccd)
         
-        
+        #self.setMonitor(monitor=None)
+                
         self.current_mode = 'measurement'
         
         # Check if gate valves are open
@@ -2742,6 +2745,7 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         '''
          
         detector = self.SAXS
+        #self.setMonitor()
         
         if default_SAXSy is not None: 
             if abs(default_SAXSy - SAXSy.position) > 0.01: 
@@ -2820,7 +2824,124 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         caput('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname), int(size[1]))
         
         detselect(pilatus_name, suffix='_stats1_total')
-    
+
+    def setSpecularReflectivityROI_SAXSyPOS(self, total_angle=0.16, size=[10,10], default_SAXSy=None, verbosity=3):
+        '''Update the ROIs (stats1, stats2) for the specular reflected beam on the Pilatus
+        detector. This (should) update correctly based on the current SAXSx, SAXSy.
+        
+        calculate the SAXSy position for Pialtus2M 
+        '''
+         
+        detector = self.SAXS
+        #self.setMonitor()
+        
+        #if default_SAXSy is not None: 
+            #if abs(default_SAXSy - SAXSy.position) > 0.01: 
+                #SAXSy.move(default_SAXSy)
+                #print('SAXS detector has been shifted to default SAXSy = {:.3f} mm.'.format(SAXSy.position)) 
+        
+        # These positions are based on the default detector position
+        #det_md = detector.get_md()
+        x0 = self.SAXS.direct_beam[0]
+        y0 = self.SAXS.direct_beam[1]
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        #for pilatus300k
+        #y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #for pilatus2M, placed up-side down
+        #y_pos = int( y0 - size[1]/2 + y_offset_pix )
+
+        #for pilatus2M, with pattern rotated 180deg. changed at 052918
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #y pixels for intermodule gaps, for pilatus2M (195 pixels high module, 17 pixels high gap)
+        y_gap_2M = []
+        for i in np.arange(7): 
+            for j in np.arange(17): 
+                y_gap_2M.append((195+17)*(i+1)-17+j)
+         
+        #y pixels for Spectular Reflectivity ROI
+        y_roi = []
+        for i in np.arange(int(size[1]+1)):
+            y_roi.append(y_pos+i)
+         
+        #flag for whether the ROI falls on intermodule gap 
+        flag_ROIonGap = len(np.unique(y_gap_2M + y_roi)) < (len(y_gap_2M)+len(y_roi)) 
+         
+        #Move SAXSy if ROI falls on intermodule gap; if not, move on 
+        if flag_ROIonGap == True: 
+            y_shift = 17+size[1]+1      # intermodule gap is 17 pixels high 
+            y_shift_mm = pixel_size*y_shift # mm            
+            return default_SAXSy+y_shift_mm        
+        else:
+            return default_SAXSy
+        
+    def setSpecularReflectivityROI_update(self, total_angle=0.16, size=[10,10], default_SAXSy=None, verbosity=3):
+        '''Update the ROIs (stats1, stats2) for the specular reflected beam on the Pilatus
+        detector. This (should) update correctly based on the current SAXSx, SAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). 
+        
+        stats1 is centered on the specular reflected beam and has the size specified in 
+        the size argument.
+        
+        stats2 is centered on the specular reflected beam and has the size that is twice
+        as wide as specified in the size argument, for capturing background.
+        
+        The background-subtracted intensity for specular reflection is equal to: 
+        2 * stats1 - stats2 
+        
+        The difference from the original is that the stage SAXSy will not move except necessary
+        The SAXSy position is obtained by setSpecularReflectivityROI_calculate
+        '''
+         
+        detector = self.SAXS
+        #self.setMonitor()
+        
+        SAXSy_pos = self.setSpecularReflectivityROI_SAXSyPOS(total_angle=total_angle,size=size,default_SAXSy=default_SAXSy)
+        SAXSy.move(SAXSy_pos)
+        
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_SAXS_x0_pix']
+        y0 = det_md['detector_SAXS_y0_pix']
+
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        #for pilatus300k
+        #y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #for pilatus2M, placed up-side down
+        #y_pos = int( y0 - size[1]/2 + y_offset_pix )
+
+        #for pilatus2M, with pattern rotated 180deg. changed at 052918
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        # ROI1: Raw signal 
+        caput('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname), int(x0-size[0]/2))
+        caput('XF:11BMB-ES{}:ROI1:SizeX'.format(pilatus_Epicsname), int(size[0]))
+        caput('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI1:SizeY'.format(pilatus_Epicsname), int(size[1]))
+        
+        # ROI2: Raw signal+background (same as ROI1 for y, but twice as large for x) 
+        caput('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname), int(x0-size[0]))
+        caput('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname), int(2*size[0]))
+        caput('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname), int(size[1]))
+        
+        detselect(pilatus_name, suffix='_stats1_total')          
+        
     
     def out_of_beamstop(self, total_angle, size=[12,12], default_SAXSy=None):
 
@@ -2855,6 +2976,17 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #return abs(y0 - y_shift_pixel - ROI_ymin) > y_beamstop
 
         return y_offset_pix  - size[1]/2 > y_beamstop
+
+    def setMonitor(self, monitor=['stats1', 'stats2', 'stats3', 'stats4']):
+        if monitor == None: 
+            pilatus2M.read_attrs = ['tiff'] 
+            #monitor = ['stats3', 'stats4']        
+        else:
+            pilatus2M.read_attrs = ['tiff'] + monitor
+            #pilatus2M.configuration_attrs=[]
+
+        pilatus2M.configuration_attrs=[]
+        #print(pilatus2M.configuration_attrs)
     
 #cms = CMS_Beamline()
 cms = CMS_Beamline_GISAXS()
