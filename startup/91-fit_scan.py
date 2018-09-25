@@ -875,10 +875,13 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', exposure_t
         #detselect(pilatus_name, suffix='_stats4_total')
         detectors = get_beamline().detector
         plot_y = get_beamline().PLOT_Y
+        
+        #plot_y = pilatus2M.stats4.total
+        #print("plot_y is {}".format(plot_y))
+        
     else:
         plot_y = '{}{}'.format(detectors[0].name, detector_suffix)
-    
-    
+       
     
     # Get axes for plotting
     title = 'fit_scan: {} vs. {}'.format(detectors[0].name, motor.name)
@@ -1014,6 +1017,7 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
     if not beam.is_on():
         print('WARNING: Experimental shutter is not open.')
     
+    cms.setMonitor(monitor=['stats1', 'stats2', 'stats3', 'stats4'])
     
     initial_position = motor.user_readback.value
 
@@ -1079,10 +1083,7 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
     #if plot_y=='pilatus300_stats4_total' or plot_y=='pilatus300_stats3_total':
     if plot_y=='pilatus2M_stats4_total' or plot_y=='pilatus2M_stats3_total':
         remove_last_Pilatus_series()
-        
-        
-        
-    
+            
     x0_guess = np.average(livetable.xdata)
     
     # Determine x0 from half-max (HM) analysis
@@ -1120,7 +1121,10 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
             return m - data
 
         params = lmfit.Parameters()
-        params.add('prefactor', value=y_max*0.95, min=y_max*0.90, max=y_max*1.02)
+        if y_max>0:
+            params.add('prefactor', value=y_max*0.95, min=y_max*0.90, max=y_max*1.02)
+        else:
+            params.add('prefactor', value=y_max*0.95, min=0, max=1)
         params.add('x0', value=x0_guess, min=np.min(livetable.xdata)+x_span*0.05, max=np.max(livetable.xdata)-x_span*0.05 )
         params.add('sigma', value=0.014, min=x_span*1e-4, max=x_span*0.08)
         
@@ -1166,7 +1170,8 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
     if toggle_beam:
         beam.off()
 
-    return lm_result.values
+    lm_result_values = { k : v.value for k, v in lm_result.params.items() }
+    return lm_result_values
 
 
 
@@ -1321,7 +1326,11 @@ def _test_fit_scan(motor, span, num=11, detectors=None, detector_suffix='', fit=
         
         return livefit.result
 
-
+def setMonitor(monitor=['stats1', 'stats2', 'stats3', 'stats4']):
+    if monitor == None: 
+        monitor = ['stats3', 'stats4']
+    
+    pilatus2M.read_attrs = ['tiff'] + monitor
 
 # TODO:
 # - Fit parameters on graph

@@ -198,6 +198,7 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
         # if you set)
         #self.cam.stage_sigs['acquire_time'] = exposure_time
         #self.cam.stage_sigs['acquire_period'] = exposure_time+.1
+
         self.cam.acquire_time.put(exposure_time)
         self.cam.acquire_period.put(exposure_time+.1)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
@@ -228,6 +229,7 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
         self.cam.acquire_period.put(exposure_time+.1)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+
 
 
 
@@ -285,22 +287,65 @@ for camera in all_standard_pros:
 '''
 pilatus300 = Pilatus('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
 pilatus300.tiff.read_attrs = []
-STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
-pilatus300.read_attrs = ['tiff'] + STATS_NAMES
-for stats_name in STATS_NAMES:
-    stats_plugin = getattr(pilatus300, stats_name)
-    stats_plugin.read_attrs = ['total']
+#STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
+#pilatus300.read_attrs = ['tiff'] + STATS_NAMES
+#for stats_name in STATS_NAMES:
+    #stats_plugin = getattr(pilatus300, stats_name)
+    #stats_plugin.read_attrs = ['total']
 
 pilatus300.cam.ensure_nonblocking()
 
 pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
 pilatus2M.tiff.read_attrs = []
-STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
+STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4']
 pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
+for stats_name in STATS_NAMES2M:
+    stats_plugin = getattr(pilatus2M, stats_name)
+    stats_plugin.read_attrs = ['total']
+
+
+
+for item in pilatus2M.stats1.configuration_attrs:
+    item_check = getattr(pilatus2M.stats1, item)
+    item_check.kind= 'omitted'
+
+for item in pilatus2M.stats2.configuration_attrs:
+    item_check = getattr(pilatus2M.stats2, item)
+    item_check.kind= 'omitted'
+
+for item in pilatus2M.stats3.configuration_attrs:
+    item_check = getattr(pilatus2M.stats3, item)
+    item_check.kind= 'omitted'
+
+for item in pilatus2M.stats4.configuration_attrs:
+    item_check = getattr(pilatus2M.stats4, item)
+    item_check.kind= 'omitted'
+
+for item in pilatus2M.stats5.configuration_attrs:
+    item_check = getattr(pilatus2M.stats5, item)
+    item_check.kind= 'omitted'
+
+for item in pilatus2M.tiff.configuration_attrs:
+    item_check = getattr(pilatus2M.tiff, item)
+    item_check.kind= 'omitted'
+
+for item in pilatus2M.cam.configuration_attrs:
+    item_check = getattr(pilatus2M.cam, item)
+    item_check.kind= 'omitted'
+
+
+#STATS_NAMES2M = ['stats3', 'stats4']
+#pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
+##for stats_name in STATS_NAMES2M:
+    ##stats_plugin = getattr(pilatus2M, stats_name)
+    ##stats_plugin.read_attrs = ['total']
+    
+
 pilatus300.stats3.total.kind = 'hinted'
 pilatus300.stats4.total.kind = 'hinted'
 pilatus2M.stats3.total.kind = 'hinted'
 pilatus2M.stats4.total.kind = 'hinted'
+
 #pilatus2M.read_attrs = ['cbf'] + STATS_NAMES2M
 pilatus2M.cam.ensure_nonblocking()
 
@@ -308,6 +353,7 @@ pilatus2M.cam.ensure_nonblocking()
 for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']
+
 
 #define the current pilatus detector: pilatus_name and _Epicsname, instead of
 #pilatus300 or pilatus2M
