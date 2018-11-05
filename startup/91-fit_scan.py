@@ -945,7 +945,8 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', exposure_t
     md['fit_function'] = fit
     md['fit_background'] = background
 
-    cms.SAXS.detector.setExposureTime(exposure_time)
+    #cms.SAXS.detector.setExposureTime(exposure_time)
+    RE(cms.SAXS.detector.setExposureTime(exposure_time))
 
     #exposure_time_last = md['exposure_time'] 
     #md['exposure_time'] = exposure_time

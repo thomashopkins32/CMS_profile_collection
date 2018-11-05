@@ -665,6 +665,26 @@ class SampleExchangeRobot(Stage):
         self.xabs(-40, verbosity=verbosity)
         #self.rabs(0, verbosity=verbosity)
          
+    def pickandStage(self, shelf_num, spot_num,verbosity=3):
+        '''pick up bar from sample stage and leave in 'safe' position
+        '''
+        if verbosity>=2:
+            print('picking up from garage ({}, {})'.format(shelf_num, spot_num))
+        self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+        time.sleep(2)
+        self.sequencePutSampleOntoStage(verbosity=verbosity) 
+        time.sleep(2)        
+
+    def pickandGarage(self, shelf_num, spot_num, verbosity=3):
+        '''pick up bar from sample stage and leave in 'safe' position
+        '''
+        if verbosity>=2:
+            print('return to garage ({}, {})'.format(shelf_num, spot_num))
+        self.sequenceGetSampleFromStage(verbosity=verbosity)
+        time.sleep(2)
+        self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
+        time.sleep(2)        
+
     def calibrationGarage(self, verbosity=3):
         
         #use Garage(1,1) to calibration the gripper position
@@ -693,7 +713,6 @@ class SampleExchangeRobot(Stage):
         # Lower so that the slot is aligned
         self.yr(-self._delta_y_slot, verbosity=verbosity)
         self.zabs(-60)
-        
        
 
     def _stress_test(self, cycles=2, verbosity=5):

@@ -1,7 +1,18 @@
+# import logging
+# import caproto
+# handler = logging.FileHandler('pilatus-trigger-log.txt')     
+# from caproto._log import LogFormatter, color_log_format, log_date_format
+# handler.setFormatter(                                                                                                                                                               
+#     LogFormatter(color_log_format, datefmt=log_date_format))     
+# caproto_log = logging.getLogger('caproto')                                                                                                                                                    
+# caproto_log.handlers.clear()
+# caproto_log.addHandler(handler)       
+# logging.getLogger('caproto.ch').setLevel('DEBUG')
 import nslsii
 nslsii.configure_base(get_ipython().user_ns, 'cms')
 
 from bluesky.magics import BlueskyMagics
+from bluesky.preprocessors import pchain
 
 # At the end of every run, verify that files were saved and
 # print a confirmation message.

@@ -1352,17 +1352,9 @@ class Sample_Generic(CoordinateSystem):
         if exposure_time is not None:
             #for detector in gs.DETS:
             for detector in get_beamline().detector:
-                if detector.name is 'pilatus2M' and exposure_time != caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
-                    detector.setExposureTime(exposure_time, verbosity=verbosity)
-                    #extra wait time when changing the exposure time.  
-                    #time.sleep(2)
-                    ############################################
-                    #extra wait time for adjusting pilatus2M 
-                    #this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
-                    #Note by 091918
-                    ############################################
-                    time.sleep(2)
-                if detector.name is 'pilatus300' and exposure_time != caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'):
+                if detector.name is 'pilatus2M' and exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                    RE(detector.setExposureTime(exposure_time, verbosity=verbosity))
+                if detector.name is 'pilatus300' and exposure_time != detector.cam.acquire_time.get():
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
                     #extra wait time when changing the exposure time.  
                     #time.sleep(2)
@@ -1599,7 +1591,52 @@ class Sample_Generic(CoordinateSystem):
             # Just do a normal measurement
             self.measure_single(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)
         
-                
+
+    def measure_stitch_test(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, stitchback=False, **md):
+        '''Measure data by triggering the area detectors.
+        
+        Parameters
+        ----------
+        exposure_time : float
+            How long to collect data
+        extra : string, optional
+            Extra information about this particular measurement (which is typically
+            included in the savename/filename).
+        tiling : string
+            Controls the detector tiling mode.
+              None : regular measurement (single detector position)
+              'ygaps' : try to cover the vertical gaps in the Pilatus detector
+        '''           
+        
+        if tiling is 'ygaps':
+            extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
+            md['detector_position'] = 'origin'
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+            
+            SAXSy.move(SAXSy.user_readback.value + 5.16)
+
+            extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
+            md['detector_position'] = 'upper'
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+            
+            SAXSy.move(SAXSy.user_readback.value + -5.16)
+            SAXSx.move(SAXSx.user_readback.value + 5.16)
+            extra_current = 'pos3' if extra is None else '{}_pos3'.format(extra)
+            md['detector_position'] = 'left'
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+
+            SAXSy.move(SAXSy.user_readback.value + 5.16)
+            extra_current = 'pos4' if extra is None else '{}_pos4'.format(extra)
+            md['detector_position'] = 'upleft'
+            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+            
+            SAXSy.move(SAXSy.user_readback.value + -5.16)
+            SAXSx.move(SAXSx.user_readback.value + -5.16)
+            
+        
+        else:
+            # Just do a normal measurement
+            self.measure_single(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)                
         
     def measure_single(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, **md):
         '''Measure data by triggering the area detectors.
@@ -2357,7 +2394,10 @@ class SampleGISAXS_Generic(Sample_Generic):
             #detselect(pilatus300)
             detselect(pilatus2M)
             for detector in get_beamline().detector:
-                detector.setExposureTime(self.md['exposure_time'])
+                if detector.name == 'pilatus2M': 
+                    RE(detector.setExposureTime(self.md['exposure_time']))
+                else: 
+                    detector.setExposureTime(self.md['exposure_time'])
             self.measureIncidentAngles(self.incident_angles_default, **md)
             self.thabs(0.0)
 
@@ -3607,8 +3647,165 @@ class CapillaryHolderHeated(CapillaryHolder):
                 except HTTPError:
                     pass
         
-            
+
+class WellPlateHolder(PositionalHolder):
+    '''This class is a sample holder for 96 well plate. 
+       row: A--E; column: 1--12
+       The sample names are like: 'A1', 'D3', 'E12'
+       It uses two stages, smx and smy2 to locate the sample.
+       
+    '''
+
+    # Core methods
+    ########################################
+
+    def __init__(self, name='CapillaryHolder', base=None, **kwargs):
         
+        super().__init__(name=name, base=base, **kwargs)
+        
+        self._positional_axis = ['x','yy']
+
+        self._axes['y'].origin = -5  #smy stage should be set with the limit [-5.5, -5]
+        self._axes['x'].origin = -49.25
+        self._axes['yy'].origin = 3.3
+        
+        
+        self.x_spacing = 9 # 9mm seperation both in x and yy direction
+        self.yy_spacing = 9 
+        
+        
+    def _set_axes_definitions(self):
+        '''Internal function which defines the axes for this stage. This is kept
+        as a separate function so that it can be over-ridden easily.'''
+        
+        # The _axes_definitions array holds a list of dicts, each defining an axis
+        super()._set_axes_definitions()
+
+        self._axes_definitions.append ( {'name': 'yy',
+                            'motor': smy2,
+                            'enabled': True,
+                            'scaling': +1.0,
+                            'units': 'mm',
+                            'hint': 'positive moves stage up',
+                            } )
+                        
+
+    def slot(self, sample_number):
+        '''Moves to the selected slot in the holder.'''
+        
+        getattr(self, self._positional_axis[0]+'abs')( self.get_slot_position(sample_number) )
+        
+    
+    def get_slot_position(self, slot):
+        '''Return the motor position for the requested slot number.'''
+        # This method should be over-ridden in sub-classes, so as to properly
+        # implement the positioning appropriate for that holder.
+        # slot is like 'A1', 'D12'
+        
+
+        sample_row = ord(slot[0])-ord('A')
+        sample_column = int(slot[1:])-1
+        #sample_number = sample_row*12 + sample_column
+               
+        return sample_column*self.x_spacing,  sample_row*self.yy_spacing
+        
+        
+    def addSample(self, sample, sample_number=None):
+        '''Add a sample to this holder/bar.'''
+        
+        if sample_number is None:
+            if len(self._samples)==0:
+                sample_number = 1
+            else:
+                ki = [ int(key) for key in self._samples.keys() ]
+                sample_number = np.max(ki) + 1
+                
+                
+        if sample_number in self._samples.keys():
+            print('Warning: Sample number {} is already defined on holder "{:s}". Use "replaceSample" if you are sure you want to eliminate the existing sample from the holder.'.format(sample_number, self.name) )
+            
+        else:
+            self._samples[sample_number] = sample
+            
+        self._samples[sample_number] = sample
+        
+        sample.set_base_stage(self)
+        sample.md['holder_sample_number'] = sample_number
+        
+        
+    def addSampleSlot(self, sample, slot):
+        '''Adds a sample to the specified "slot" (defined/numbered sample 
+        holding spot on this holder).'''
+ 
+       
+        self.addSample(sample, sample_number=slot)
+        sample.setOrigin( ['x'], [self.get_slot_position(slot)[0]] )
+        sample.setOrigin( ['yy'], [self.get_slot_position(slot)[1]] )
+
+                
+    def listSamplesPositions(self):
+        '''Print a list of the current samples associated with this holder/
+        bar.'''
+        
+        for sample_number, sample in self._samples.items():
+            pos = getattr(sample, self._positional_axis+'pos')(verbosity=0)
+            print( '%s: %s (%s = %.3f)' % (str(sample_number), sample.name, self._positional_axis, pos) )
+
+
+    def listSamples(self):
+        '''Print a list of the current samples associated with this holder/
+        bar.'''
+         
+        for sample_number, sample in sorted(self._samples.items()):
+            print( '{}: {:s}'.format(sample_number, sample.name) )
+            
+            
+    def gotoAlignedPosition(self):
+        '''Goes to the currently-defined 'aligned' position for this stage. If
+        no specific aligned position is defined, then the zero-point for the stage
+        is used instead.'''
+        
+        # TODO: Optional offsets? (Like goto mark?)
+        self.gotoOrigin(axes=self._positional_axis)
+        #time.sleep(10)
+
+    def getSample(self, sample_number, verbosity=3):
+        '''Return the requested sample object from this holder/bar.
+        
+        One can provide an integer, in which case the corresponding sample
+        (from the holder's inventory) is returned. If a string is provided, 
+        the closest-matching sample (by name) is returned.'''
+        
+        if sample_number not in self._samples:
+            if verbosity>=1:
+                print('Error: Sample {} not defined.'.format(sample_number))
+            return None
+        
+        sample_match = self._samples[sample_number]
+
+        if verbosity>=3:
+            print('{}: {:s}'.format(sample_number, sample_match.name))
+        
+        return sample_match            
+        
+    def namingWellPlate(name,row_range=['A', 'G'], column_range=[1, 12]):
+        '''Name the samples in the well plate.  
+        The format is 'NAME_A05_'
+        '''
+        md = {
+            'owner' : 'J. Paloni (MIT) group' ,
+            'series' : 'various' ,
+            }
+            
+        for row_number in range(ord(row_range[0]), ord(row_range[1])+1):
+            row=chr(row_number)
+            #print(row)
+            for column in range(column_range[0], column_range[1]+1):
+                #print(column)
+                sample_name = '{}_{}{}'.format(name, row, column)
+                position = '{}'.format(row)+'{0:0=2d}'.format(column)
+                self.addSampleSlot( SampleTSAXS( sample_name), position )
+
 
 stg = SampleStage()
 def get_default_stage():

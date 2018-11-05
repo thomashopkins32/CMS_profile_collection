@@ -4,13 +4,13 @@ from ophyd import (ProsilicaDetector, SingleTrigger,
                    TIFFPlugin, ImagePlugin, DetectorBase,
                    HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
                    ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector,
-                   ProsilicaDetectorCam, PilatusDetectorCam)
+                   ProsilicaDetectorCam, PilatusDetectorCam, StatsPlugin)
 from ophyd.areadetector.cam import AreaDetectorCam
 from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt, Signal
 from ophyd.utils import set_and_wait
-from nslsii.ad33 import SingleTriggerV33,  StatsPluginV33, CamV33mixin
+from nslsii.ad33 import SingleTriggerV33,  StatsPluginV33
 #import filestore.api as fs
 
 
@@ -172,6 +172,7 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
+
 class Pilatus2M(SingleTrigger, PilatusDetector):
 
     image = Cpt(ImagePlugin, 'image1:')
@@ -196,14 +197,17 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
     def setExposureTime(self, exposure_time, verbosity=3):
         # how to do this with stage_sigs (warning, need to change this every time
         # if you set)
+        # RE(pilatus2M.setEposure(1))   ---format 
         #self.cam.stage_sigs['acquire_time'] = exposure_time
         #self.cam.stage_sigs['acquire_period'] = exposure_time+.1
 
-        self.cam.acquire_time.put(exposure_time)
-        self.cam.acquire_period.put(exposure_time+.1)
-        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+        yield from mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+0.1)
+        #yield from mv(self.cam.acquire_period, exposure_time+0.1)
+        
+        #self.cam.acquire_time.put(exposure_time)
+        #self.cam.acquire_period.put(exposure_time+.1)
+        ##caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
-
 
 class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
     cam = Cpt(PilatusDetectorCamV33, 'cam1:')
@@ -218,6 +222,7 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
     roi3 = Cpt(ROIPlugin, 'ROI3:')
     roi4 = Cpt(ROIPlugin, 'ROI4:')
     proc1 = Cpt(ProcessPlugin, 'Proc1:')
+    trans1 = Cpt(TransformPlugin, 'Trans1:')
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
@@ -225,12 +230,248 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
                root='/GPFS/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
-        self.cam.acquire_time.put(exposure_time)
-        self.cam.acquire_period.put(exposure_time+.1)
+        yield from mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+0.1)
+        #self.cam.acquire_time.put(exposure_time)
+        #self.cam.acquire_period.put(exposure_time+.1)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
 
+'''
+    #def _cms_error_condition_print(self, extra, value=None, print_gets=False):
+        ##https://github.com/NSLS-II/ophyd/blob/master/ophyd/signal.py
 
+        #if hasattr(self, '_kludge_state') and self._kludge_state:
+            ## This check prevents the system from getting into
+            ## an infinite loop where each print calls 'get' (or 'value')
+            ## and thus triggers this function again
+            #pass
+        
+        #else:
+            #self._kludge_state = True
+        
+            #print('\n\n\n\n\n########################################')
+            #print('ERROR ENCOUNTERED in {}'.format(extra))
+            
+            #if value is not None:
+                #print('Value is: {}'.format(value))
+                
+            ## Log to file
+            #with open('error.log', 'a') as fout:
+                #fout.write('ERROR ENCOUNTERED in {}\n'.format(extra))
+                #fout.write(' self.pvname: {}\n'.format(self.pvname))
+                #fout.write(' time: {}\n'.format(time.time()))
+                #fout.write(' value: {}\n'.format(value))
+                #if value==None:
+                    #fout.write(' value matches Python None\n'.format(value))
+                #if value==b'None':
+                    #fout.write(" value matches b'None'\n".format(value))
+                #if value=='None':
+                    #fout.write(" value matches 'None'\n".format(value))
+                
+            #print('########################################\n\n\n\n\n')        
+
+    #testing pv output
+    
+        #save all pv, sig, value into error_test_stage.csv
+    #def stage(self) -> List[object]:
+    def stage(self, *args, **kwargs):
+        """Stage the device for data collection.
+
+        This method is expected to put the device into a state where
+        repeated calls to :meth:`~BlueskyInterface.trigger` and
+        :meth:`~BlueskyInterface.read` will 'do the right thing'.
+
+        Staging not idempotent and should raise
+        :obj:`RedundantStaging` if staged twice without an
+        intermediate :meth:`~BlueskyInterface.unstage`.
+
+        This method should be as fast as is feasible as it does not return
+        a status object.
+
+        The return value of this is a list of all of the (sub) devices
+        stage, including it's self.  This is used to ensure devices
+        are not staged twice by the :obj:`~bluesky.run_engine.RunEngine`.
+
+        This is an optional method, if the device does not need
+        staging behavior it should not implement `stage` (or
+        `unstage`).
+
+        Returns
+        -------
+        devices : list
+            list including self and all child devices staged
+
+        """
+        if self._staged == Staged.no:
+            pass  # to short-circuit checking individual cases
+        elif self._staged == Staged.yes:
+            raise RedundantStaging("Device {!r} is already staged. "
+                                   "Unstage it first.".format(self))
+        elif self._staged == Staged.partially:
+            raise RedundantStaging("Device {!r} has been partially staged. "
+                                   "Maybe the most recent unstaging "
+                                   "encountered an error before finishing. "
+                                   "Try unstaging again.".format(self))
+        self.log.debug("Staging %s", self.name)
+        self._staged = Staged.partially
+
+    
+        # Resolve any stage_sigs keys given as strings: 'a.b' -> self.a.b
+        stage_sigs = OrderedDict()
+        for k, v in self.stage_sigs.items():
+            if isinstance(k, str):
+                # Device.__getattr__ handles nested attr lookup
+                stage_sigs[getattr(self, k)] = v
+            else:
+                stage_sigs[k] = v
+
+        # Read current values, to be restored by unstage()
+        original_vals = {sig: sig.get() for sig in stage_sigs}
+
+        #Warning Warning Warning
+        #101218, KY and RL add code below to check the pv error
+        os.remove('error_test_stage.log')
+        
+        for sig, val in original_vals.items():
+            #while val == b'None' or val == 'None':
+                
+            #ttime.sleep(1)
+            original_vals[sig] = sig.get() 
+            print('================None value in stage============')
+            print('val={}'.format(val))
+            print('sig={}'.format(sig))
+            print('================None value in stage============')
+            with open('error_test_stage.log', 'a') as fout:
+                #fout.write('ERROR ENCOUNTERED in {}\n'.format(extra))
+                fout.write(' self.pvname: {}\n'.format(self.pvname))
+                #fout.write(' time: {}\n'.format(time.time()))
+                fout.write(' value: {}\n'.format(value))
+                if value==None:
+                    fout.write(' value matches Python None\n'.format(value))
+                if value==b'None':
+                    fout.write(" value matches b'None'\n".format(value))
+                if value=='None':
+                    fout.write(" value matches 'None'\n".format(value)) 
+        print('sig and val have been saved')
+       # We will add signals and values from original_vals to
+        # self._original_vals one at a time so that
+        # we can undo our partial work in the event of an error.
+
+        # Apply settings.
+        devices_staged = []
+        try:
+            for sig, val in stage_sigs.items():
+                self.log.debug("Setting %s to %r (original value: %r)",
+                               self.name,
+                               val, original_vals[sig])
+                set_and_wait(sig, val)
+                # It worked -- now add it to this list of sigs to unstage.
+                self._original_vals[sig] = original_vals[sig]
+            devices_staged.append(self)
+
+            # Call stage() on child devices.
+            for attr in self._sub_devices:
+                device = getattr(self, attr)
+                if hasattr(device, 'stage'):
+                    device.stage()
+                    devices_staged.append(device)
+        except Exception:
+            self.log.debug("An exception was raised while staging %s or "
+                           "one of its children. Attempting to restore "
+                           "original settings before re-raising the "
+                           "exception.", self.name)
+            self.unstage()
+            raise
+        else:
+            self._staged = Staged.yes
+        return devices_staged
+
+    #def unstage(self) -> List[object]:
+    def unstage(self):
+        """Unstage the device.
+
+        This method returns the device to the state it was prior to the
+        last `stage` call.
+
+        This method should be as fast as feasible as it does not
+        return a status object.
+
+        This method must be idempotent, multiple calls (without a new
+        call to 'stage') have no effect.
+
+        Returns
+        -------
+        devices : list
+            list including self and all child devices unstaged
+
+        """
+        self.log.debug("Unstaging %s", self.name)
+        self._staged = Staged.partially
+        devices_unstaged = []
+
+        # Call unstage() on child devices.
+        for attr in self._sub_devices[::-1]:
+            device = getattr(self, attr)
+            if hasattr(device, 'unstage'):
+                device.unstage()
+                devices_unstaged.append(device)
+
+        os.remove('error_test_stage.log')
+
+        # Restore original values.
+        for sig, val in reversed(list(self._original_vals.items())):
+            self.log.debug("Setting %s back to its original value: %r)",
+                           self.name,
+                           val)
+            # WARNING WARNING WARNING
+            # Modification by KY and RL (CMS beamline) 2018-09-24
+            # This is a fix to avoid triggering a ValueError when ca.py:put() tries to set an erroneous value.
+            #if val==b'None' or val==None:
+                #pass
+            #else:
+                #set_and_wait(sig, val)
+        
+            with open('error_test_unstage.log', 'a') as fout:
+                #fout.write('ERROR ENCOUNTERED in {}\n'.format(extra))
+                fout.write(' self.pvname: {}\n'.format(self.pvname))
+                #fout.write(' time: {}\n'.format(time.time()))
+                fout.write(' value: {}\n'.format(value))
+                if value==None:
+                    fout.write(' value matches Python None\n'.format(value))
+                if value==b'None':
+                    fout.write(" value matches b'None'\n".format(value))
+                if value=='None':
+                    fout.write(" value matches 'None'\n".format(value)) 
+
+           # success = False
+           # count = 0
+           # while count<10 and not success:
+           #     count += 1
+           #     try:
+           #         set_and_wait(sig, val)
+           #         success = True
+           #     except:
+           #         print("\n\n\n=====================")
+           #         print('WARNING: PV bug. count = {}'.format(count))
+           #         print('sig.name = {} ; val = {}'.format(sig.name, val))
+           #         print(sig)
+           #         ttime.sleep(2)
+           #         print("=====================\n\n\n")
+           #         if count>5:
+           #             raise
+
+
+
+            
+            #original code was: 
+            set_and_wait(sig, val)
+            
+            self._original_vals.pop(sig)
+        devices_unstaged.append(self)
+
+        self._staged = Staged.no
+        return devices_unstaged        #save all pv, sig, value into error_test_unstage.csv
+'''
 
 
 #class StandardProsilicaWithTIFF(StandardProsilica):
@@ -255,11 +496,11 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
 #fs_pbs = StandardProsilica('XF:11IDA-BI{BS:PB-Cam:1}', name='fs_pbs')
 #elm = Elm('XF:11IDA-BI{AH401B}AH401B:',)
 
-fs1 = StandardProsilica('XF:11BMA-BI{FS:1-Cam:1}', name='fs1')
-fs2 = StandardProsilica('XF:11BMA-BI{FS:2-Cam:1}', name='fs2')
-fs3 = StandardProsilica('XF:11BMB-BI{FS:3-Cam:1}', name='fs3')
-fs4 = StandardProsilica('XF:11BMB-BI{FS:4-Cam:1}', name='fs4')
-fs5 = StandardProsilica('XF:11BMB-BI{FS:Test-Cam:1}', name='fs5')
+fs1 = StandardProsilicaV33('XF:11BMA-BI{FS:1-Cam:1}', name='fs1')
+fs2 = StandardProsilicaV33('XF:11BMA-BI{FS:2-Cam:1}', name='fs2')
+fs3 = StandardProsilicaV33('XF:11BMB-BI{FS:3-Cam:1}', name='fs3')
+fs4 = StandardProsilicaV33('XF:11BMB-BI{FS:4-Cam:1}', name='fs4')
+fs5 = StandardProsilicaV33('XF:11BMB-BI{FS:Test-Cam:1}', name='fs5')
 
 all_standard_pros = [fs1, fs2, fs3, fs4, fs5]
 
@@ -273,7 +514,7 @@ for camera in all_standard_pros:
 
     #camera.stage_sigs[camera.roi1.blocking_callbacks] = 1
     #camera.stage_sigs[camera.trans1.blocking_callbacks] = 1
-    camera.cam.ensure_nonblocking()
+    #camera.cam.ensure_nonblocking()
     camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
 
 
@@ -285,7 +526,7 @@ for camera in all_standard_pros:
 #pilatus300 section is unmarked.  032018-MF
 '''
 '''
-pilatus300 = Pilatus('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
+pilatus300 = PilatusV33('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
 pilatus300.tiff.read_attrs = []
 #STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
 #pilatus300.read_attrs = ['tiff'] + STATS_NAMES
@@ -293,16 +534,16 @@ pilatus300.tiff.read_attrs = []
     #stats_plugin = getattr(pilatus300, stats_name)
     #stats_plugin.read_attrs = ['total']
 
-pilatus300.cam.ensure_nonblocking()
+#pilatus300.cam.ensure_nonblocking()
 
-pilatus2M = Pilatus2M('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
+pilatus2M = Pilatus2MV33('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
 pilatus2M.tiff.read_attrs = []
 STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4']
 pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
 for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']
-
+#pilatus2M.cam.ensure_nonblocking()
 
 
 for item in pilatus2M.stats1.configuration_attrs:
@@ -347,7 +588,7 @@ pilatus2M.stats3.total.kind = 'hinted'
 pilatus2M.stats4.total.kind = 'hinted'
 
 #pilatus2M.read_attrs = ['cbf'] + STATS_NAMES2M
-pilatus2M.cam.ensure_nonblocking()
+
 
 
 for stats_name in STATS_NAMES2M:

@@ -1583,6 +1583,7 @@ class CMSBeam(object):
         
         return self.transmission(verbosity=verbosity)
 
+
     
     ## Nb foil absorber, before slit s5
     ########################################
@@ -1668,10 +1669,10 @@ class CMSBeam(object):
             if retries>0:
                 #time.sleep(0.5)
                 # Try again
-                return self.absorberCalcTransmission(slot), self.setAbsorber(transmission, retries=retries-1, tolerance=tolerance, verbosity=verbosity)
+                return self.absorberCalcTransmission(slot), self.setAbsorber(slot, retries=retries-1, tolerance=tolerance, verbosity=verbosity)
             
             else:
-                print("WARNING: transmission didn't update correctly (request: {}; actual: {})".format(transmission, self.transmission(verbosity=0)))        
+                print("WARNING: transmission didn't update correctly (request: {}; actual: {})".format(slot, self.transmission(verbosity=0)))        
 
         else:
             return self.absorberCalcTransmission(slot)
@@ -2010,6 +2011,36 @@ class CMS_Beamline(Beamline):
         
         self.beam.setTransmission(1)
         
+        #detselect(pilatus300)
+        #detselect([pilatus300, psccd])
+        detselect(pilatus_name)
+        #detselect(psccd)
+        
+        #if RE.state is not 'idle':
+        #    RE.abort()
+
+       
+        self.current_mode = 'measurement'
+        
+        # Check if gate valves are open
+        if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
+            print('Warning: Sample chamber gate valve (large, downstream) is not open.')
+            
+    def modeXRMeasurement(self, verbosity=3):   
+        
+        self.current_mode = 'undefined'
+        
+        self.beam.off()
+        
+        #mov(bsx, -15.95)
+        bsx.move(self.bsx_pos)
+
+        if abs(bsx.user_readback.value - self.bsx_pos)>0.1:
+            print('WARNING: Beamstop did not return to correct position!')
+            return
+        
+        self.beam.setTransmission(1)
+        beam.setAbsorber(0)
         #detselect(pilatus300)
         #detselect([pilatus300, psccd])
         detselect(pilatus_name)
