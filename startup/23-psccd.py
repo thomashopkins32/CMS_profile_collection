@@ -258,7 +258,7 @@ class PhotonicSciences_CMS(Device):
     
     
 
-psccd = PhotonicSciences_CMS()
+#psccd = PhotonicSciences_CMS()
 #psccd = None
 
 #psccd.detector_is_ready()

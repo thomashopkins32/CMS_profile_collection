@@ -714,6 +714,36 @@ class SampleExchangeRobot(Stage):
         self.yr(-self._delta_y_slot, verbosity=verbosity)
         self.zabs(-60)
        
+    def pickHolder(shelf_num, spot_num, verbosity=3):
+        
+        #picking up the holer from Garage
+        #shelf_num, spot_num: slot number of the holder
+        if verbosity>=3:
+            print('picking up from garage ({}, {})'.format(shelf_num, spot_num))
+        
+        if self._sample is not None:
+            print("ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name))
+            return
+        
+        robot.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+        time.sleep(1)
+        robot.sequencePutSampleOntoStage(verbosity=verbosity)    
+        
+        self._sample = 'HolderInPosition'
+
+    def returnHolder(shelf_num, spot_num, verbosity=3):
+        
+        #returning the holer back to Garage
+        #shelf_num, spot_num: slot number of the holder
+        if verbosity>=3:
+            print('returning back to garage ({}, {})'.format(shelf_num, spot_num))
+        
+        robot.sequenceGetSampleFromStage()
+        time.sleep(1)
+        robot.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)
+
+        self._sample = None
+
 
     def _stress_test(self, cycles=2, verbosity=5):
 
@@ -746,7 +776,7 @@ class SampleExchangeRobot(Stage):
                     self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)
                     
 
-    def run(self, cycles=1, verbosity=5):
+    def run(self, cycles=1, verbosity=3):
 
         if not self.checkSafe():
             return
@@ -780,6 +810,40 @@ class SampleExchangeRobot(Stage):
                     time.sleep(2)
                     self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
                     time.sleep(2)
+
+
+    #def run_test(self, cycles=1, verbosity=3):
+
+        #if not self.checkSafe():
+            #return
+
+        #if caget(XF:11BMA-PPS{PSh}Sts:FailOpn-Sts)==0:
+            #caput(XF:11BMA-PPS{PSh}Sts:FailOpn-Sts,1)
+            #print('Robot starts working. Shutter is open')
+        #if caget(XF:11BMB-VA{Chm:Det-GV:1}Sts:FailOpn-Sts)==0:
+            #caput(XF:11BMB-VA{Chm:Det-GV:1}Sts:FailOpn-Sts,1)
+            #print('Robot starts working. Gate valve is open')
+        
+        #for i in range(cycles):
+            #if verbosity>=2:
+                #print('Run test cycle {}'.format(i))
+
+            #for hol in Garage_holders:
+                
+                    #[shelf_num, spot_num] = hol.GaragePosition
+
+            
+                    #if verbosity>=2:
+                        #print('Run test garage ({}, {})'.format(shelf_num, spot_num))
+    
+                    
+                    #self.pickHolder(shelf_num, spot_num, verbosity=verbosity)
+
+                    #hol.listSamples()
+                    #time.sleep(2)
+                    #hol.doSamples()                    
+                    
+                    #self.returnHolder(shelf_num, spot_num, verbosity=verbosity)
                     
     def listGarage(self, verbosity=3):
 

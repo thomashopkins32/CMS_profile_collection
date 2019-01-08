@@ -796,5 +796,16 @@ agilent = Agilent_34970A()
 ttl = TTL_control()
 #Sypump = SringePump()
 #chiller = Minichiller()
-    
+
+def flow_off():
+    agilent.setDAC(1,0.0)
+    if agilent.readDAC(1) != 0.0:
+        print('Gas flow is turned off.')
+
+def flow_max():
+    agilent.setDAC(1,3.5)
+    print('Gas flow is set to MAX.')
+def flow_on(voltage=1):
+    agilent.setDAC(1,voltage)
+    print('Voltage is set as {}. Please check the flow rate from flow meter.'.format(agilent.readDAC(1)))    
 

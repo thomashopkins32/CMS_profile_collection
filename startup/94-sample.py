@@ -1168,6 +1168,8 @@ class Sample_Generic(CoordinateSystem):
             return 'T{:.3f}C'.format(self.get_attribute(attribute))
         if attribute=='temperature_D':
             return 'T{:.3f}C'.format(self.get_attribute(attribute))
+        if attribute=='trigger_time':
+            return '{:.1f}s'.format(self.get_attribute(attribute))
 
 
         if attribute=='extra':
@@ -1343,6 +1345,7 @@ class Sample_Generic(CoordinateSystem):
         '''Internal function that is called to actually trigger a measurement.'''
         '''TODO: **md doesnot work in RE(count). '''
         
+        
         if 'measure_type' not in md:
             md['measure_type'] = 'expose'
         #self.log('{} for {}.'.format(md['measure_type'], self.name), **md)
@@ -1350,6 +1353,7 @@ class Sample_Generic(CoordinateSystem):
 
         # Set exposure time
         if exposure_time is not None:
+            exposure_time = abs(exposure_time)
             #for detector in gs.DETS:
             for detector in get_beamline().detector:
                 if detector.name is 'pilatus2M' and exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
@@ -1379,6 +1383,7 @@ class Sample_Generic(CoordinateSystem):
         md['beam_int_bim3'] = beam.bim3.flux(verbosity=0)
         md['beam_int_bim4'] = beam.bim4.flux(verbosity=0)
         md['beam_int_bim5'] = beam.bim5.flux(verbosity=0)
+        #md['trigger_time'] = self.clock()
         #md.update(md_current)
 
         #uids = RE(count(get_beamline().detector, 1), **md)
@@ -1389,7 +1394,7 @@ class Sample_Generic(CoordinateSystem):
         #print('shutter is off')
 
         # Wait for detectors to be ready
-        max_exposure_time = 0
+        max_exposure_time = 0.1
         for detector in get_beamline().detector:
             if detector.name is 'pilatus300':
                 current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
@@ -1564,26 +1569,87 @@ class Sample_Generic(CoordinateSystem):
               'ygaps' : try to cover the vertical gaps in the Pilatus detector
         '''           
         
-        if tiling is 'ygaps':
-            extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
-            md['detector_position'] = 'lower'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
-            
-            SAXSy.move(SAXSy.user_readback.value + 5.16)
-            
-            #extra x movement is needed for pilatus2M. 
-            if cms.detector == Pilatus2M:
-                SAXSx.move(SAXSx.user_readback.value + 5.16)
+        if tiling is 'xygaps':
+            if cms.detector == [pilatus2M]:
+                
+                SAXSy_o = SAXSy.user_readback.value
+                SAXSx_o = SAXSx.user_readback.value
+                
+                extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
+                md['detector_position'] = 'lower_left'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                #extra x movement is needed for pilatus2M. 
 
-            extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
-            md['detector_position'] = 'upper'
-            self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
-            
-            #movr(SAXSy, -5.16)
-            SAXSy.move(SAXSy.user_readback.value + -5.16)
-            if cms.detector == Pilatus2M:
+                SAXSy.move(SAXSy.user_readback.value + 5.16)
+                extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
+                md['detector_position'] = 'upper_left'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                #SAXSy.move(SAXSy.user_readback.value + -5.16)
+                SAXSx.move(SAXSx.user_readback.value + 5.16)
+                extra_current = 'pos4' if extra is None else '{}_pos4'.format(extra)
+                md['detector_position'] = 'upper_right'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                
+                SAXSy.move(SAXSy.user_readback.value + -5.16)
+                extra_current = 'pos3' if extra is None else '{}_pos3'.format(extra)
+                md['detector_position'] = 'lower_right'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+
                 SAXSx.move(SAXSx.user_readback.value + -5.16)
- 
+
+                if SAXSx.user_readback.value != SAXSx_o:
+                    SAXSx.move(SAXSx_o)
+                if SAXSy.user_readback.value != SAXSy_o:
+                    SAXSy.move(SAXSy_o)
+
+        elif tiling is 'ygaps':
+            if cms.detector == [pilatus2M]:
+                
+                SAXSy_o = SAXSy.user_readback.value
+                SAXSx_o = SAXSx.user_readback.value
+                
+                extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
+                md['detector_position'] = 'lower'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                #extra x movement is needed for pilatus2M. 
+
+                extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
+                md['detector_position'] = 'upper'
+                SAXSy.move(SAXSy.user_readback.value + 5.16)
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                SAXSy.move(SAXSy.user_readback.value + -5.16)
+
+                if SAXSx.user_readback.value != SAXSx_o:
+                    SAXSx.move(SAXSx_o)
+                if SAXSy.user_readback.value != SAXSy_o:
+                    SAXSy.move(SAXSy_o)
+
+
+            if cms.detector == [pilatus300]:
+
+                MAXSy_o = MAXSy.user_readback.value
+
+                extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
+                md['detector_position'] = 'lower'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+
+
+                MAXSy.move(MAXSy.user_readback.value + 5.16)
+                extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
+                md['detector_position'] = 'upper'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+
+
+                MAXSy.move(MAXSy.user_readback.value + -5.16)
+
+                if MAXSy.user_readback.value != MAXSy_o:
+                    MAXSy.move(MAXSy_o)
+    
         #if tiling is 'big':
             # TODO: Use multiple images to fill the entire detector motion range
         
@@ -1638,6 +1704,154 @@ class Sample_Generic(CoordinateSystem):
             # Just do a normal measurement
             self.measure_single(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)                
         
+
+    def measureRock(self, incidentAngle=None, exposure_time=None, extra=None, measure_type='measure', rock_motor=None, rock_motor_limits=0.1, verbosity=3, stitchback=False, poling_period=0.2, **md):
+        '''Measure data when swing the rock_motor.
+        
+        Parameters
+        ----------
+        exposure_time : float
+            How long to collect data
+        extra : string, optional
+            Extra information about this particular measurement (which is typically
+            included in the savename/filename).
+        rock_motor: string, optional
+            Motor to swing in measurement
+        rock_motor_limits: float
+            The offset in the swing range
+        '''           
+        if incidentAngle != None:
+            self.thabs(incidentAngle)
+            
+        if exposure_time is not None:
+            self.set_attribute('exposure_time', exposure_time)
+        #else:
+            #exposure_time = self.get_attribute('exposure_time')
+            
+        savename = self.get_savename(savename_extra=extra)
+        
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:FileName', savename)
+        
+        if verbosity>=2 and (get_beamline().current_mode != 'measurement'):
+            print("WARNING: Beamline is not in measurement mode (mode is '{}')".format(get_beamline().current_mode))
+
+        if verbosity>=1 and len(get_beamline().detector)<1:
+            print("ERROR: No detectors defined in cms.detector")
+            return
+        
+        md_current = self.get_md()
+        md_current.update(self.get_measurement_md())
+        md_current['sample_savename'] = savename
+        md_current['measure_type'] = measure_type
+        #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
+        md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        md_current.update(md)
+
+       
+        if 'measure_type' not in md:
+            md['measure_type'] = 'expose'
+        #self.log('{} for {}.'.format(md['measure_type'], self.name), **md)
+
+
+        # Set exposure time
+        if exposure_time is not None:
+            #for detector in gs.DETS:
+            for detector in get_beamline().detector:
+                if detector.name is 'pilatus2M' and exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                    RE(detector.setExposureTime(exposure_time, verbosity=verbosity))
+                if detector.name is 'pilatus300' and exposure_time != detector.cam.acquire_time.get():
+                    detector.setExposureTime(exposure_time, verbosity=verbosity)
+                    #extra wait time when changing the exposure time.  
+                    #time.sleep(2)
+                    ############################################
+                    #extra wait time for adjusting pilatus2M 
+                    #this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
+                    #Note by 091918
+                    ############################################
+                    time.sleep(2)
+                elif detector.name is 'PhotonicSciences_CMS':
+                    detector.setExposureTime(exposure_time, verbosity=verbosity)
+       
+
+
+        # Do acquisition
+        get_beamline().beam.on()
+        
+        md['plan_header_override'] = md['measure_type']
+        start_time = time.time()
+        
+        #md_current = self.get_md()
+        md['beam_int_bim3'] = beam.bim3.flux(verbosity=0)
+        md['beam_int_bim4'] = beam.bim4.flux(verbosity=0)
+        md['beam_int_bim5'] = beam.bim5.flux(verbosity=0)
+        #md.update(md_current)
+
+
+        # Define the rock 
+        rock_scan=list_scan(get_beamline().detector, srot, [0], per_step = functools.partial(rock_motor_per_step, rock_motor=rock_motor, rock_motor_limits=rock_motor_limits) )
+        #uids = RE(count(get_beamline().detector, 1), **md)
+        uids = RE(rock_scan, **md)
+        
+        
+
+        # Wait for detectors to be ready
+        max_exposure_time = 0
+        for detector in get_beamline().detector:
+            if detector.name is 'pilatus300':
+                current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            elif detector.name is 'pilatus2M':
+                current_exposure_time = caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            elif detector.name is 'PhotonicSciences_CMS':
+                current_exposure_time = detector.exposure_time
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            else:
+                if verbosity>=1:
+                    print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
+            
+        if verbosity>=2:
+            status = 0
+            while (status==0) and (time.time()-start_time)<(max_exposure_time+20):
+                percentage = 100*(time.time()-start_time)/max_exposure_time
+                print( 'Exposing {:6.2f} s  ({:3.0f}%)      \r'.format((time.time()-start_time), percentage), end='')
+                time.sleep(poling_period)
+                
+                status = 1
+                for detector in get_beamline().detector:
+                    if detector.name is 'pilatus300':
+                        if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+                            status *= 0
+                    elif detector.name is 'pilatus2M':
+                        if caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
+                            status *= 0
+                    elif detector.name is 'PhotonicSciences_CMS':
+                        if not detector.detector_is_ready(verbosity=0):
+                            status *= 0
+            print('')
+                    
+                
+        else:
+            time.sleep(max_exposure_time)
+        
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+            print('Warning: Detector pilatus300 still not done acquiring.')
+
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
+            print('Warning: Detector pilatus2M still not done acquiring.')
+ 
+        
+        get_beamline().beam.off()
+        
+        for detector in get_beamline().detector:
+            #self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+            self.handle_file(detector, extra=extra, verbosity=verbosity)
+
+
+        
+        self.md['measurement_ID'] += 1
+                
+
     def measure_single(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, **md):
         '''Measure data by triggering the area detectors.
         
@@ -1991,6 +2205,185 @@ class Sample_Generic(CoordinateSystem):
             self.measure(**md)
                 
 
+    def scan_measure(self, motor, start, stop, num_frames, exposure_time=None, detectors=None, extra=None, per_step=None, wait_time=None, measure_type='Scan_measure', verbosity=3, fill_gaps=False, **md):
+        
+        """
+        Scans the specified motor and record the detectors with shutter open during the scan.
+        
+        Parameters
+        ----------
+        motor : motor
+            The axis/stage/motor that you want to move.
+        start, stop : float
+            The relative positions of the scan range.
+        num_frames : int
+            The number of scan points. 
+        exposure_time: float
+            The exposure time for single point
+        md : dict, optional
+            metadata        
+        """
+        #span = abs(stop-start)
+        #positions, dp = np.linspace(start, stop, num, endpoint=True, retstep=True)
+
+        if detectors is None:
+            detectors = cms.detector
+   
+        if exposure_time is not None:
+            self.set_attribute('exposure_time', exposure_time)
+
+        bec.disable_plots()
+        bec.disable_table()
+        
+        savename = self.get_savename(savename_extra=extra)
+        
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:FileName', savename)
+        
+        if verbosity>=2 and (get_beamline().current_mode != 'measurement'):
+            print("WARNING: Beamline is not in measurement mode (mode is '{}')".format(get_beamline().current_mode))
+
+        if verbosity>=1 and len(cms.detector)<1:
+            print("ERROR: No detectors defined in cms.detector")
+            return
+        
+        #set exposure time
+        for detector in get_beamline().detector:
+            detector.setExposureTime(exposure_time, verbosity=verbosity)
+        
+        md_current = self.get_md()
+        md_current['sample_savename'] = savename
+        md_current['measure_type'] = measure_type
+        md_current['scan'] = 'scan_measure'
+        md_current.update(self.get_measurement_md())
+        #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
+        md_current['measure_series_num_frames'] = num_frames
+        md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        md_current['measure_series_motor'] = motor.name
+        md_current['measure_series_positions'] = [start, stop]
+        md_current['exposure_time'] = exposure_time
+
+        #md_current['fileno'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        md_current.update(md)
+        
+        print(RE.md['scan_id'])
+        
+        # Perform the scan
+        get_beamline().beam._test_on(wait_time=0.1)
+        #RE(relative_scan(gs.DETS, motor, start, stop, num_frames+1, per_step=per_step, md=md_current))
+        RE(relative_scan(cms.detector, motor, start, stop, num_frames+1, per_step=per_step,md=md_current), LiveTable([motor, 'motor_setpoint']))
+        #RE(relative_scan(gs.DETS, motor, start, stop, num_frames+1, per_step=per_step,**md), self.cb)
+     
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+            print('Warning: Detector Pilatus300k still not done acquiring.')
+        elif verbosity>=3 and caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
+            print('Warning: Detector Pilatus2M still not done acquiring.')
+  
+        #print(RE.md['scan_id'])
+
+        get_beamline().beam._test_off(wait_time=0.1)
+
+        self.md['measurement_ID'] += 1
+   
+        #data collected, link uid to file name
+        for detector in cms.detector:
+            #print(detector.name)
+            self.handle_fileseries(detector, num_frames=num_frames, extra=extra, verbosity=verbosity, **md)
+
+
+    def handle_fileseries(self, detector, num_frames=None, extra=None, verbosity=3, subdirs=True, **md):
+    
+        subdir = ''
+        
+        if detector.name is 'pilatus300' :
+            chars = caget('XF:11BMB-ES{Det:SAXS}:TIFF1:FullFileName_RBV')
+            filename = ''.join(chr(char) for char in chars)[:-1]
+            filename_part1 = ''.join(chr(char) for char in chars)[:-13]
+
+            print('pilatus300k data handling')
+            # Alternate method to get the last filename
+            #filename = '{:s}/{:s}.tiff'.format( detector.tiff.file_path.get(), detector.tiff.file_name.get()  )
+
+            #if verbosity>=3:
+            #    print('  Data saved to: {}'.format(filename))
+
+            if subdirs:
+                subdir = '/maxs/'
+
+            #if md['measure_type'] is not 'snap':
+            if True:
+                
+                self.set_attribute('exposure_time', caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'))
+                
+                # Create symlink
+                #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])
+                #savename = md['filename'][:-5]
+                
+                savename = self.get_savename(savename_extra=extra)
+                link_name = '{}/{}{}_{:04d}_maxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                link_name_part1 = '{}/{}{}_{:04d}'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                
+                if os.path.isfile(link_name):
+                    i = 1
+                    while os.path.isfile('{}.{:d}'.format(link_name,i)):
+                        i += 1
+                    os.rename(link_name, '{}.{:d}'.format(link_name,i))
+                
+                for num_frame in range(num_frames+1):
+                    filename_new = '{}_{:06d}.tiff'.format(filename_part1, num_frame)
+                    link_name_new= '{}_{:06d}_maxs.tiff'.format(link_name_part1, num_frame)
+                    os.symlink(filename_new, link_name_new)                
+                    if verbosity>=3:
+                        print('  Data {} linked as: {}'.format(filename_new, link_name_new))
+
+        elif detector.name is  'pilatus2M':
+            chars = caget('XF:11BMB-ES{Det:PIL2M}:TIFF1:FullFileName_RBV')
+            filename = ''.join(chr(char) for char in chars)[:-1]
+            filename_part1 = ''.join(chr(char) for char in chars)[:-13]
+
+            print('pilatus2M data handling')
+            
+            # Alternate method to get the last filename
+            #filename = '{:s}/{:s}.tiff'.format( detector.tiff.file_path.get(), detector.tiff.file_name.get()  )
+
+            #if verbosity>=3:
+            #    print('  Data saved to: {}'.format(filename))
+
+            if subdirs:
+                subdir = '/saxs/'
+
+            #if md['measure_type'] is not 'snap':
+            if True:
+                
+                self.set_attribute('exposure_time', caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'))
+                
+                # Create symlink
+                #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])
+                #savename = md['filename'][:-5]
+                
+                savename = self.get_savename(savename_extra=extra)
+                link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                link_name_part1 = '{}/{}{}_{:04d}'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                
+                if os.path.isfile(link_name):
+                    i = 1
+                    while os.path.isfile('{}.{:d}'.format(link_name,i)):
+                        i += 1
+                    os.rename(link_name, '{}.{:d}'.format(link_name,i))
+                
+                for num_frame in range(num_frames+1):
+                    filename_new = '{}_{:06d}.tiff'.format(filename_part1, num_frame)
+                    link_name_new= '{}_{:06d}_saxs.tiff'.format(link_name_part1, num_frame)
+                    os.symlink(filename_new, link_name_new)                
+                    if verbosity>=3:
+                        print('  Data {} linked as: {}'.format(filename_new, link_name_new))
+           
+        else:
+            if verbosity>=1:
+                print("WARNING: Can't do file handling for detector '{}'.".format(detector.name))
+                return
+
+
+
     # Control methods
     ########################################
     def setTemperature(self, temperature, output_channel='1', verbosity=3):
@@ -2144,20 +2537,20 @@ class SampleGISAXS_Generic(Sample_Generic):
         super().measureSpots(num_spots=num_spots, translation_amount=translation_amount, axis=axis, exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
     
     
-    def measureIncidentAngle(self, angle, exposure_time=None, extra=None, **md):
+    def measureIncidentAngle(self, angle, exposure_time=None, extra=None, tiling=None, **md):
         
         self.thabs(angle)
         
-        self.measure(exposure_time=exposure_time, extra=extra, **md)
+        self.measure(exposure_time=exposure_time, extra=extra, tiling=tiling, **md)
 
 
-    def measureIncidentAngles(self, angles=None, exposure_time=None, extra=None, **md):
+    def measureIncidentAngles(self, angles=None, exposure_time=None, extra=None, tiling=None, **md):
         
         if angles is None:
             angles = self.incident_angles_default
         
         for angle in angles:
-            self.measureIncidentAngle(angle, exposure_time=exposure_time, extra=extra, **md)
+            self.measureIncidentAngle(angle, exposure_time=exposure_time, extra=extra, tiling=tiling, **md)
     
     
     def _alignOld(self, step=0):
@@ -2266,9 +2659,9 @@ class SampleGISAXS_Generic(Sample_Generic):
                 print('    align: fitting')
             
             fit_scan(smy, 1.2, 21, fit='HMi')
-            #time.sleep(2)
+            ##time.sleep(2)
             fit_scan(sth, 1.5, 21, fit='max')
-            #time.sleep(2)            
+            ##time.sleep(2)            
             
         #if step<=5:
         #    #fit_scan(smy, 0.6, 17, fit='sigmoid_r')
@@ -2296,7 +2689,7 @@ class SampleGISAXS_Generic(Sample_Generic):
             
             self.thabs(reflection_angle)
             
-            result = fit_scan(sth, 0.2, 41, fit='max') 
+            result = fit_scan(sth, 0.2, 21, fit='max') 
             #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
             sth_target = result.values['x_max']-reflection_angle
             
@@ -3272,15 +3665,19 @@ class PositionalHolder(Holder):
         
         self.addSample(sample, sample_number=slot)
         sample.setOrigin( [self._positional_axis], [self.get_slot_position(slot)] )
-        sample.detector=detector_opt
+        sample.detector = detector_opt
         
-    def addSampleSlotPosition(self, sample, slot, position, detector_opt='SAXS'):
+    def addSampleSlotPosition(self, sample, slot, position, detector_opt='BOTH', incident_angles=None, transmission=1):
         '''Adds a sample to the specified "slot" (defined/numbered sample 
         holding spot on this holder).'''
         
         self.addSample(sample, sample_number=slot)
         sample.setOrigin( [self._positional_axis], [position] )
-        sample.detector=detector_opt
+        sample.detector = detector_opt
+        sample.incident_angles = incident_angles
+        sample.transmission = transmission
+        #sample.exposure_time_WAXS = None 
+        #sample.exposure_time_SAXS = None 
         
         
     def listSamplesPositions(self):
@@ -3367,12 +3764,12 @@ class GIBar(PositionalHolder):
         self.mark('center', x=54.1, y=0)
              
              
-    def addSampleSlotPosition(self, sample, slot, position, detector_opt='SAXS', account_substrate=True):
+    def addSampleSlotPosition(self, sample, slot, position, detector_opt='SAXS', incident_angles=None, account_substrate=True):
         '''Adds a sample to the specified "slot" (defined/numbered sample 
         holding spot on this holder).'''
         
-        super().addSampleSlotPosition(sample, slot, position)
-        
+        super().addSampleSlotPosition(sample, slot, position, incident_angles)
+
         # Adjust y-origin to account for substrate thickness
         if account_substrate and 'substrate_thickness' in sample.md:
             sample.ysetOrigin( -1.0*sample.md['substrate_thickness'] )

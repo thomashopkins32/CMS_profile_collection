@@ -235,6 +235,25 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
         #self.cam.acquire_period.put(exposure_time+.1)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+    
+    def stage(self):
+        error = None
+        #wrap the staging process in a retry loop
+        for retry in range(5):
+            try:
+                return super().stage()
+            except TimeoutError as err:
+                # Staging failed becasue the IOC did not answer
+                # some request in a resonable time
+                #Stash the exception as the variable 'error'
+                error = err
+            else:
+                # Staging worked. Strop retyring.
+                break
+        else:
+            # We exhausted all retires and none worked. 
+            # Raise the error captured above to produce a useful error message. 
+            raise error
 
 '''
     #def _cms_error_condition_print(self, extra, value=None, print_gets=False):
@@ -543,7 +562,7 @@ pilatus2M.read_attrs = ['tiff'] + STATS_NAMES2M
 for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']
-#pilatus2M.cam.ensure_nonblocking()
+pilatus2M.cam.ensure_nonblocking()
 
 
 for item in pilatus2M.stats1.configuration_attrs:

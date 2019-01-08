@@ -482,3 +482,64 @@ def metadata_output(output_file, SAF=None, experiment_alias_directory=None):
         #output_data = output_data.iloc[0:0]
     
     output_data.to_csv(output_file)
+
+
+#rock/swing a motor contineously while taking images
+#added by AWalter and RLi at 20181106
+def rock_motor_per_step(detector, motor, step, rock_motor = None, rock_motor_limits =None):
+    '''
+    rock/swing a motor contineously while taking images
+    use 'per_step' function in scan plan to rock the motor
+    
+    detector: pilatus2M or pilatus300
+    motor: this motor is NOT used for measurement. use a motor not related to sample/measurement
+    step: this step is NOT useed for measurement. set as 1 for single exposure
+    rock_motor: the motor to rock.
+    rock_motor_limits: the relative rocking position for rock_motor.
+    
+    
+    '''
+    
+    devices = detector + [motor]
+    rewindable = all_safe_rewind(devices)  # if devices can be re-triggered
+
+    current = rock_motor.position
+ 
+    #define rock to swing rock_motor
+    #def rock():
+        #yield from mvr(rock_motor, rock_motor_limits)
+        #yield from mvr(rock_motor, -rock_motor_limits)
+    def rock(current=current):
+        yield from mv(rock_motor, current + rock_motor_limits)
+        yield from mv(rock_motor, current + -rock_motor_limits)
+    
+    def inner_rock_and_read():
+
+        #yield from trigger(detector)    
+        #status = yield from trigger(detector[0])
+        status = detector[0].trigger()
+        while not status.done:
+            yield from rock()
+        yield from mv(rock_motor, current )
+        yield from create('primary')
+
+        ret = {}  # collect and return readings to give plan access to them
+        for obj in devices:
+            reading = (yield from read(obj))
+            if reading is not None:
+                ret.update(reading)
+        yield from save()
+        return ret
+
+    from bluesky.preprocessors import rewindable_wrapper
+    return (yield from rewindable_wrapper(inner_rock_and_read(),rewindable))
+
+#Here is how ot use the rock plan
+#our_scan=list_scan([pilatus2M], srot, [1,1], per_step = functools.partial(rock_motor_per_step, rock_motor=strans2, rock_motor_limits=2) )
+
+        
+        
+    
+    
+    
+    
