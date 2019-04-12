@@ -791,11 +791,11 @@ class SyringePump(Device):
         return degC
 
 
-agilent = Agilent_34970A()
-#keithley = Keithley_2000()
-ttl = TTL_control()
-#Sypump = SringePump()
-#chiller = Minichiller()
+#agilent = Agilent_34970A()
+##keithley = Keithley_2000()
+#ttl = TTL_control()
+##Sypump = SringePump()
+##chiller = Minichiller()
 
 def flow_off():
     agilent.setDAC(1,0.0)

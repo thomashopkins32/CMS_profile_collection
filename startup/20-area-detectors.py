@@ -57,8 +57,8 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
-               root='/GPFS/xf11bm')
+               write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',
+               root='/nsls2/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
@@ -138,8 +138,8 @@ class Pilatus(SingleTrigger, PilatusDetector):
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
-               root='/GPFS/xf11bm')
+               write_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
+               root='/nsls2/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
@@ -162,8 +162,8 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/GPFS/xf11bm/Pilatus300/%Y/%m/%d/',
-               root='/GPFS/xf11bm')
+               write_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
+               root='/nsls2/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
         self.cam.acquire_time.put(exposure_time)
@@ -191,8 +191,8 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
-               root='/GPFS/xf11bm')
+               write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',
+               root='/nsls2/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
         # how to do this with stage_sigs (warning, need to change this every time
@@ -226,8 +226,8 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/GPFS/xf11bm/Pilatus2M/%Y/%m/%d/',
-               root='/GPFS/xf11bm')
+               write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',
+               root='/nsls2/xf11bm')
 
     def setExposureTime(self, exposure_time, verbosity=3):
         yield from mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+0.1)
@@ -496,8 +496,8 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
 #class StandardProsilicaWithTIFF(StandardProsilica):
 #    tiff = Cpt(TIFFPluginWithFileStore,
 #               suffix='TIFF1:',
-#               write_path_template='/GPFS/xf11bm/data/%Y/%m/%d/',
-#               root='/GPFS/xf11bm/')
+#               write_path_template='/nsls2/xf11bm/data/%Y/%m/%d/',
+#               root='/nsls2/xf11bm/')
 
 
 
@@ -521,7 +521,34 @@ fs3 = StandardProsilicaV33('XF:11BMB-BI{FS:3-Cam:1}', name='fs3')
 fs4 = StandardProsilicaV33('XF:11BMB-BI{FS:4-Cam:1}', name='fs4')
 fs5 = StandardProsilicaV33('XF:11BMB-BI{FS:Test-Cam:1}', name='fs5')
 
-all_standard_pros = [fs1, fs2, fs3, fs4, fs5]
+
+#class StandardsimDetectorV33(SingleTriggerV33, ProsilicaDetector):
+    ## tiff = Cpt(TIFFPluginWithFileStore,
+    ##           suffix='TIFF1:',
+    ##           write_path_template='/XF11ID/data/')
+    #cam = Cpt(ProsilicaDetectorCamV33, 'cam1:')
+    #image = Cpt(ImagePlugin, 'image1:')
+    #stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    #stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    #stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    #stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    #stats5 = Cpt(StatsPluginV33, 'Stats5:')
+    #trans1 = Cpt(TransformPlugin, 'Trans1:')
+    #roi1 = Cpt(ROIPlugin, 'ROI1:')
+    #roi2 = Cpt(ROIPlugin, 'ROI2:')
+    #roi3 = Cpt(ROIPlugin, 'ROI3:')
+    #roi4 = Cpt(ROIPlugin, 'ROI4:')
+    #proc1 = Cpt(ProcessPlugin, 'Proc1:')
+
+simDetector = StandardProsilicaV33('13SIM1:', name='simDetector')
+
+
+all_standard_pros = [fs1, fs2, fs3, fs4, fs5, simDetector]
+
+
+
+
+
 
 for camera in all_standard_pros:
     camera.read_attrs = ['stats1', 'stats2','stats3','stats4','stats5']
@@ -534,7 +561,8 @@ for camera in all_standard_pros:
     #camera.stage_sigs[camera.roi1.blocking_callbacks] = 1
     #camera.stage_sigs[camera.trans1.blocking_callbacks] = 1
     #camera.cam.ensure_nonblocking()
-    camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
+    
+    #camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
 
 
 #for camera in [xray_eye1_writing, xray_eye2_writing, xray_eye3_writing]:
@@ -543,15 +571,18 @@ for camera in all_standard_pros:
 
 #pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL
 #pilatus300 section is unmarked.  032018-MF
-'''
-'''
+#pilatus300 section is marked out for bluesky upgrade.  010819-RL
+
 pilatus300 = PilatusV33('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
 pilatus300.tiff.read_attrs = []
-#STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
-#pilatus300.read_attrs = ['tiff'] + STATS_NAMES
-#for stats_name in STATS_NAMES:
-    #stats_plugin = getattr(pilatus300, stats_name)
-    #stats_plugin.read_attrs = ['total']
+pilatus300.stats3.total.kind = 'hinted'
+pilatus300.stats4.total.kind = 'hinted'
+STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
+pilatus300.read_attrs = ['tiff'] + STATS_NAMES
+for stats_name in STATS_NAMES:
+    stats_plugin = getattr(pilatus300, stats_name)
+    stats_plugin.read_attrs = ['total']
+
 
 #pilatus300.cam.ensure_nonblocking()
 
@@ -563,6 +594,8 @@ for stats_name in STATS_NAMES2M:
     stats_plugin = getattr(pilatus2M, stats_name)
     stats_plugin.read_attrs = ['total']
 pilatus2M.cam.ensure_nonblocking()
+pilatus2M.stats3.total.kind = 'hinted'
+pilatus2M.stats4.total.kind = 'hinted'
 
 
 for item in pilatus2M.stats1.configuration_attrs:
@@ -601,10 +634,6 @@ for item in pilatus2M.cam.configuration_attrs:
     ##stats_plugin.read_attrs = ['total']
     
 
-pilatus300.stats3.total.kind = 'hinted'
-pilatus300.stats4.total.kind = 'hinted'
-pilatus2M.stats3.total.kind = 'hinted'
-pilatus2M.stats4.total.kind = 'hinted'
 
 #pilatus2M.read_attrs = ['cbf'] + STATS_NAMES2M
 

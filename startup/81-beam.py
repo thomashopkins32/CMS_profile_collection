@@ -852,7 +852,8 @@ class CMSBeam(object):
         #define the original position of aborber (6 Nb foils for XRR)
         #the position is defined in 'config_update'. This position is a good reference. 
         #self.armr_absorber_o = -55.1
-        self.armr_absorber_o = -9.8
+        #self.armr_absorber_o = -9.8
+        self.armr_absorber_o = -24.5
         self.armr_absorber_out = -55.1
         self.absorber_transmission_list_13p5kev = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
         self.absorber_transmission_list_17kev = [1, 1.847e-1, 3.330e-2, 6.064e-3, 1.101e-3, 1.966e-4, 3.633e-5]    # at E = 13.5keV
@@ -2303,11 +2304,20 @@ class CMS_Beamline(Beamline):
         tries = 1
         while caget('XF:11BMB-VA{Chm:Det-Pmp:1}Sts:Enbl-Sts')==0 and tries<=max_tries:
             caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 0)
-            time.sleep(0.2)
+            time.sleep(1.0)
             caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 1)
-            time.sleep(2.0)
+            time.sleep(3.0)
             tries += 1
         
+        time.sleep(10.0)
+        # Check pump again
+        tries = 1
+        while caget('XF:11BMB-VA{Chm:Det-Pmp:1}Sts:Enbl-Sts')==0 and tries<=max_tries:
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 0)
+            time.sleep(1.0)
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 1)
+            time.sleep(3.0)
+            tries += 1        
         
         self.chamberPressure(range_low=500)
 

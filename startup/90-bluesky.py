@@ -348,7 +348,7 @@ import pandas as pds
 def config_update():
 
     cms.bsx_pos = bsx.position
-    beam.armr_absorber_o = armr.position
+    beam.armr_absorber_out = armr.position
 
     #collect the current positions of motors
     
@@ -412,7 +412,7 @@ def data_output(experiment_cycle=None, experiment_alias_directory=None):
     Please first create "data" folder under user_folder. 
     """
     
-    #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/GPFS/xf11bm/data/2017_3/IHerman' )
+    #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/nsls2/xf11bm/data/2017_3/IHerman' )
     if experiment_cycle is not None:
         headers = db( experiment_cycle=experiment_cycle, experiment_alias_directory=experiment_alias_directory)
     else:
@@ -453,7 +453,7 @@ def metadata_output(output_file, SAF=None, experiment_alias_directory=None):
     SAF: SAF number, like '302914'
     """
     
-    #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/GPFS/xf11bm/data/2017_3/IHerman' )
+    #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/nsls2/xf11bm/data/2017_3/IHerman' )
     #if experiment_cycle is not None:
         #headers = db( experiment_cycle=experiment_cycle, experiment_alias_directory=experiment_alias_directory)
     #else:
@@ -537,7 +537,6 @@ def rock_motor_per_step(detector, motor, step, rock_motor = None, rock_motor_lim
 #Here is how ot use the rock plan
 #our_scan=list_scan([pilatus2M], srot, [1,1], per_step = functools.partial(rock_motor_per_step, rock_motor=strans2, rock_motor_limits=2) )
 
-        
         
     
     

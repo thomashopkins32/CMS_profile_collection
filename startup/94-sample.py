@@ -1043,11 +1043,19 @@ class Sample_Generic(CoordinateSystem):
             return self.temperature(temperature_probe='C',verbosity=0)
         if attribute=='temperature_D':
             return self.temperature(temperature_probe='D',verbosity=0)
-
-
+        if attribute=='temperature_E':
+            return self.temperature(temperature_probe='E',verbosity=0)
+        if attribute=='humidity':
+            return self.humidity(verbosity=0)
+        
         if attribute in self.md:
             return self.md[attribute]
-
+        if attribute=='energy':
+            return '{}kev'.format(np.round(beam.energy(verbosity=0),2))
+        if attribute=='dry':
+            return 'dry{}'.format(readDryFlow())
+        if attribute=='wet':
+            return 'wet{}'.format(readWetFlow())
 
         replacements = { 
             'id' : 'measurement_ID' ,
@@ -1104,6 +1112,8 @@ class Sample_Generic(CoordinateSystem):
         md_return['temperature_B'] = self.temperature(temperature_probe='B', verbosity=0)
         md_return['temperature_C'] = self.temperature(temperature_probe='C', verbosity=0)
         md_return['temperature_D'] = self.temperature(temperature_probe='D', verbosity=0)
+        #md_return['temperature_E'] = self.temperature(temperature_probe='E', verbosity=0)
+        md_return['humidity'] = self.humidity(verbosity=0)
     
         for axis_name, axis in self._axes.items():
             md_return[axis_name] = axis.get_position(verbosity=0)
@@ -1168,6 +1178,10 @@ class Sample_Generic(CoordinateSystem):
             return 'T{:.3f}C'.format(self.get_attribute(attribute))
         if attribute=='temperature_D':
             return 'T{:.3f}C'.format(self.get_attribute(attribute))
+        if attribute=='temperature_E':
+            return 'T{:.3f}C'.format(self.get_attribute(attribute))
+        if attribute=='humidity':
+            return 'RH{:.3f}'.format(self.get_attribute(attribute))
         if attribute=='trigger_time':
             return '{:.1f}s'.format(self.get_attribute(attribute))
 
@@ -1341,7 +1355,7 @@ class Sample_Generic(CoordinateSystem):
         get_beamline().beam.off()
         
 
-    def expose(self, exposure_time=None, extra=None, verbosity=3, poling_period=0.1, **md):
+    def expose(self, exposure_time=None, extra=None, handlefile=True, verbosity=3, poling_period=0.1, **md):
         '''Internal function that is called to actually trigger a measurement.'''
         '''TODO: **md doesnot work in RE(count). '''
         
@@ -1349,7 +1363,6 @@ class Sample_Generic(CoordinateSystem):
         if 'measure_type' not in md:
             md['measure_type'] = 'expose'
         #self.log('{} for {}.'.format(md['measure_type'], self.name), **md)
-
 
         # Set exposure time
         if exposure_time is not None:
@@ -1370,8 +1383,6 @@ class Sample_Generic(CoordinateSystem):
                     time.sleep(2)
                 elif detector.name is 'PhotonicSciences_CMS':
                     detector.setExposureTime(exposure_time, verbosity=verbosity)
-       
-
 
         # Do acquisition
         get_beamline().beam.on()
@@ -1433,8 +1444,8 @@ class Sample_Generic(CoordinateSystem):
         else:
             time.sleep(max_exposure_time)
         
-        if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
-            print('Warning: Detector pilatus300 still not done acquiring.')
+        #if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+            #print('Warning: Detector pilatus300 still not done acquiring.')
 
         if verbosity>=3 and caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
             print('Warning: Detector pilatus2M still not done acquiring.')
@@ -1442,9 +1453,10 @@ class Sample_Generic(CoordinateSystem):
         
         get_beamline().beam.off()
         
-        for detector in get_beamline().detector:
-            #self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
-            self.handle_file(detector, extra=extra, verbosity=verbosity)
+        if handlefile == True:
+            for detector in get_beamline().detector:
+                self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+                #self.handle_file(detector, extra=extra, verbosity=verbosity)
 
 
 
@@ -1473,9 +1485,11 @@ class Sample_Generic(CoordinateSystem):
                 # Create symlink
                 #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])
                 #savename = md['filename'][:-5]
-                
-                savename = self.get_savename(savename_extra=extra)
-                link_name = '{}/{}{}_{:04d}_maxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+
+                #savename = self.get_savename(savename_extra=extra)
+                savename = md['filename']
+                #link_name = '{}/{}{}_{:04d}_maxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                link_name = '{}/{}{}_maxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename)
                 
                 if os.path.isfile(link_name):
                     i = 1
@@ -1509,9 +1523,10 @@ class Sample_Generic(CoordinateSystem):
                 #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])
                 #savename = md['filename'][:-5]
                 
-                savename = self.get_savename(savename_extra=extra)
-                #link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
-                link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                #savename = self.get_savename(savename_extra=extra)
+                savename = md['filename']
+                link_name = '{}/{}{}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename)
+                #link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
                 
                 if os.path.isfile(link_name):
                     i = 1
@@ -1533,8 +1548,10 @@ class Sample_Generic(CoordinateSystem):
                 subdir = '/waxs/'
 
             #savename = md['filename'][:-5]
-            savename = self.get_savename(savename_extra=extra)
-            savename = '{}/{}{}_{:04d}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+            #savename = self.get_savename(savename_extra=extra)
+            savename = md['filename']
+            #savename = '{}/{}{}_{:04d}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+            savename = '{}/{}{}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename)
             
             shutil.copy(filename, savename)
             if verbosity>=3:
@@ -1549,7 +1566,7 @@ class Sample_Generic(CoordinateSystem):
     def snap(self, exposure_time=None, extra=None, measure_type='snap', verbosity=3, **md):
         '''Take a quick exposure (without saving data).'''
         
-        self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, **md)
+        self.expose(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, handlefile=False, **md)
         remove_last_Pilatus_series()
         
         
@@ -1745,6 +1762,10 @@ class Sample_Generic(CoordinateSystem):
         md_current['measure_type'] = measure_type
         #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
         md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        md_current['beam_int_bim3'] = beam.bim3.flux(verbosity=0)
+        md_current['beam_int_bim4'] = beam.bim4.flux(verbosity=0)
+        md_current['beam_int_bim5'] = beam.bim5.flux(verbosity=0)        
+        #md_current['plan_header_override'] = md['measure_type']
         md_current.update(md)
 
        
@@ -1777,20 +1798,17 @@ class Sample_Generic(CoordinateSystem):
         # Do acquisition
         get_beamline().beam.on()
         
-        md['plan_header_override'] = md['measure_type']
         start_time = time.time()
         
         #md_current = self.get_md()
-        md['beam_int_bim3'] = beam.bim3.flux(verbosity=0)
-        md['beam_int_bim4'] = beam.bim4.flux(verbosity=0)
-        md['beam_int_bim5'] = beam.bim5.flux(verbosity=0)
+
         #md.update(md_current)
 
 
         # Define the rock 
-        rock_scan=list_scan(get_beamline().detector, srot, [0], per_step = functools.partial(rock_motor_per_step, rock_motor=rock_motor, rock_motor_limits=rock_motor_limits) )
+        rock_scan=list_scan(get_beamline().detector, armr, [0], per_step = functools.partial(rock_motor_per_step, rock_motor=rock_motor, rock_motor_limits=rock_motor_limits) )
         #uids = RE(count(get_beamline().detector, 1), **md)
-        uids = RE(rock_scan, **md)
+        uids = RE(rock_scan, **md_current)
         
         
 
@@ -1844,8 +1862,8 @@ class Sample_Generic(CoordinateSystem):
         get_beamline().beam.off()
         
         for detector in get_beamline().detector:
-            #self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
-            self.handle_file(detector, extra=extra, verbosity=verbosity)
+            self.handle_file(detector, extra=extra, verbosity=verbosity, **md_current)
+            #self.handle_file(detector, extra=extra, verbosity=verbosity)
 
 
         
@@ -1885,7 +1903,8 @@ class Sample_Generic(CoordinateSystem):
         md_current['sample_savename'] = savename
         md_current['measure_type'] = measure_type
         #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
-        md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        md_current['filename'] = '{:s}_{:04d}'.format(savename, RE.md['scan_id'])
         md_current.update(md)
 
        
@@ -2410,33 +2429,36 @@ class Sample_Generic(CoordinateSystem):
             caput('XF:11BM-ES{Env:01-Out:4}T-SP', temperature+273.15)
             
             
-    def temperature(self, temperature_probe='A', output_channel='1', verbosity=3):
+    def temperature(self, temperature_probe='A', output_channel='1', RTDchan=2, verbosity=3):
         #if verbosity>=1:
             #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
  
         if temperature_probe == 'A':
             current_temperature = caget('XF:11BM-ES{Env:01-Chan:A}T:C-I')
             if verbosity>=3:
-                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
-            
+                print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )            
         if temperature_probe == 'B':
             current_temperature = caget('XF:11BM-ES{Env:01-Chan:B}T:C-I')
             if verbosity>=3:
                 print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
-
         if temperature_probe == 'C':
             current_temperature = caget('XF:11BM-ES{Env:01-Chan:C}T:C-I')
             if verbosity>=3:
                 print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )
-
         if temperature_probe == 'D':
             current_temperature = caget('XF:11BM-ES{Env:01-Chan:D}T:C-I')
             if verbosity>=3:
                 print('  Temperature = {:.3f}°C (setpoint = {:.3f}°C)'.format( current_temperature, self.temperature_setpoint(output_channel=output_channel)-273.15 ) )            
-            
+        if temperature_probe == 'E':
+            try: 
+                current_temperature = ioL.read(RTD[RTDchan])
+            except TypeError:
+                current_temperature = -273.15            
         return current_temperature
 
-
+    def humidity(self, AI_chan=7, temperature=25, verbosity=3):        
+        return ioL.readRH(AI_chan=7, temperature=temperature, verbosity=verbosity)
+    
     def temperature_setpoint(self, output_channel='1', verbosity=3):
         #if verbosity>=1:
             #print('Temperature functions not implemented in {}'.format(self.__class__.__name__))
@@ -2540,7 +2562,7 @@ class SampleGISAXS_Generic(Sample_Generic):
     def measureIncidentAngle(self, angle, exposure_time=None, extra=None, tiling=None, **md):
         
         self.thabs(angle)
-        
+        time.sleep(.2)
         self.measure(exposure_time=exposure_time, extra=extra, tiling=tiling, **md)
 
 
@@ -2551,6 +2573,7 @@ class SampleGISAXS_Generic(Sample_Generic):
         
         for angle in angles:
             self.measureIncidentAngle(angle, exposure_time=exposure_time, extra=extra, tiling=tiling, **md)
+
     
     
     def _alignOld(self, step=0):
@@ -2618,9 +2641,10 @@ class SampleGISAXS_Generic(Sample_Generic):
                 RE.abort()
                 
             if get_beamline().current_mode!='alignment':
-                if verbosity>=2:
-                    print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
-                #get_beamline().modeAlignment()
+                #if verbosity>=2:
+                    #print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
+                print("Switching to alignment mode (current mode is '{}')".format(get_beamline().current_mode))
+                get_beamline().modeAlignment()
                 
                 
             get_beamline().setDirectBeamROI()
@@ -2689,7 +2713,7 @@ class SampleGISAXS_Generic(Sample_Generic):
             
             self.thabs(reflection_angle)
             
-            result = fit_scan(sth, 0.2, 21, fit='max') 
+            result = fit_scan(sth, 0.4, 41, fit='max') 
             #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
             sth_target = result.values['x_max']-reflection_angle
             
@@ -3277,6 +3301,7 @@ class Holder(Stage):
         super().__init__(name=name, base=base, **kwargs)
         
         self._samples = {}
+        self.reset_clock()
 
     def _set_axes_definitions(self):
         '''Internal function which defines the axes for this stage. This is kept
@@ -3306,6 +3331,24 @@ class Holder(Stage):
                             },
                         ]  
 
+    def clock(self):
+        '''Return the current value of the "clock" variable. This provides a
+        way to set a clock/timer for a sample. For instance, you can call
+        "reset_clock" when you initiate some change to the sample. Thereafter,
+        the "clock" method lets you check how long it has been since that
+        event.'''
+        
+        clock_delta = time.time() - self.clock_zero
+        return clock_delta
+        
+
+    def reset_clock(self):
+        '''Resets the sample's internal clock/timer to zero.'''
+        
+        self.clock_zero = time.time()
+        
+        return self.clock()  
+    
     # Sample management
     ########################################
     
@@ -3667,7 +3710,7 @@ class PositionalHolder(Holder):
         sample.setOrigin( [self._positional_axis], [self.get_slot_position(slot)] )
         sample.detector = detector_opt
         
-    def addSampleSlotPosition(self, sample, slot, position, detector_opt='BOTH', incident_angles=None, transmission=1):
+    def addSampleSlotPosition(self, sample, slot, position, detector_opt='BOTH', incident_angles=None, transmission=1, exposure_time_SAXS = None, exposure_time_WAXS = None, tiling=None):
         '''Adds a sample to the specified "slot" (defined/numbered sample 
         holding spot on this holder).'''
         
@@ -3676,9 +3719,15 @@ class PositionalHolder(Holder):
         sample.detector = detector_opt
         sample.incident_angles = incident_angles
         sample.transmission = transmission
-        #sample.exposure_time_WAXS = None 
-        #sample.exposure_time_SAXS = None 
+        #sample.exposure_time_SAXS = exposure_time_SAXS 
+        #sample.exposure_time_WAXS = exposure_time_WAXS 
+        #sample.exposure_time_MAXS = exposure_time_MAXS 
+        #sample.tiling = tiling
         
+        
+        #TODO: list sample details including:
+        # name, slot, position, detector_opt, incident_angles, transmission, exposure_time_SAXS, exposure_time_WAXS, exposure_time_MAXS, tiling
+        # load it in a standard format, such as xls or pandas
         
     def listSamplesPositions(self):
         '''Print a list of the current samples associated with this holder/
@@ -3780,7 +3829,7 @@ class GIBar(PositionalHolder):
 
 
 
-    def alignSamples(self, range=None, step=0, x_offset=0, verbosity=3, **md):
+    def alignSamples(self, range=None, step=0, align_step=0, x_offset=0, verbosity=3, **md):
         '''Iterates through the samples on the holder, aligning each one.'''
         
         if step<=0:
@@ -3791,7 +3840,7 @@ class GIBar(PositionalHolder):
             for sample in self.getSamples(range=range):
                 sample.gotoOrigin(['x','y','th'])
                 sample.xr(x_offset)
-                sample.align()
+                sample.align(step=align_step)
             
             
         if step<=10:
@@ -4203,6 +4252,115 @@ class WellPlateHolder(PositionalHolder):
                 position = '{}'.format(row)+'{0:0=2d}'.format(column)
                 self.addSampleSlot( SampleTSAXS( sample_name), position )
 
+class PaloniThermalStage(CapillaryHolder):
+    '''This class is a sample holder made by Jason Paloni. 
+       It's made by copper with chiller cooling. 
+       The stage has 5(x) by 2(z) = 10 samples in total. 
+       It uses two stages, smx and smy2 to locate the sample.
+       
+    '''    
+    def __init__(self, name='CapillaryHolder', base=None, **kwargs):
+        super().__init__(name=name, base=base, **kwargs)
+ 
+        #self._axes['y'].origin -= 0.5357125
+        self._positional_axis = ['x','yy']
+
+        self._axes['y'].origin = -5
+        self._axes['x'].origin = -.25
+        self._axes['yy'].origin = 1.5
+        
+        self.x_spacing = 1.375 *25.4 # 1.375 seperation in x
+        self.yy_spacing = 32.13 + 23.25 # 2.25 seperation in y
+        #self.yy_spacing = 2.25 *25.4 # 2.25 seperation in y
+        
+
+    def _set_axes_definitions(self):
+        '''Internal function which defines the axes for this stage. This is kept
+        as a separate function so that it can be over-ridden easily.'''
+        
+        # The _axes_definitions array holds a list of dicts, each defining an axis
+        super()._set_axes_definitions()
+
+        self._axes_definitions.append ( {'name': 'yy',
+                            'motor': smy2,
+                            'enabled': True,
+                            'scaling': +1.0,
+                            'units': 'mm',
+                            'hint': 'positive moves stage up',
+                            } )
+                        
+
+    def slot(self, sample_number):
+        '''Moves to the selected slot in the holder.'''
+        
+        getattr(self, self._positional_axis[0]+'abs')( self.get_slot_position(sample_number) )
+        
+    
+    def get_slot_position(self, slot):
+        '''Return the motor position for the requested slot number.'''
+        # This method should be over-ridden in sub-classes, so as to properly
+        # implement the positioning appropriate for that holder.
+        # This is the critical to define the position for the 10 samples. 
+        
+        if slot < 5.5:
+            position_x = 0.0 + slot - 3
+        if slot > 5.5:
+            position_x = 0.0 + slot -5 -3
+        position_yy = 0.0 + int(slot/6)*1.0
+        
+        return position_x*self.x_spacing,  position_yy*self.yy_spacing
+        
+        
+    def addSampleSlot(self, sample, slot):
+        '''Adds a sample to the specified "slot" (defined/numbered sample 
+        holding spot on this holder).'''
+        
+        self.addSample(sample, sample_number=slot)
+        sample.setOrigin( ['x'], [self.get_slot_position(slot)[0]] )
+        sample.setOrigin( ['yy'], [self.get_slot_position(slot)[1]] )
+
+class DSCStage(CapillaryHolder):
+    '''This class is a sample holder for DSC pans. 
+       The stage has 11(x) by 2(z) = 22 samples in total. 
+       It has the same dimension as the regular capillary holder.
+       It uses two stages, smx and smy to locate the sample.
+       X origin is the center. Y origin is the top rack.
+    '''    
+    def __init__(self, name='CapillaryHolder', base=None, **kwargs):
+        super().__init__(name=name, base=base, **kwargs)
+        #TODO: search the origin position and check the spacing
+        self._axes['y'].origin = -5
+        self.x_spacing = 1.375 *25.4 # 1.375 seperation in x
+        self.y_spacing = 32.13 + 23.25 # 2.25 seperation in y
+
+    def slot(self, sample_number):
+        '''Moves to the selected slot in the holder.'''
+        
+        getattr(self, self._positional_axis[0]+'abs')( self.get_slot_position(sample_number) )
+        
+    
+    def get_slot_position(self, slot):
+        '''Return the motor position for the requested slot number.'''
+        # This method should be over-ridden in sub-classes, so as to properly
+        # implement the positioning appropriate for that holder.
+        # This is the critical to define the position for the 10 samples. 
+        
+        if slot < 11.5:
+            position_x = 0.0 + slot - 6
+        elif slot > 11.5:
+            position_x = 0.0 + slot -11 -6
+        position_y = 0.0 + int(slot/11.5)*1.0
+        
+        return position_x*self.x_spacing,  position_yy*self.y_spacing
+        
+        
+    def addSampleSlot(self, sample, slot):
+        '''Adds a sample to the specified "slot" (defined/numbered sample 
+        holding spot on this holder).'''
+        
+        self.addSample(sample, sample_number=slot)
+        sample.setOrigin( ['x'], [self.get_slot_position(slot)[0]] )
+        sample.setOrigin( ['y'], [self.get_slot_position(slot)[1]] )
 
 stg = SampleStage()
 def get_default_stage():

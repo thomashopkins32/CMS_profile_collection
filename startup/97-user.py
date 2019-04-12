@@ -89,7 +89,7 @@ cms.SAXS.setCalibration([379.0, 552.0], 5.038, [20.00, 35.00]) # 2017-02-08, 13.
 
 print('\n\n\nReminders:')
 print('    Define your detectors using, e.g.: detselect(pilatus2M)')
-print('    Reload your user-specific script, e.g.: %run -i /GPFS/xf11bm/data/2017_2/user_group/user.py')
+print('    Reload your user-specific script, e.g.: %run -i /nsls2/xf11bm/data/2017_2/user_group/user.py')
 print('\n')
         
 if False:

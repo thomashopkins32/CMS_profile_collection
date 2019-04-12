@@ -22,7 +22,7 @@ class PhotonicSciences_CMS(Device):
     #image = Cpt(ImagePluginCustom, 'image1:')
     #tiff = Cpt(TIFFPluginWithFileStore,
                #suffix='TIFF1:',
-               #write_path_template='/GPFS/xf11bm/waxsdet/%Y/%m/%d/')
+               #write_path_template='/nsls2/xf11bm/waxsdet/%Y/%m/%d/')
     
     
     def __init__(self, prefix='', *args, read_attrs=None, configuration_attrs=None,
@@ -30,7 +30,7 @@ class PhotonicSciences_CMS(Device):
 
         super().__init__(prefix=prefix, *args, read_attrs=read_attrs, configuration_attrs=configuration_attrs, name=name, parent=parent, **kwargs)
         
-        self.file_path = '/GPFS/xf11bm/waxsdet/images'
+        self.file_path = '/nsls2/xf11bm/waxsdet/images'
         
         self.temperature_re = re.compile('.+CCD temperature (.+) deg.+')
         self.status_re = re.compile('.+detector status=(.+)\.')

@@ -873,3 +873,4 @@ class Queue(object):
 robot = SampleExchangeRobot(use_gs=False)
 
 #robot._region='safe'
+config_load()
