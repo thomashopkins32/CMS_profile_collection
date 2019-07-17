@@ -363,7 +363,7 @@ for stats_name in STATS_NAMES:
 
 #pilatus800 section
 
-if True:
+if False:
     pilatus800 = Pilatus800V33('XF:11BMB-ES{Det:PIL800K}:', name='pilatus800')
     pilatus800.tiff.read_attrs = []
     pilatus800.stats3.total.kind = 'hinted'
