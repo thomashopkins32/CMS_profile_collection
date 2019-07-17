@@ -20,8 +20,9 @@ ion_chamber4 = ophyd.EpicsSignalRO("XF:11BMB-BI{IM:3}:IC4_MON", name='ion_chambe
 
 class ScaleSignal(ophyd.signal.DerivedSignal):
     def __init__(self, *args, factor, **kwargs):
-        super().__init__(*args, **kwargs)
         self._factor = factor
+        super().__init__(*args, **kwargs)
+        
     def inverse(self, value):
         return self._factor * value
     def forward(self, value):
