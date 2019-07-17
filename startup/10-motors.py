@@ -7,8 +7,8 @@ from ophyd import EpicsMotor, Device, Component as Cpt
 #    top = Cpt(EpicsMotor, '-Ax:T}Mtr')
 #    bottom = Cpt(EpicsMotor, '-Ax:B}Mtr')
 
-beamline_stage = 'open_MAXS'  
-#beamline_stage = 'default'  
+#beamline_stage = 'open_MAXS'  
+beamline_stage = 'default'  
 
 
 #slits = Slits('XF:11BMA-OP{Slt:0', name='slits') 
@@ -124,9 +124,13 @@ army = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Y}Mtr', name='army')
 armr = EpicsMotor('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr', name='armr')
 
 ## stages for detectors
-DETx = EpicsMotor('XF:11BMB-ES{Det:Stg-Ax:X}Mtr', name='DETx')
-DETy =  EpicsMotor('XF:11BMB-ES{Det:Stg-Ax:Y}Mtr', name='DETy')
+## currently not working. The new pilatus800k is sitting on a stage with manual movement
+#DETx = EpicsMotor('XF:11BMB-ES{Det:Stg-Ax:X}Mtr', name='DETx')
+#DETy =  EpicsMotor('XF:11BMB-ES{Det:Stg-Ax:Y}Mtr', name='DETy')
+#WAXSx = EpicsMotor('XF:11BMB-ES{Det:WAXS-Ax:X}Mtr', name='WAXSx')
 WAXSx = EpicsMotor('XF:11BMB-ES{Det:WAXS-Ax:X}Mtr', name='WAXSx')
+WAXSy = EpicsMotor('XF:11BMB-ES{Det:WAXS-Ax:Y}Mtr', name='WAXSy')
+WAXSz = EpicsMotor('XF:11BMB-ES{Det:WAXS-Ax:Z}Mtr', name='WAXSz')
 
 SAXSx = EpicsMotor('XF:11BMB-ES{Det:SAXS-Ax:X}Mtr', name='SAXSx')
 SAXSy = EpicsMotor('XF:11BMB-ES{Det:SAXS-Ax:Y}Mtr', name='SAXSy')
@@ -139,4 +143,22 @@ bsx = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:X}Mtr', name='bsx')
 bsy = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:Y}Mtr', name='bsy')
 bsphi = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:phi}Mtr', name='bsphi')
 
+## easy access for stages
+def wbs():
+    print('bsx = {}'.format(bsx.position))
+    print('bsy = {}'.format(bsy.position))
+    print('bsphi = {}'.format(bsphi.position))
+    
+def wsam():
+    print('smx = {}'.format(smx.position))
+    print('smy = {}'.format(smy.position))
+    print('sth = {}'.format(sth.position))
 
+def wWAXS():
+    print('WAXSx = {}'.format(WAXSx.position))
+    print('WAXSy = {}'.format(WAXSy.position))
+    print('WAXSz = {}'.format(WAXSz.position))
+
+def wSAXS():
+    print('SAXSx = {}'.format(SAXSx.position))
+    print('SAXSy = {}'.format(SAXSy.position))

@@ -93,6 +93,7 @@ class CMS_SAXS_Detector(BeamlineDetector):
         
             
         md_return['name'] = self.detector.name
+        md_return['epics_name'] = '{Det:PIL2M}'
 
         #if pilatus_name==pilatus300k:
             #md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
@@ -102,6 +103,78 @@ class CMS_SAXS_Detector(BeamlineDetector):
             md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
         md_return['distance_m'] = self.distance
     
+        md_return['ROI1_X_min'] = caget('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname))
+        md_return['ROI1_X_size'] = caget('XF:11BMB-ES{}:ROI1:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI1_Y_min'] = caget('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname))
+        md_return['ROI1_Y_size'] = caget('XF:11BMB-ES{}:ROI1:SizeY'.format(pilatus_Epicsname))
+
+        md_return['ROI2_X_min'] = caget('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname))
+        md_return['ROI2_X_size'] = caget('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI2_Y_min'] = caget('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname))
+        md_return['ROI2_Y_size'] = caget('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname))
+
+        md_return['ROI3_X_min'] = caget('XF:11BMB-ES{}:ROI3:MinX'.format(pilatus_Epicsname))
+        md_return['ROI3_X_size'] = caget('XF:11BMB-ES{}:ROI3:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI3_Y_min'] = caget('XF:11BMB-ES{}:ROI3:MinY'.format(pilatus_Epicsname))
+        md_return['ROI3_Y_size'] = caget('XF:11BMB-ES{}:ROI3:SizeY'.format(pilatus_Epicsname))
+
+        md_return['ROI4_X_min'] = caget('XF:11BMB-ES{}:ROI4:MinX'.format(pilatus_Epicsname))
+        md_return['ROI4_X_size'] = caget('XF:11BMB-ES{}:ROI4:SizeX'.format(pilatus_Epicsname))
+        md_return['ROI4_Y_min'] = caget('XF:11BMB-ES{}:ROI4:MinY'.format(pilatus_Epicsname))
+        md_return['ROI4_Y_size'] = caget('XF:11BMB-ES{}:ROI4:SizeY'.format(pilatus_Epicsname))
+        
+        # Include the user-specified metadata
+        md_return.update(md)
+
+        # Add an optional prefix
+        if prefix is not None:
+            md_return = { '{:s}{:s}'.format(prefix, key) : value for key, value in md_return.items() }
+    
+        return md_return
+
+class CMS_WAXS_Detector(BeamlineDetector):
+
+    def __init__(self, detector, **md):
+        
+        self.detector = pilatus800
+        
+        self.md = md
+    
+        
+    def setCalibration(self, direct_beam, distance, detector_position=None, pixel_size=0.172):
+        
+        self.direct_beam = direct_beam
+        self.distance = distance
+        if detector_position is None:
+            self.detector_position = [WAXSx.user_readback.value, WAXSy.user_readback.value]
+        else:
+            self.detector_position = detector_position
+        self.pixel_size = pixel_size
+        
+    
+    def get_md(self, prefix='detector_WAXS_', **md):
+        
+        md_return = self.md.copy()
+    
+        x0, y0 = self.direct_beam
+        position_defined_x, position_defined_y = self.detector_position
+        position_current_x, position_current_y = WAXSx.user_readback.value, WAXSy.user_readback.value
+        
+            
+        md_return['name'] = self.detector.name
+        md_return['epics_name'] = '{Det:PIL800K}'
+
+        #if pilatus_name==pilatus300k:
+            #md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
+            #md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
+        #if pilatus_name==pilatus800:
+        md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
+        md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
+        
+        #TODO:WAXS PV
+        
+        md_return['distance_m'] = self.distance
+        
         md_return['ROI1_X_min'] = caget('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname))
         md_return['ROI1_X_size'] = caget('XF:11BMB-ES{}:ROI1:SizeX'.format(pilatus_Epicsname))
         md_return['ROI1_Y_min'] = caget('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname))
@@ -1268,8 +1341,8 @@ class CMSBeam(object):
     def _test_on(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
         '''Turn on the beam (open experimental shutter).'''
  
-        #print('1')
-        #print(sam.clock())
+        print('1')
+        print(sam.clock())
         if self.is_on(verbosity=0):
             if verbosity>=4:
                 print('Beam on (shutter already open.)')
@@ -1281,27 +1354,27 @@ class CMSBeam(object):
             
                 # Trigger the shutter to toggle state
                 caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
-                time.sleep(wait_time)
+                #time.sleep(wait_time)
                 caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
+                #time.sleep(wait_time)
                 caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
-                time.sleep(wait_time)
+                #time.sleep(wait_time)
                 caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
+                #time.sleep(wait_time)
                 
                 # Give the system a chance to update
                 start_time = time.time()
                 
-                #print('2')
-                #print(sam.clock())
+                print('2')
+                print(sam.clock())
                 
                
                 while (not self.blade1_is_on(verbosity=0)) and (time.time()-start_time)<retry_time:
                     if verbosity>=5:
                         print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
-                    sleep(poling_period)
-                    #print('3')
-                    #print(sam.clock())
+                    time.sleep(poling_period)
+                    print('3')
+                    print(sam.clock())
                 
                 itry += 1
                 
@@ -1311,15 +1384,15 @@ class CMSBeam(object):
                     print('Beam on (shutter opened).')
                 else:
                     print("Beam off (shutter didn't open).")
-        #print('4')
-        #print(sam.clock())
+        print('4')
+        print(sam.clock())
         
         
     def _test_off(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
         '''Turn off the beam (close experimental shutter).'''
         
-        #print('1')
-        #print(sam.clock())
+        print('1')
+        print(sam.clock())
         
         if self.is_on(verbosity=0):
             
@@ -1338,16 +1411,16 @@ class CMSBeam(object):
                 # Give the system a chance to update
                 start_time = time.time()
                 
-                #print('2')
-                #print(sam.clock())
+                print('2')
+                print(sam.clock())
                 
                 while self.is_on(verbosity=0) and (time.time()-start_time)<retry_time:
                     if verbosity>=5:
                         print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
                     time.sleep(poling_period)
                     
-                    #print('3')
-                    #print(sam.clock())
+                    print('3')
+                    print(sam.clock())
                 
                 itry += 1
 
@@ -1358,8 +1431,8 @@ class CMSBeam(object):
                     print("Beam on (shutter didn't close).")
                 else:
                     print('Beam off (shutter closed).')
-            #print('4')
-            #print(sam.clock())
+            print('4')
+            print(sam.clock())
                 
         else:
             if verbosity>=4:
@@ -1901,20 +1974,47 @@ class CMS_Beamline(Beamline):
         
         self.beam = beam
         #self.SAXS = CMS_SAXS_Detector(pilatus300)
-        #self.WAXS = CMS_WAXS_Detector()
-        self.SAXS = CMS_SAXS_Detector(pilatus_name)
+        self.SAXS = CMS_SAXS_Detector(pilatus2M)
+        self.WAXS = CMS_WAXS_Detector(pilatus800)
+        self.MAXS = CMS_SAXS_Detector(pilatus300)
         
         from epics import PV
         
         self._chamber_pressure_pv = PV('XF:11BMB-VA{Chm:Det-TCG:1}P-I')
+        #self.PV_Smpl_pressure = PV('XF:11BMB-VA{Chm:Smpl-TCG:1}P-I')
+        #self.PV_Det_pressure = PV('XF:11BMB-VA{Chm:Det-TCG:1}P-I')
         
         self.detector = [] 
         self.PLOT_Y = []
         self.TABLE_COLS = []
-        self.bsx_pos = []
+        #self.bsx_pos = []
         self.FM_donefiles = []
-    
-    
+
+        #PV list before changes: 
+        #sample vent:  XF:11BMB-VA{Chm:Smpl-VV:1}
+        #sample soft vent:  XF:11BMB-VA{Chm:Smpl-VV_Soft:1}
+        #detector vent: XF:11BMB-VA{Chm:Det-VV:1}
+        #detector soft vent: XF:11BMB-VA{Chm:Det-VV:1_Soft}
+        #detector pump: XF:11BMB-VA{Chm:Det-IV:1}
+        #detector soft pump: XF:11BMB-VA{Chm:Det-IV:1_Soft}
+        
+        #PV list in future
+        #sample vent:  XF:11BMB-VA{Chm:Smpl-VV:1}
+        #sample soft vent:  XF:11BMB-VA{Chm:Smpl-VV_Soft:1}
+        #sample pump : XF:11BMB-VA{Chm:Smpl-VV:1}   --------------NEW
+        #sample soft pump: XF:11BMB-VA{Chm:Smpl-VV:1_Soft}    ------------NEW
+        #detector pump: XF:11BMB-VA{Chm:Det-IV:1}
+        #detector soft pump: XF:11BMB-VA{Chm:Det-IV:1_Soft}
+        self.PV_Smpl_vent = 'XF:11BMB-VA{Chm:Smpl-VV:1}'
+        self.PV_Smpl_vent_soft = 'XF:11BMB-VA{Chm:Smpl-VV_Soft:1}'
+        self.PV_Smpl_pump = 'XF:11BMB-VA{Chm:Smpl-VV:1}' # --------------NEW
+        self.PV_Smpl_pump_soft = 'XF:11BMB-VA{Chm:Smpl-VV:1_Soft}'   # ------------NEW
+        self.PV_Det_pump = 'XF:11BMB-VA{Chm:Det-IV:1}'
+        self.PV_Det_pump_soft = 'XF:11BMB-VA{Chm:Det-IV:1_Soft}'
+        self.PV_SAXS_GV = 'XF:11BMB-VA{Chm:Det-GV:1}'
+        self.PV_SAXS_pump = 'XF:11BMB-VA{BT:SAXS-IV:1}'
+        self.PV_FS4_pump = 'XF:11BMB-VA{Mir:KB-IV:1}' #-----NEED to CHANGE
+        
     def modeAlignment_bim6(self, verbosity=3):
         
         self.current_mode = 'undefined'
@@ -1986,11 +2086,13 @@ class CMS_Beamline(Beamline):
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.6)
 
         detselect(pilatus_name, suffix='_stats4_total')
-        caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), 0.5)
-        caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), 0.6)
+        RE(pilatus_name.setExposureTime(0.5))
+        #Comment out by RL, 071617
+        #caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), 0.5)
+        #caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), 0.6)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', 0.6)
        
-        #TODO: Update ROI based on current SAXSx, SAXSy and the md in cms object
+        #TODO: Update ROI based on current SAXSx, SAXSy and the md in cms ob'XF:11BMB-VA{Chm:Smpl-VV:1_Soft}'ject
         
         self.current_mode = 'alignment'
         
@@ -2027,40 +2129,6 @@ class CMS_Beamline(Beamline):
         if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
             print('Warning: Sample chamber gate valve (large, downstream) is not open.')
             
-    def modeXRMeasurement(self, verbosity=3):   
-        
-        self.current_mode = 'undefined'
-        
-        self.beam.off()
-        
-        #mov(bsx, -15.95)
-        bsx.move(self.bsx_pos)
-
-        if abs(bsx.user_readback.value - self.bsx_pos)>0.1:
-            print('WARNING: Beamstop did not return to correct position!')
-            return
-        
-        self.beam.setTransmission(1)
-        beam.setAbsorber(0)
-        #detselect(pilatus300)
-        #detselect([pilatus300, psccd])
-        detselect(pilatus_name)
-        #detselect(psccd)
-        
-        #if RE.state is not 'idle':
-        #    RE.abort()
-
-       
-        self.current_mode = 'measurement'
-        
-        # Check if gate valves are open
-        if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
-            print('Warning: Sample chamber gate valve (large, downstream) is not open.')
-            
-
-
-   
-        
     def modeBeamstopAlignment(self, verbosity=3):
         '''Places bim6 (dsmon) as a temporary beamstop.'''
         
@@ -2073,6 +2141,7 @@ class CMS_Beamline(Beamline):
         self.beam.setTransmission(1e-6)
         
         bsx.move(0)
+        bsy.move(0)
         bsphi.move(-12.0)
         bsx.move(self.bsx_pos)
         bsy.move(-15.47)
@@ -2089,6 +2158,7 @@ class CMS_Beamline(Beamline):
         self.beam.setTransmission(1e-6)
         
         bsx.move(0)
+        bsy.move(0)
         bsphi.move(-223.4)
         bsx.move(self.bsx_pos)
         bsy.move(17)
@@ -2138,11 +2208,254 @@ class CMS_Beamline(Beamline):
             
         if verbosity>=1 and caget(pv+'Pos-Sts')!= 0:
             print('ERROR, valve did not close ({})'.format(pv))
+
+    def _actuate_state(self, pv, wait_time=0, verbosity=2):
         
+        tries = 1
+        if verbosity>=4:
+            print('  Checking state of PV ::: {} '.format(pv))
+        time.sleep(wait_time)
+        return caget(pv+'Pos-Sts')
         
+    #=====================================================================================================
+    #=====================================================================================================
+    #071617, RL, modify the pump/vent procedure for sample/WAXS area.
+    #the change is to vent the WAXS area manually and change the WAXS vent to sample pump
+    #the new detector pump and sample pump will still use the same pump2 
+    #New commands are listed in : http://gisaxs.com/CS/index.php/Beamline_vacuum
+    
+    #PV list before changes: 
+    #sample vent:  XF:11BMB-VA{Chm:Smpl-VV:1}
+    #sample soft vent:  XF:11BMB-VA{Chm:Smpl-VV_Soft:1}
+    #detector vent: XF:11BMB-VA{Chm:Det-VV:1}
+    #detector soft vent: XF:11BMB-VA{Chm:Det-VV:1_Soft}
+    #detector pump: XF:11BMB-VA{Chm:Det-IV:1}
+    #detector soft pump: XF:11BMB-VA{Chm:Det-IV:1_Soft}
+    #KB mirror pressure gauge: 'XF:11BMB-VA{Mir:KB-IV:1}' 
+    
+    #PV list in future
+    #sample vent:  XF:11BMB-VA{Chm:Smpl-VV:1}
+    #sample soft vent:  XF:11BMB-VA{Chm:Smpl-VV_Soft:1}
+    #sample pump : XF:11BMB-VA{Chm:Smpl-VV:1}   --------------NEW
+    #sample soft pump: XF:11BMB-VA{Chm:Smpl-VV:1_Soft}    ------------NEW
+    #detector pump: XF:11BMB-VA{Chm:Det-IV:1}
+    #detector soft pump: XF:11BMB-VA{Chm:Det-IV:1_Soft}
+    #FS4 pressure gauge: 'XF:11BMB-VA{FS:4-IV:1}'
+    
+    def pumpSample(self, max_tries=8, verbosity=3):
+        #check the difference of pressures
+        if self.diffPressure(verbosity=0) != 1:
+            return print('Check the system. Vacuum is not necessary for sample')
+        
+        # close 2d pump valve -- protect WAXS detector
+        # close 2s vent valve
+        self._actuate_close(self.PV_Smpl_vent, verbosity=verbosity)
+        self._actuate_close(self.PV_Det_pump, verbosity=verbosity)
+        
+        # --checkpoint: the valves are closed
+        tries = 1
+        while self._actuate_state(self.PV_Det_pump)==1 or self._actuate_state(self.PV_Smpl_vent)==1:
+            if tries<=max_tries:
+                time.sleep(2.0)
+                tries += 1
+            else:
+                return print('Error: valve (Det_pump or Smpl_vent) is NOT closed')
+                 
+        # pump 2s 
+        # Soft-open valve to pump
+        self._actuate_close(self.PV_Smpl_pump, verbosity=verbosity)
+        time.sleep(0.5)
+        self._actuate_open(self.PV_Smpl_pump_soft, verbosity=verbosity)
+        time.sleep(1.0)
+        # Check pump 
+        tries = 1
+        while caget('XF:11BMB-VA{Chm:Det-Pmp:1}Sts:Enbl-Sts')==0 and tries<=max_tries:
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 0)
+            time.sleep(1.0)
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 1)
+            time.sleep(3.0)
+            tries += 1
+        
+        time.sleep(10.0)
+        # Check pump again
+        tries = 1
+        while caget('XF:11BMB-VA{Chm:Det-Pmp:1}Sts:Enbl-Sts')==0 and tries<=max_tries:
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 0)
+            time.sleep(1.0)
+            caput('XF:11BMB-VA{Chm:Det-Pmp:1}Cmd:Enbl-Cmd', 1)
+            time.sleep(3.0)
+            tries += 1        
+        
+        self.checkPressure(PV=self.PV_Smpl_pressure, range_low=500)
+
+        # Fully open valve to pump
+        self._actuate_close(self.PV_Smpl_pump_soft, verbosity=verbosity)
+        time.sleep(0.5)
+        self._actuate_open(self.PV_Smpl_pump, verbosity=verbosity)
+        
+        self.checkPressure(PV=self.PV_Smpl_pressure, range_low=5)
+     
+    def ventSample(self, verbosity=3):
+        #close window
+        self.closeKaptonWindow(verbosity=verbosity)
+        #close 2s pump valve
+        self._actuate_close(self.PV_Smpl_pump)
+        #--checkpoint: the valve/window are closed
+        tries=1
+        while self._actuate_state(self.PV_Smpl_pump)==1 or self.stateKaptonWindow==1:
+            if tries<=max_tries:
+                time.sleep(2.0)
+                tries += 1
+            else:
+                return print('sample pump valve or Kapton window is not closed') 
+        
+        if verbosity>=3:
+            print('The valves are closed properly and venting is ready to start.')
+            time.sleep(3.0)
+            
+        #open 2s vent valve
+        #--checkpoint: 2s pressure
+        self._actuate_close('XF:11BMB-VA{Chm:Smpl-VV:1}', verbosity=verbosity)
+        time.sleep(1.0)
+        self._actuate_open('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}', verbosity=verbosity)
+        
+        self.checkPressure(PV=self.PV_Smpl_pressure, range_high=100)
+        
+        # Fully open the upstream vent-vale
+        self._actuate_close('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}', verbosity=verbosity)
+        time.sleep(1.0)
+        self._actuate_open('XF:11BMB-VA{Chm:Smpl-VV:1}', verbosity=verbosity)
+
+        self.checkPressure(PV=self.PV_Smpl_pressure, range_high=990)
+        
+        #close the GN2 valve and switch to air 
+        ioL.setOff(Relay[6])        
+        while ioL.read(Relay[6]) ==1:
+            time.sleep(1)
+            ioL.setOff(Relay[6])
+                       
+        if verbosity>=1:
+            print('Sample chamber is ready to be opened.')
+            
+            
+    def openKaptonWindow(self, verbosity=3):
+        pass
+
+    def closeKaptonWindow(self, verbosity=3):
+        pass
+
+    def stateKaptonWindow(self, state=0, verbosity=3):
+        if verbosity>=3:
+            print('The state of Kapton Window is {}'.format(state))
+        return state #0 = close, 1 = open
+    
+    def changePipe(self, max_tries=8, verbosity=3):
+        #close GV for SAXS
+        self._actuate_close(self.PV_SAXS_GV)
+        #--checkpoint: the valves are closed
+        tries=1
+        while self._actuate_state(self.PV_SAXS_GV)==1:
+            if tries<=max_tries:
+                time.sleep(2.0)
+                tries += 1
+            else:
+                return print('SAXS gate valve is not closed')
+            
+        #close pump valve for section 1 and 3
+        self._actuate_close('XF:11BMB-VA{BT:SAXS-IV:1}')
+        self._actuate_close('XF:11BMB-VA{Mir:KB-IV:1}')
+        tries=1
+        while self._actuate_state('XF:11BMB-VA{BT:SAXS-IV:1}')==1 or self._actuate_state('XF:11BMB-VA{Mir:KB-IV:1}')==1:
+            if tries<=max_tries:
+                time.sleep(2.0)
+                tries += 1
+            else:
+                return print('Error: valves for pump1 are NOT closed properly.')
+            
+        #turn off pump1 
+        while caget('XF:11BMB-VA{BT:SAXS-Pmp:1}Sts:Enbl-Sts')==1 and tries<=max_tries:
+            caput('XF:11BMB-VA{BT:SAXS-Pmp:1}Cmd:Enbl-Cmd', 0)
+            time.sleep(1.0)
+    
+    #def ventChamber(self, verbosity=3):
+        #self.ventSample(verbosity=verbosity)
+        #self.openKaptonWindow(verbosity=verbosity)
+
+    #def pumpChamber(self, verbosity=3):
+        #self.pumpSample(verbosity=verbosity)
+        #self._actuate_open(self.PV_SAXS_GV)
+        
+    def checkPressure(self, PV=self._chamber_pressure_pv, self.range_low=None, range_high=None, readout_period=1.0, verbosity=3):
+        '''Monitors the pressure in the sample/WAXS chamber, printing the current value.
+        If range arguments are provided, the monitoring will end once the pressure
+        is outside the range.
+        '''
+        monitor = True
+        while monitor:
+            
+            try:
+            
+                if range_low is not None and PV.get()<range_low:
+                    monitor = False
+                    
+                if range_high is not None and PV.get()>range_high:
+                    monitor = False
+
+                P_mbar = PV.get()
+                P_atm = P_mbar*0.000986923
+                P_torr = P_mbar*0.750062
+                P_kPa = P_mbar*0.1
+                P_psi = 0.0145038
+                
+                if verbosity>=4:
+                    print('Sample chamber pressure: {:8.2f} mbar = {:5.3f} atm = {:7.3f} torr = {:4.1g} kPa     \r'.format(P_mbar, P_atm, P_torr, P_kPa), end='', flush=True)
+                elif verbosity>=2:
+                    print('Sample chamber pressure: {:8.2f} mbar ({:5.3f} atm)    \r'.format(P_mbar, P_atm), end='', flush=True)
+                    
+                time.sleep(readout_period)
+                
+                
+            except KeyboardInterrupt:
+                monitor = False
+    
+    def diffPressure(self, verbosity=3)
+        '''check the difference of pressures in the sample and WAXS chamber. 
+        '''
+        Smpl_pressure = self.PV_Smpl_pressure.get()
+        Det_pressure = self.PV_Det_pressure.get()
+        
+        if Smpl_pressure < 5 and Det_pressure < 5:
+            if verbosity>=3:
+                print('Both Sample and WAXS are in vacuum.')
+            return 0
+        
+        elif Smpl_pressure >950 and Det_pressure > 950:
+            if verbosity>=3:
+                print('Both Sample and WAXS are in air.')
+            return 3
+        
+        elif Smpl_pressure > Det_pressure:
+            if verbosity>=3:
+                print('Sample pressure > WAXS pressure.')
+            return 1
+        
+        elif Smpl_pressure < Det_pressure:
+            if verbosity>=3:
+                print('Sample pressure < WAXS pressure.')
+            return 2
+    #=====================================================================================================
+    #=====================================================================================================
+
+    
     def ventChamber(self, verbosity=3):
         
         #TODO: Remove the old (commented-out) caput lines
+        
+        #open the GN2 valve and close the air valve
+        ioL.setOn(Relay[6])
+        while ioL.read(Relay[6]) ==0:
+            time.sleep(1)
+            ioL.setOn(Relay[6])
         
         # Close large gate valve (downstream side of sample chamber)
         #caput('XF:11BMB-VA{Chm:Det-GV:1}Cmd:Cls-Cmd',1)
@@ -2168,8 +2481,6 @@ class CMS_Beamline(Beamline):
         time.sleep(1.0)
         #caput('XF:11BMB-VA{Chm:Det-VV:1}Cmd:Opn-Cmd', 1)
         self._actuate_open('XF:11BMB-VA{Chm:Det-VV:1_Soft}', verbosity=verbosity)
-  
-  
         
         self.chamberPressure(range_high=100)
         
@@ -2182,13 +2493,19 @@ class CMS_Beamline(Beamline):
 
         # Fully open the downstream vent-vale
         #caput('XF:11BMB-VA{Chm:Det-VV:1_Soft}Cmd:Cls-Cmd', 1)
-        self._actuate_close('XF:11BMB-VA{Chm:Det-VV:1_Soft}', verbosity=verbosity)
+        self._actuate_close('XF:11BMB-VA{Chm:Det  -VV:1_Soft}', verbosity=verbosity)
         time.sleep(1.0)
         #caput('XF:11BMB-VA{Chm:Det-VV:1}Cmd:Opn-Cmd', 1)
         self._actuate_open('XF:11BMB-VA{Chm:Det-VV:1}', verbosity=verbosity)
         
-        self.chamberPressure(range_high=950)
+        self.chamberPressure(range_high=990)
         
+        #close the GN2 valve and switch to air 
+        ioL.setOff(Relay[6])        
+        while ioL.read(Relay[6]) ==1:
+            time.sleep(1)
+            ioL.setOff(Relay[6])
+                       
         if verbosity>=1:
             print('Sample chamber is ready to be opened.')
         
@@ -2235,7 +2552,7 @@ class CMS_Beamline(Beamline):
         
     
         
-    def chamberPressure(self, range_low=None, range_high=None, readout_period=1.0, verbosity=3):
+    def chamberPressure(self, self.range_low=None, range_high=None, readout_period=1.0, verbosity=3):
         '''Monitors the pressure in the sample chamber, printing the current value.
         If range arguments are provided, the monitoring will end once the pressure
         is outside the range.
@@ -2269,10 +2586,15 @@ class CMS_Beamline(Beamline):
             except KeyboardInterrupt:
                 monitor = False
                 
+
+        
         
     def pumpChamber(self, max_tries=8, verbosity=3):
         
-        
+        #close the GN2 valve and switch to air 
+        if ioL.read(Relay[6]) ==1:
+            ioL.setOff(Relay[6])        
+            
         # Close vent-valves
         #caput('XF:11BMB-VA{Chm:Smpl-VV:1_Soft}Cmd:Cls-Cmd', 1)
         #caput('XF:11BMB-VA{Chm:Smpl-VV:1}Cmd:Cls-Cmd', 1)
@@ -2412,9 +2734,9 @@ class CMS_Beamline(Beamline):
         
         md_current['motor_SAXSx'] = SAXSx.user_readback.value
         md_current['motor_SAXSy'] = SAXSy.user_readback.value
-        md_current['motor_DETx'] = DETx.user_readback.value
-        md_current['motor_DETy'] = DETy.user_readback.value
         md_current['motor_WAXSx'] = WAXSx.user_readback.value
+        md_current['motor_WAXSy'] = WAXSy.user_readback.value
+        md_current['motor_WAXSz'] = WAXSz.user_readback.value
         md_current['motor_smx'] = smx.user_readback.value
         md_current['motor_smy'] = smy.user_readback.value
         md_current['motor_sth'] = sth.user_readback.value
@@ -2491,8 +2813,21 @@ class CMS_Beamline(Beamline):
             
         if verbosity>=4:
             print('You can also add/edit metadata directly using the RE.md object.')
-        
-        
+            
+        if os.path.exists(RE.md['experiment_alias_directory']):
+            print('/n The folder has existed. Please change folder name if necessary./n')
+        else:
+            os.makedirs(RE.md['experiment_alias_directory'], exist_ok=True)
+            os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'waxs'), exist_ok=True)
+            os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'waxs/raw'), exist_ok=True)
+            os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'waxs/analysis'), exist_ok=True)
+            os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'saxs'), exist_ok=True)
+            os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'saxs/raw'), exist_ok=True)            
+            os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'saxs/analysis'), exist_ok=True)            
+            os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'data'), exist_ok=True)
+            #os.makedirs(os.path.join(RE.md['experiment_alias_directory'], 'saxs'), exist_ok=True)            
+            print('/n The folder ::: {} ::: has been made for users. /n'.format(RE.md['experiment_alias_directory']))
+      
 
     def _ask_question(self, key, text, default=None):
 
@@ -2570,9 +2905,9 @@ class CMS_Beamline(Beamline):
                     camy ,
                     cam2x ,
                     cam2z ,
-                    DETx ,
-                    DETy ,
                     WAXSx ,
+                    WAXSy ,
+                    WAXSz ,
                     SAXSx ,
                     SAXSy ,
                     bsx , 
@@ -2605,13 +2940,14 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         # TODO: Check what mode (TSAXS, GISAXS) and respond accordingly
         # TODO: Check if gate valves are open and flux is okay (warn user)
         
-        
         self.beam.off()
         self.beam.setTransmission(1e-6)
         while beam.transmission() > 2e-6:
             time.sleep(0.5)
             self.beam.setTransmission(1e-6)
             
+        pilatus_name = pilatus2M
+        pilatus_Epicsname = '{Det:PIL2M}'        
         #mov(bsx, -11.55)
         #mov(bsx, -11.55+2) # changed at 06/02/17, Osuji beam time
         #mov(bsx, -14.73+2) # changed at 06/04/17, SAXS, 3m, Osuji beam time
@@ -2651,7 +2987,9 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         self.current_mode = 'undefined'
         
         self.beam.off()
-        
+
+        pilatus_name = pilatus2M
+        pilatus_Epicsname = '{Det:PIL2M}'        
         #bsx_pos=-16.74
         #mov(bsx, -16.55)
         #mov(bsx, -13.83) #change it at 06/02/17, Osuji Beam time
@@ -2694,8 +3032,7 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         # Check if gate valves are open
         if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
             print('Warning: Sample chamber gate valve (large, downstream) is not open.')
-        
-        
+
     def setDirectBeamROI(self, size=[10,4], verbosity=3):
         '''Update the ROI (stats4) for the direct beam on the Pilatus
         detector. This (should) update correctly based on the current SAXSx, SAXSy.
@@ -2982,7 +3319,7 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         caput('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname), int(size[1]))
         
         detselect(pilatus_name, suffix='_stats1_total')          
-        
+
     
     def out_of_beamstop(self, total_angle, size=[12,12], default_SAXSy=None):
 
@@ -3017,6 +3354,38 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         #return abs(y0 - y_shift_pixel - ROI_ymin) > y_beamstop
 
         return y_offset_pix  - size[1]/2 > y_beamstop
+    
+    def beamOutXR(self, total_angle, roi=[260, 618], size=[10,10]):
+        #check whether the reflect beam is high enough to move the WAXS detector to pos2. 
+        
+        detector = self.WAXS
+        
+        self.setWAXSpos2(size=size)
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+
+        #supposed direct beam position
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size        
+        y_pos_pix = roi[1]/2 - y_offset_pix
+
+        y_shift_pix = y0 - y_pos_pix
+        y_shift_mm = y_shift_pix*pixel_size
+
+        #y pixels for the size of circle beamstop, for pilatus800 
+        y_beamstop = 17
+                
+        #return abs(y0 - y_shift_pixel - ROI_ymin) > y_beamstop
+        return y_shift_pix >  y_beamstop + size[1]/2
+
+
+
+    #def definePos(self, pos1=self.XR_pos1,size=[10,10]):
+        
+        #self.XR_pos2 = pos1
+        #self.XR_pos2[1] = pos1[1] - size[1]/2 - 17
+        #return self.XR_pos2
 
     def setMonitor(self, monitor=['stats1', 'stats2', 'stats3', 'stats4']):
         if monitor == None: 
@@ -3028,9 +3397,434 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
 
         pilatus2M.configuration_attrs=[]
         #print(pilatus2M.configuration_attrs)
+
+class CMS_Beamline_XR(CMS_Beamline_GISAXS):
+    
+    def __init__(self, **kwargs):
+        
+        super().__init__(**kwargs)
+        
+        self.beam = beam
+        ##self.SAXS = CMS_SAXS_Detector(pilatus300)
+        #self.WAXS = CMS_WAXS_Detector(pilatus800)
+        #self.SAXS = CMS_SAXS_Detector(pilatus2M)
+
+        #TODO: define position for WAXS
+        # there are two positions for XR on WAXS
+        # pos1 will be fixed at one position where the direct beam right on the edge of the detector
+        # pos1 will be used for direct beam measurement and low q range
+        # pos2 will be a second position which is (size[1]/2+17) pixels lower than pos1
+        # pos2 will be used for higher q-range than pos1
+
+        self.XR_edge=618
+        self.XR_align=618+50
+        #self.definePos()
+
+        pilatus_name = pilatus800
+        pilatus_Epicsname = '{Det:PIL800K}'
+    
+    def modeXRMeasurement(self, verbosity=3):   
+        
+        self.beam.off()
+        bsx.move(self.bsx_pos)
+
+        if abs(bsx.user_readback.value - self.bsx_pos)>0.1:
+            print('WARNING: Beamstop did not return to correct position!')
+            return
+        
+        self.beam.setTransmission(1)
+        self.beam.setAbsorber(0)
+       
+        self.current_mode = 'XR'
+
+        det_name = pilatus800
+        det_Epicsname = '{Det:PIL800K}'
+
+        detselect(det_name)
+        self.definePos(size=[10, 4])
+        
+        # Check if gate valves are open
+        if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
+            print('Warning: Sample chamber gate valve (large, downstream) is not open.')        
+
+    def modeXRAlignment(self, verbosity=3):
+        
+        if RE.state!='idle':
+            RE.abort()
+        
+        self.current_mode = 'undefined'
+        
+        # TODO: Check what mode (TSAXS, GISAXS) and respond accordingly
+        # TODO: Check if gate valves are open and flux is okay (warn user)
+        
+        self.beam.off()
+        self.beam.setTransmission(1e-6)
+        while beam.transmission() > 2e-6:
+            time.sleep(0.5)
+            self.beam.setTransmission(1e-6)
+            
+        det_name = pilatus2M
+        det_Epicsname = '{Det:PIL2M}'        
+        
+        self.setReflectedBeamROI()
+        self.setDirectBeamROI()
+        bsx.move(self.bsx_pos+5)
+        #detselect(pilatus300, suffix='_stats4_total')
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)
+        #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.6)
+
+        #self.setMonitor(monitor=['stats3', 'stats4'])        
+        detselect(det_name, suffix='_stats4_total')
+        caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(det_Epicsname), 0.5)
+        caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(det_Epicsname), 0.6)
+        
+        self.definePos()
+        self.setWAXSpos(total_angle=0, roi=cms.XR_posAlign) 
+
+
+        #TODO: Update ROI based on current SAXSx, SAXSy and the md in cms object
+        
+        self.current_mode = 'alignment'
+        
+    def setDirectBeamROI_WAXS(self, size=[10,4], verbosity=3):
+        '''Update the ROI (stats4) for the direct beam on the Pilatus
+        detector. This (should) update correctly based on the current SAXSx, SAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). A size=[6,4] is reasonable.
+        The size is changed to [10, 4] for possible beam drift during a user run (changed at 08/16/17)'''
+        
+        detector = self.WAXS
+
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_WAXS_x0_pix']
+        y0 = det_md['detector_WAXS_y0_pix']
+        det_Epicsname = det_md['detector_WAXS_epics_name'] 
+        
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI4:MinX', int(x0-size[0]/2))
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI4:SizeX', int(size[0]))
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI4:MinY', int(y0-size[1]/2))
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI4:SizeY', int(size[1]))
+        
+        #detselect(pilatus300, suffix='_stats4_total')
+
+        
+        caput('XF:11BMB-ES{}:ROI4:MinX'.format(det_Epicsname), int(x0-size[0]/2))
+        caput('XF:11BMB-ES{}:ROI4:SizeX'.format(det_Epicsname), int(size[0]))
+        caput('XF:11BMB-ES{}:ROI4:MinY'.format(det_Epicsname), int(y0-size[1]/2))
+        caput('XF:11BMB-ES{}:ROI4:SizeY'.format(det_Epicsname), int(size[1]))
+        
+        detselect(pilatus_name, suffix='_stats4_total')    
+        
+    def setXRROI(self, total_angle=0.16, size=[10,4], default_WAXSy=None, verbosity=3):
+        '''Update the ROIs (stats1, stats2) for the specular reflected beam on the Pilatus800
+        detector. This (should) update correctly based on the current WAXSx, WAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). 
+        
+        stats1 is centered on the specular reflected beam and has the size specified in 
+        the size argument.
+        
+        stats2 is centered on the specular reflected beam and has the size that is twice
+        as wide as specified in the size argument, for capturing background.
+        
+        The background-subtracted intensity for specular reflection is equal to: 
+        2 * stats1 - stats2 
+        '''
+         
+        detector = self.WAXS
+        #self.setMonitor()
+        
+        if default_WAXSy is not None: 
+            if abs(default_WAXSy - WAXSy.position) > 0.01: 
+                WAXSy.move(default_WAXSy)
+                print('WAXS detector has been shifted to default WAXSy = {:.3f} mm.'.format(WAXSy.position)) 
+        
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_WAXS_x0_pix']
+        y0 = det_md['detector_WAXS_y0_pix']
+        det_Epicsname = det_md['detector_WAXS_epics_name'] 
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        #for pilatus800
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #y pixels for intermodule gaps, for pilatus800 (195 pixels high module, 17 pixels high gap)
+        y_gap_800 = []
+        for i in np.arange(2): 
+            for j in np.arange(17): 
+                y_gap_800.append((195+17)*(i+1)-17+j)
+         
+        #y pixels for Spectular Reflectivity ROI
+        y_roi = []
+        for i in np.arange(int(size[1]+1)):
+            y_roi.append(y_pos+i)
+         
+        #flag for whether the ROI falls on intermodule gap 
+        flag_ROIonGap = len(np.unique(y_gap_800 + y_roi)) < (len(y_gap_800)+len(y_roi)) 
+         
+        #Move SAXSy if ROI falls on intermodule gap; if not, move on 
+        if flag_ROIonGap == True: 
+            y_shift = 17+size[1]+1      # intermodule gap is 17 pixels high 
+            y_shift_mm = pixel_size*y_shift # mm
+            WAXSy.move(WAXSy.position+y_shift_mm) 
+            print('WAXS detector has been shifted to WAXSy = {:.3f} mm (by {:.3f} mm or {} pixels) to avoid a gap.'.format(WAXSy.position,y_shift_mm,y_shift)) 
+         
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_WAXS_x0_pix']
+            y0 = det_md['detector_WAXS_y0_pix']
+           
+            #for pilatus800
+            y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        # ROI1: Raw signal 
+        caput('XF:11BMB-ES{}:ROI1:MinX'.format(det_Epicsname), int(x0-size[0]/2))
+        caput('XF:11BMB-ES{}:ROI1:SizeX'.format(det_Epicsname), int(size[0]))
+        caput('XF:11BMB-ES{}:ROI1:MinY'.format(det_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI1:SizeY'.format(det_Epicsname), int(size[1]))
+        
+        # ROI2: Raw signal+background (same as ROI1 for y, but twice as large for x) 
+        caput('XF:11BMB-ES{}:ROI2:MinX'.format(det_Epicsname), int(x0-size[0]))
+        caput('XF:11BMB-ES{}:ROI2:SizeX'.format(det_Epicsname), int(2*size[0]))
+        caput('XF:11BMB-ES{}:ROI2:MinY'.format(det_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI2:SizeY'.format(det_Epicsname), int(size[1]))
+        
+        #detselect(pilatus_name, suffix='_stats1_total')
+        detselect(pilatus800, suffix='_stats1_total')
+
+    def setXRROI_WAXSy(self, total_angle=0.16, size=[10,10], default_WAXSy=None, verbosity=3):
+        '''Update the ROIs (stats1, stats2) for the specular reflected beam on the Pilatus 800
+        detector. This (should) update correctly based on the XR_POS2 position.
+        
+        calculate the SAXSy position for Pialtus2M 
+        '''
+         
+        detector = self.WAXS
+        #self.setMonitor()
+        self.definePos()
+        #TODO:
+        # These positions are based on the detector position POS2
+        #det_md = detector.get_md()
+        [x0, y0] = self.XR_pos2
+        #x0 = self.WAXS.direct_beam[0]
+        #y0 = self.WAXS.direct_beam[1]
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        #for pilatus2M, with pattern rotated 180deg. changed at 052918
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #y pixels for intermodule gaps, for pilatus800 (195 pixels high module, 17 pixels high gap)
+        y_gap_800 = []
+        for i in np.arange(2): 
+            for j in np.arange(17): 
+                y_gap_800.append((195+17)*(i+1)-17+j)
+         
+        #y pixels for Spectular Reflectivity ROI
+        y_roi = []
+        for i in np.arange(int(size[1]+1)):
+            y_roi.append(y_pos+i)
+         
+        #flag for whether the ROI falls on intermodule gap 
+        flag_ROIonGap = len(np.unique(y_gap_800 + y_roi)) < (len(y_gap_800)+len(y_roi)) 
+         
+        #Move SAXSy if ROI falls on intermodule gap; if not, move on 
+        if flag_ROIonGap == True: 
+            y_shift = 17+size[1]+1      # intermodule gap is 17 pixels high 
+            y_shift_mm = pixel_size*y_shift # mm            
+            self.setWAXSpos(total_angle=0.0, roi=self.XR_pos2, verbosity=3)
+            WAXSy.move(WAXSy.position+y_shift_mm)
+        else:
+            self.setWAXSpos(total_angle=0.0, roi=self.XR_pos2, verbosity=3)
+        
+    def setXRROI_update(self, total_angle=0.16, size=[10,10], default_WAXSy=None, verbosity=3):
+        '''Update the ROIs (stats1, stats2) for the specular reflected beam on the Pilatus 800
+        detector. This (should) update correctly based on the current WAXSx, WAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). 
+        
+        stats1 is centered on the specular reflected beam and has the size specified in 
+        the size argument.
+        
+        stats2 is centered on the specular reflected beam and has the size that is twice
+        as wide as specified in the size argument, for capturing background.
+        
+        The background-subtracted intensity for specular reflection is equal to: 
+        2 * stats1 - stats2 
+        
+        The difference from the original is that the stage WAXSy will not move except necessary
+        The WAXSy position is obtained by setXRROI_calculate
+        '''
+         
+        detector = self.WAXS
+        det_md = detector.get_md()
+        det_Epicsname = det_md['detector_WAXS_epics_name'] 
+        
+        #self.setMonitor()
+        #TODO:
+        #if default_WAXSy==None:
+            #default_WAXSy = -73
+        
+        #if self.beamOutXR():
+            ##move the detector to pos2
+            ## These positions are updated based on current detector position
+            ##det_md = detector.get_md()
+            ##x0 = det_md['detector_WAXS_x0_pix']
+            ##y0 = det_md['detector_WAXS_y0_pix']
+            #self.setWAXSpos(total_angle=0, roi=self.XR_pos2, size=size)
+            #[x0, y0]=self.XR_pos2
+            ##TODO:need to define a default position for pos2
+            #WAXSy_pos = self.setXRROI(total_angle=total_angle,size=size,default_WAXSy=WAXSy.position)
+            #WAXSy.move(WAXSy_pos)    
+
+        #else: 
+            #self.setWAXSpos(total_angle=0, roi=self.XR_pos1, size=size)
+            #[x0, y0]=self.XR_pos1
+            #WAXSy_pos = self.setXRROI(total_angle=total_angle,size=size,default_WAXSy=WAXSy.position)
+            #WAXSy.move(WAXSy_pos)    
+ 
+ 
+        self.setXRROI_WAXSy(total_angle=total_angle,size=size)
+        
+        
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_WAXS_x0_pix']
+        y0 = det_md['detector_WAXS_y0_pix']
+
+ 
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        #for pilatus800k
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        # ROI1: Raw signal 
+        caput('XF:11BMB-ES{}:ROI1:MinX'.format(det_Epicsname), int(x0-size[0]/2))
+        caput('XF:11BMB-ES{}:ROI1:SizeX'.format(det_Epicsname), int(size[0]))
+        caput('XF:11BMB-ES{}:ROI1:MinY'.format(det_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI1:SizeY'.format(det_Epicsname), int(size[1]))
+        
+        # ROI2: Raw signal+background (same as ROI1 for y, but twice as large for x) 
+        caput('XF:11BMB-ES{}:ROI2:MinX'.format(det_Epicsname), int(x0-size[0]))
+        caput('XF:11BMB-ES{}:ROI2:SizeX'.format(det_Epicsname), int(2*size[0]))
+        caput('XF:11BMB-ES{}:ROI2:MinY'.format(det_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI2:SizeY'.format(det_Epicsname), int(size[1]))
+        
+        detselect(pilatus800, suffix='_stats1_total')
+        
+    def setWAXSpos(self, total_angle=0.16, roi=[458, 1043-409], verbosity=3):
+        #to locate WAXSy position with given roi and incident angle. 
+        #The defined roi could be used for data collection for the current angle. 
+
+        detector = self.WAXS
+        #self.setMonitor()
+        
+        # These positions are updated based on current detector position
+        det_md = detector.get_md()
+        x0 = det_md['detector_WAXS_x0_pix']
+        y0 = det_md['detector_WAXS_y0_pix']        
+
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+
+        #supposed direct beam position
+        x_shift_pix =  roi[0] - x0 
+        x_shift_mm = x_shift_pix*pixel_size
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size        
+        y_pos_pix = roi[1] + y_offset_pix
+
+        y_shift_pix = y_pos_pix - y0 
+        y_shift_mm = y_shift_pix*pixel_size
+        
+        WAXSx.move(WAXSx.position+x_shift_mm) 
+        WAXSy.move(WAXSy.position+y_shift_mm) 
+        print('WAXSx has been moved to new position {}'.format(WAXSx.position))
+        print('WAXSy has been moved to new position {}'.format(WAXSy.position))
+        self.setDirectBeamROI_WAXS()
+        return x_shift_mm, y_shift_mm
+
+    def gotoWAXSpos2(self):
+        self.definepos()
+        self.setWAXSpos(total_angle=0, roi=self.XR_pos2)
+
+    def gotoWAXSpos1(self):
+        self.definepos()
+        beam.setTransmission(1e-6)
+        print('Transmission is 1e-6.')
+        self.setWAXSpos(total_angle=0, roi=self.XR_pos1)
+
+
+    def beamOutXR(self, total_angle, roi=[458, 1043-409], size=[10,4]):
+        #check whether the reflect beam is high enough to move the WAXS detector to pos2. 
+        #TODO: to test the best angle to move to POS2. 15pixel at 255mm is about 0.58deg as 2theta.
+        # this one should be roi_ysize/2+safe_distance_for_directbeam
+        # POS2 should have a fixed y position. 
+        
+        detector = self.WAXS
+        det_md = detector.get_md()
+        x0 = det_md['detector_WAXS_x0_pix']
+        y0 = det_md['detector_WAXS_y0_pix'] 
+        
+        #WAXS_edge = 424 # The edge pixel of the L shape
+       
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+
+        #supposed direct beam position
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size        
+        y_pos_pix = roi[1] - y_offset_pix
+
+        y_shift_pix = y0 - y_pos_pix
+        y_shift_mm = y_shift_pix*pixel_size
+
+        #y pixels to move the beam into thru hole for pilatus800 
+        y_beamstop = 7
+                
+        #return abs(y0 - y_shift_pixel - ROI_ymin) > y_beamstop
+        return y_shift_pix >  y_beamstop + size[1]/2
+
+    def bsin():
+        bsx.move(self.bsx_pos)
+        print('=========The beam stop is moved in.=============')
+        
+    def definePos(self,size=[10,4]):
+        
+        detector = self.WAXS
+        det_md = detector.get_md()
+        x0 = det_md['detector_WAXS_x0_pix']
+        y0 = det_md['detector_WAXS_y0_pix']
+
+        self.XR_pos1 = [x0, self.XR_edge-size[1]/2] 
+        self.XR_pos2 = [x0, self.XR_edge+size[1]/2+7]
+        self.XR_posAlign = [x0, self.XR_align]
+
+        return self.XR_pos1, self.XR_pos2
+
     
 #cms = CMS_Beamline()
-cms = CMS_Beamline_GISAXS()
+cms = CMS_Beamline_XR()
+#cms = CMS_Beamline_GISAXS()
 
 def get_beamline():
     return cms

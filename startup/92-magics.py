@@ -2,7 +2,7 @@
 # BlueskyMagics were imported and registered in 00-startup.py
 
 BlueskyMagics.detectors = [pilatus2M]
-BlueskyMagics.positioners = [smx,smy,sth,schi,sphi,srot,strans,strans2,stilt,stilt2, DETx,DETy,WAXSx,SAXSx,SAXSy, bsx,bsy,bsphi, camx,camy, armz,armx,armphi,army,armr, bim3y,fs3y,bim4y,bim5y, s0.tp, s0.bt, s0.ob, s0.ib, s0.xc, s0.yc, s0.xg, s0.yg, s1.xc, s1.yc, s1.xg, s1.yg, s2.xc, s2.yc, s2.xg, s2.yg, s3.xc, s3.yc, s3.xg, s3.yg, s4.xc, s4.yc, s4.xg, s4.yg, s5.xc, s5.yc, s5.xg, s5.yg, mono_bragg,mono_pitch2,mono_roll2,mono_perp2, mir_usx,mir_dsx,mir_usy,mir_dsyi,mir_dsyo,mir_bend]
+BlueskyMagics.positioners = [smx,smy,sth,schi,sphi,srot,strans,strans2,stilt,stilt2, WAXSx,WAXSy,WAXSz,SAXSx,SAXSy, bsx,bsy,bsphi, camx,camy, armz,armx,armphi,army,armr, bim3y,fs3y,bim4y,bim5y, s0.tp, s0.bt, s0.ob, s0.ib, s0.xc, s0.yc, s0.xg, s0.yg, s1.xc, s1.yc, s1.xg, s1.yg, s2.xc, s2.yc, s2.xg, s2.yg, s3.xc, s3.yc, s3.xg, s3.yg, s4.xc, s4.yc, s4.xg, s4.yg, s5.xc, s5.yc, s5.xg, s5.yg, mono_bragg,mono_pitch2,mono_roll2,mono_perp2, mir_usx,mir_dsx,mir_usy,mir_dsyi,mir_dsyo,mir_bend]
 
 ### Override the %wa magic with one that includes offsets.
 ### Later this will be added to bluesky itself and will not

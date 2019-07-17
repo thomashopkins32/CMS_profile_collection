@@ -119,15 +119,20 @@ class ioLogik(Device):
     def readRH(self, AI_chan, temperature=25.0, voltage_supply=5.0, coeff_slope=0.030, coeff_offset=0.787, verbosity=3):
         voltage_out = self.read(AI[AI_chan])
         corr_voltage_out = voltage_out * (5.0 / voltage_supply)
-        #For sensor #220
+        #For sensor #220 used for SVA chamber
         #coeff_offset = 0.788 #from the certificate
-        coeff_offset = 0.746 #from the environment of RH=0
-        coeff_slope = 0.029
-        sensor_RH = (corr_voltage_out - coeff_offset) / coeff_slope
+        #coeff_offset = 0.746 #from the environment of RH=0
+        #coeff_slope = 0.029
 
-        #For sensor #
+        #For sensor used for Linkam tensile stage
         #coeff_offset = 0.787
         #coeff_slope = 0.030
+
+        #For sensor 114 used for environmental bar
+        coeff_offset = 0.787
+        coeff_slope = 0.030
+
+        sensor_RH = (corr_voltage_out - coeff_offset) / coeff_slope
 
         true_RH = sensor_RH / (1.0546 - 0.00216 * temperature)      # T in [degC]
         

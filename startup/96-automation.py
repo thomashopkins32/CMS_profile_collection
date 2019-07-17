@@ -380,7 +380,7 @@ class SampleExchangeRobot(Stage):
             #self.rabs(r, verbosity=verbosity)
         
         
-    def sequencePutSampleOntoStage(self, verbosity=3):
+    def sequencePutSampleOntoStage(self, gotoSafe=True, verbosity=3):
         
         if self._sample is None:
             print("ERROR: No sample currently being gripped by robot arm.")
@@ -428,11 +428,12 @@ class SampleExchangeRobot(Stage):
         #mov(armx, x)
         armx.move(x)
         
-        self.sequenceGotoSafe(verbosity=verbosity)
+        if gotoSafe==True:
+            self.sequenceGotoSafe(verbosity=verbosity)
         
         
 
-    def sequenceGetSampleFromStage(self, verbosity=3):
+    def sequenceGetSampleFromStage(self, gotoSafe=True, verbosity=3):
         
         if self._sample is not None:
             print("ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name))
@@ -479,11 +480,12 @@ class SampleExchangeRobot(Stage):
         #mov(armx, x)
         armx.move(x)
        
-        self.sequenceGotoSafe(verbosity=verbosity)
+        if gotoSafe==True:
+            self.sequenceGotoSafe(verbosity=verbosity)
         
         
         
-    def sequenceGetSampleFromGarage(self, shelf_num, spot_num, verbosity=3):
+    def sequenceGetSampleFromGarage(self, shelf_num, spot_num, gotoSafe=True, verbosity=3):
         
         if shelf_num<1 or shelf_num>4:
             print("ERROR: Invalid shelf {}".format(shelf_num))
@@ -530,10 +532,11 @@ class SampleExchangeRobot(Stage):
         self.zabs(0, verbosity=verbosity)
         self.xabs(0, verbosity=verbosity)
         self.yabs(self._position_safe[1], verbosity=verbosity)
-        self.sequenceGotoSafe(verbosity=verbosity)
+        if gotoSafe==True:
+            self.sequenceGotoSafe(verbosity=verbosity)
         
 
-    def sequencePutSampleInGarage(self, shelf_num, spot_num, verbosity=3):
+    def sequencePutSampleInGarage(self, shelf_num, spot_num, gotoSafe=True, verbosity=3):
         
         if shelf_num<1 or shelf_num>4:
             print("ERROR: Invalid shelf {}".format(shelf_num))
@@ -576,7 +579,8 @@ class SampleExchangeRobot(Stage):
         # Move away from parking
         self.zabs(0, verbosity=verbosity)
         self.xabs(0, verbosity=verbosity)
-        self.sequenceGotoSafe(verbosity=verbosity)
+        if gotoSafe==True:
+            self.sequenceGotoSafe(verbosity=verbosity)
 
 
     def sequencePrepGarageXY(self, shelf_num, spot_num, verbosity=3):
@@ -665,26 +669,6 @@ class SampleExchangeRobot(Stage):
         self.xabs(-40, verbosity=verbosity)
         #self.rabs(0, verbosity=verbosity)
          
-    def pickandStage(self, shelf_num, spot_num,verbosity=3):
-        '''pick up bar from sample stage and leave in 'safe' position
-        '''
-        if verbosity>=2:
-            print('picking up from garage ({}, {})'.format(shelf_num, spot_num))
-        self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
-        time.sleep(2)
-        self.sequencePutSampleOntoStage(verbosity=verbosity) 
-        time.sleep(2)        
-
-    def pickandGarage(self, shelf_num, spot_num, verbosity=3):
-        '''pick up bar from sample stage and leave in 'safe' position
-        '''
-        if verbosity>=2:
-            print('return to garage ({}, {})'.format(shelf_num, spot_num))
-        self.sequenceGetSampleFromStage(verbosity=verbosity)
-        time.sleep(2)
-        self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
-        time.sleep(2)        
-
     def calibrationGarage(self, verbosity=3):
         
         #use Garage(1,1) to calibration the gripper position
@@ -714,6 +698,27 @@ class SampleExchangeRobot(Stage):
         self.yr(-self._delta_y_slot, verbosity=verbosity)
         self.zabs(-60)
        
+    def pickandStage(self, shelf_num, spot_num,verbosity=3):
+        '''pick up bar from sample stage and leave in 'safe' position
+        '''
+        if verbosity>=2:
+            print('picking up from garage ({}, {})'.format(shelf_num, spot_num))
+        self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+        time.sleep(2)
+        self.sequencePutSampleOntoStage(verbosity=verbosity) 
+        time.sleep(2)        
+
+    def pickandGarage(self, shelf_num, spot_num, verbosity=3):
+        '''pick up bar from sample stage and leave in 'safe' position
+        '''
+        if verbosity>=2:
+            print('return to garage ({}, {})'.format(shelf_num, spot_num))
+        self.sequenceGetSampleFromStage(verbosity=verbosity)
+        time.sleep(2)
+        self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
+        time.sleep(2)        
+
+
     def pickHolder(shelf_num, spot_num, verbosity=3):
         
         #picking up the holer from Garage
@@ -781,69 +786,52 @@ class SampleExchangeRobot(Stage):
         if not self.checkSafe():
             return
         
-        #self.home()
-        
-        
-        for i in range(cycles):
+        for hol in Garage_holders:
+            
+            [shelf_num, spot_num] = hol.GaragePosition
             if verbosity>=2:
-                print('Run test cycle {}'.format(i))
-
-            for hol in Garage_holders:
+                print('Run test garage ({}, {})'.format(shelf_num, spot_num))
                 
-                    [shelf_num, spot_num] = hol.GaragePosition
+            self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+            time.sleep(2)
+            self.sequencePutSampleOntoStage(verbosity=verbosity)
 
-            
-                    if verbosity>=2:
-                        print('Run test garage ({}, {})'.format(shelf_num, spot_num))
-    
-                    
-                    self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
-                    time.sleep(2)
-                    self.sequencePutSampleOntoStage(verbosity=verbosity)
-
-                    hol.listSamples()
-                    time.sleep(2)
-                    hol.doSamples()
-                    
-                    
-                    self.sequenceGetSampleFromStage(verbosity=verbosity)
-                    time.sleep(2)
-                    self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
-                    time.sleep(2)
+            hol.listSamples()
+            time.sleep(2)
+            hol.doSamples()
+                
+            self.sequenceGetSampleFromStage(verbosity=verbosity)
+            time.sleep(2)
+            self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)        
+            time.sleep(2)
 
 
-    #def run_test(self, cycles=1, verbosity=3):
+    def run_test(self,  verbosity=3):
 
-        #if not self.checkSafe():
-            #return
-
-        #if caget(XF:11BMA-PPS{PSh}Sts:FailOpn-Sts)==0:
-            #caput(XF:11BMA-PPS{PSh}Sts:FailOpn-Sts,1)
-            #print('Robot starts working. Shutter is open')
-        #if caget(XF:11BMB-VA{Chm:Det-GV:1}Sts:FailOpn-Sts)==0:
-            #caput(XF:11BMB-VA{Chm:Det-GV:1}Sts:FailOpn-Sts,1)
-            #print('Robot starts working. Gate valve is open')
+        if not self.checkSafe():
+            return
         
-        #for i in range(cycles):
-            #if verbosity>=2:
-                #print('Run test cycle {}'.format(i))
-
-            #for hol in Garage_holders:
-                
-                    #[shelf_num, spot_num] = hol.GaragePosition
-
+        for hol in Garage_holders:
             
-                    #if verbosity>=2:
-                        #print('Run test garage ({}, {})'.format(shelf_num, spot_num))
-    
-                    
-                    #self.pickHolder(shelf_num, spot_num, verbosity=verbosity)
-
-                    #hol.listSamples()
-                    #time.sleep(2)
-                    #hol.doSamples()                    
-                    
-                    #self.returnHolder(shelf_num, spot_num, verbosity=verbosity)
+            [shelf_num, spot_num] = hol.GaragePosition
+            if verbosity>=2:
+                print('Run test garage ({}, {})'.format(shelf_num, spot_num))
+                
+            self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+            print('out of garage')
+            time.sleep(2)
+            self.sequencePutSampleOntoStage(verbosity=verbosity)
+            
+            hol.listSamples()
+            time.sleep(2)
+            hol.doSamples()
+                
+            self.sequenceGetSampleFromStage(verbosity=verbosity)
+            time.sleep(2)
+            self.sequencePutSampleInGarage(shelf_num, spot_num, gotoSafe=False, verbosity=verbosity)        
+            time.sleep(2)
+            
+        self.sequenceGotoSafe(verbosity=verbosity)
                     
     def listGarage(self, verbosity=3):
 

@@ -979,13 +979,13 @@ class Sample_Generic(CoordinateSystem):
                             #'units': 'deg',
                             #'hint': None,
                             #},
-                            #{'name': 'phi',
-                            #'motor': srot,
-                            #'enabled': True,
-                            #'scaling': +1.0,
-                            #'units': 'deg',
-                            #'hint': None,
-                            #},
+                            {'name': 'phi',
+                            'motor': srot,
+                            'enabled': True,
+                            'scaling': +1.0,
+                            'units': 'deg',
+                            'hint': None,
+                            },
                             #{'name': 'yy',
                             #'motor': None,
                             #'enabled': True,
@@ -1047,15 +1047,32 @@ class Sample_Generic(CoordinateSystem):
             return self.temperature(temperature_probe='E',verbosity=0)
         if attribute=='humidity':
             return self.humidity(verbosity=0)
+  
+        if attribute=='WAXSy':
+            return WAXSy.position
+        if attribute=='WAXSx':
+            return WAXSx.position
+        
+        if attribute=='SAXSy':
+            return SAXSy.position
+        if attribute=='SAXSx':
+            return SAXSx.position
         
         if attribute in self.md:
             return self.md[attribute]
         if attribute=='energy':
             return '{}kev'.format(np.round(beam.energy(verbosity=0),2))
-        if attribute=='dry':
-            return 'dry{}'.format(readDryFlow())
-        if attribute=='wet':
-            return 'wet{}'.format(readWetFlow())
+        #if attribute=='dry':
+            #return 'dry{}'.format(readDryFlow())
+        #if attribute=='wet':
+            #return 'wet{}'.format(readWetFlow())
+        if attribute=='flow':
+            if MFC.mode('A1')==0: #open
+                return 'flowMAX'
+            if MFC.mode('A1')==1: #close
+                return 'flowOFF'
+            if MFC.mode('A1')==2:
+                return 'flow{}'.format(MFC.flow('A1'))
 
         replacements = { 
             'id' : 'measurement_ID' ,
@@ -1185,6 +1202,15 @@ class Sample_Generic(CoordinateSystem):
         if attribute=='trigger_time':
             return '{:.1f}s'.format(self.get_attribute(attribute))
 
+        if attribute=='WAXSy':
+           return 'WAXSy{}'.format(self.get_attribute(attribute))
+        if attribute=='WAXSx':
+           return 'WAXSx{}'.format(self.get_attribute(attribute))
+
+        if attribute=='SAXSy':
+           return 'SAXSy{}'.format(self.get_attribute(attribute))
+        if attribute=='SAXSx':
+           return 'SAXSx{}'.format(self.get_attribute(attribute))
 
         if attribute=='extra':
             # Note: Don't eliminate this check; it will not be properly handled
@@ -1369,20 +1395,22 @@ class Sample_Generic(CoordinateSystem):
             exposure_time = abs(exposure_time)
             #for detector in gs.DETS:
             for detector in get_beamline().detector:
-                if detector.name is 'pilatus2M' and exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                if exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
                     RE(detector.setExposureTime(exposure_time, verbosity=verbosity))
-                if detector.name is 'pilatus300' and exposure_time != detector.cam.acquire_time.get():
-                    detector.setExposureTime(exposure_time, verbosity=verbosity)
-                    #extra wait time when changing the exposure time.  
+                #if detector.name is 'pilatus800' and exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                    #RE(detector.setExposureTime(exposure_time, verbosity=verbosity))
+                #if detector.name is 'pilatus300' and exposure_time != detector.cam.acquire_time.get():
+                    #detector.setExposureTime(exposure_time, verbosity=verbosity)
+                    ##extra wait time when changing the exposure time.  
+                    ##time.sleep(2)
+                    #############################################
+                    ##extra wait time for adjusting pilatus2M 
+                    ##this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
+                    ##Note by 091918
+                    #############################################
                     #time.sleep(2)
-                    ############################################
-                    #extra wait time for adjusting pilatus2M 
-                    #this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
-                    #Note by 091918
-                    ############################################
-                    time.sleep(2)
-                elif detector.name is 'PhotonicSciences_CMS':
-                    detector.setExposureTime(exposure_time, verbosity=verbosity)
+                #elif detector.name is 'PhotonicSciences_CMS':
+                    #detector.setExposureTime(exposure_time, verbosity=verbosity)
 
         # Do acquisition
         get_beamline().beam.on()
@@ -1413,9 +1441,12 @@ class Sample_Generic(CoordinateSystem):
             elif detector.name is 'pilatus2M':
                 current_exposure_time = caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime')
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
-            elif detector.name is 'PhotonicSciences_CMS':
-                current_exposure_time = detector.exposure_time
+            elif detector.name is 'pilatus800':
+                current_exposure_time = caget('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime')
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
+            #elif detector.name is 'PhotonicSciences_CMS':
+                #current_exposure_time = detector.exposure_time
+                #max_exposure_time = max(max_exposure_time, current_exposure_time)
             else:
                 if verbosity>=1:
                     print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
@@ -1435,9 +1466,12 @@ class Sample_Generic(CoordinateSystem):
                     elif detector.name is 'pilatus2M':
                         if caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
                             status *= 0
-                    elif detector.name is 'PhotonicSciences_CMS':
-                        if not detector.detector_is_ready(verbosity=0):
+                    elif detector.name is 'pilatus800':
+                        if caget('XF:11BMB-ES{Det:PIL800K}:cam1:Acquire')==1:
                             status *= 0
+                    #elif detector.name is 'PhotonicSciences_CMS':
+                        #if not detector.detector_is_ready(verbosity=0):
+                            #status *= 0
             print('')
                     
                 
@@ -1459,6 +1493,124 @@ class Sample_Generic(CoordinateSystem):
                 #self.handle_file(detector, extra=extra, verbosity=verbosity)
 
 
+    def _expose_test(self, exposure_time=None, extra=None, handlefile=True, verbosity=3, poling_period=0.1, **md):
+        '''Internal function that is called to actually trigger a measurement.'''
+        '''TODO: **md doesnot work in RE(count). '''
+        
+        
+        if 'measure_type' not in md:
+            md['measure_type'] = 'expose'
+        #self.log('{} for {}.'.format(md['measure_type'], self.name), **md)
+
+        # Set exposure time
+        print(time.time())
+        if exposure_time is not None:
+            exposure_time = abs(exposure_time)
+            #for detector in gs.DETS:
+            for detector in get_beamline().detector:
+                if exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                    RE(detector.setExposureTime(exposure_time, verbosity=verbosity))
+                #if detector.name is 'pilatus800' and exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                    #RE(detector.setExposureTime(exposure_time, verbosity=verbosity))
+                #if detector.name is 'pilatus300' and exposure_time != detector.cam.acquire_time.get():
+                    #detector.setExposureTime(exposure_time, verbosity=verbosity)
+                    ##extra wait time when changing the exposure time.  
+                    ##time.sleep(2)
+                    #############################################
+                    ##extra wait time for adjusting pilatus2M 
+                    ##this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
+                    ##Note by 091918
+                    #############################################
+                    #time.sleep(2)
+                #elif detector.name is 'PhotonicSciences_CMS':
+                    #detector.setExposureTime(exposure_time, verbosity=verbosity)
+        print(time.time())
+
+        # Do acquisition
+        get_beamline().beam.on()
+        print(time.time())
+        
+        md['plan_header_override'] = md['measure_type']
+        start_time = time.time()
+        
+        #md_current = self.get_md()
+        md['beam_int_bim3'] = beam.bim3.flux(verbosity=0)
+        md['beam_int_bim4'] = beam.bim4.flux(verbosity=0)
+        md['beam_int_bim5'] = beam.bim5.flux(verbosity=0)
+        #md['trigger_time'] = self.clock()
+        #md.update(md_current)
+
+        #uids = RE(count(get_beamline().detector, 1), **md)
+        uids = RE(count(get_beamline().detector), **md)
+        #yield from (count(get_beamline().detector), **md)
+        print(time.time())
+        
+        #get_beamline().beam.off()
+        #print('shutter is off')
+
+        # Wait for detectors to be ready
+        max_exposure_time = 0.1
+        for detector in get_beamline().detector:
+            if detector.name is 'pilatus300':
+                current_exposure_time = caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            elif detector.name is 'pilatus2M':
+                current_exposure_time = caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            elif detector.name is 'pilatus800':
+                current_exposure_time = caget('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime')
+                max_exposure_time = max(max_exposure_time, current_exposure_time)
+            #elif detector.name is 'PhotonicSciences_CMS':
+                #current_exposure_time = detector.exposure_time
+                #max_exposure_time = max(max_exposure_time, current_exposure_time)
+            else:
+                if verbosity>=1:
+                    print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
+            
+        print(time.time())
+        if verbosity>=2:
+            status = 0
+            while (status==0) and (time.time()-start_time)<(max_exposure_time+20):
+                percentage = 100*(time.time()-start_time)/max_exposure_time
+                print( 'Exposing {:6.2f} s  ({:3.0f}%)      \r'.format((time.time()-start_time), percentage), end='')
+                time.sleep(poling_period)
+                
+                status = 1
+                for detector in get_beamline().detector:
+                    if detector.name is 'pilatus300':
+                        if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+                            status *= 0
+                    elif detector.name is 'pilatus2M':
+                        if caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
+                            status *= 0
+                    elif detector.name is 'pilatus800':
+                        if caget('XF:11BMB-ES{Det:PIL800K}:cam1:Acquire')==1:
+                            status *= 0
+                    #elif detector.name is 'PhotonicSciences_CMS':
+                        #if not detector.detector_is_ready(verbosity=0):
+                            #status *= 0
+            print('')
+                    
+                
+        else:
+            time.sleep(max_exposure_time)
+        print(time.time())
+        
+        #if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
+            #print('Warning: Detector pilatus300 still not done acquiring.')
+
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
+            print('Warning: Detector pilatus2M still not done acquiring.')
+ 
+        
+        get_beamline().beam.off()
+        print(time.time())
+        
+        #if handlefile == True:
+            #for detector in get_beamline().detector:
+                #self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
+                ##self.handle_file(detector, extra=extra, verbosity=verbosity)
+
 
     def handle_file(self, detector, extra=None, verbosity=3, subdirs=True, **md):
     
@@ -1476,6 +1628,8 @@ class Sample_Generic(CoordinateSystem):
 
             if subdirs:
                 subdir = '/maxs/'
+                #TODO:
+                #subdir = '/maxs/raw/'
 
             #if md['measure_type'] is not 'snap':
             if True:
@@ -1502,8 +1656,15 @@ class Sample_Generic(CoordinateSystem):
                     print('  Data linked as: {}'.format(link_name))
 
         elif detector.name is 'pilatus2M':
+
+            foldername = '/nsls2/xf11bm/'
+            
             chars = caget('XF:11BMB-ES{Det:PIL2M}:TIFF1:FullFileName_RBV')
             filename = ''.join(chr(char) for char in chars)[:-1]
+            filename = foldername + filename
+
+            #chars = caget('XF:11BMB-ES{Det:PIL2M}:TIFF1:FullFileName_RBV')
+            #filename = ''.join(chr(char) for char in chars)[:-1]
             
             # Alternate method to get the last filename
             #filename = '{:s}/{:s}.tiff'.format( detector.tiff.file_path.get(), detector.tiff.file_name.get()  )
@@ -1513,7 +1674,9 @@ class Sample_Generic(CoordinateSystem):
 
             if subdirs:
                 subdir = '/saxs/'
-
+                #TODO:
+                #subdir = '/saxs/raw/'
+                
             #if md['measure_type'] is not 'snap':
             if True:
                 
@@ -1538,25 +1701,66 @@ class Sample_Generic(CoordinateSystem):
                 if verbosity>=3:
                     print('  Data linked as: {}'.format(link_name))
                         
-        elif detector.name is 'PhotonicSciences_CMS':
+        elif detector.name is 'pilatus800':
+            foldername = '/nsls2/xf11bm/'
             
-            self.set_attribute('exposure_time', detector.exposure_time)
-            
-            filename = '{:s}/{:s}.tif'.format( detector.file_path, detector.file_name )
+            chars = caget('XF:11BMB-ES{Det:PIL800K}:TIFF1:FullFileName_RBV')
+            filename = ''.join(chr(char) for char in chars)[:-1]
+            filename = foldername + filename
+            # Alternate method to get the last filename
+            #filename = '{:s}/{:s}.tiff'.format( detector.tiff.file_path.get(), detector.tiff.file_name.get()  )
+
+            if verbosity>=3:
+                print('  Data saved to: {}'.format(filename))
 
             if subdirs:
                 subdir = '/waxs/'
+                #TODO:
+                #subdir = '/waxs/raw/'
+            #if md['measure_type'] is not 'snap':
+            if True:
+                
+                self.set_attribute('exposure_time', caget('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime'))
+                
+                # Create symlink
+                #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])
+                #savename = md['filename'][:-5]
+                
+                #savename = self.get_savename(savename_extra=extra)
+                savename = md['filename']
+                
+                link_name = '{}/{}{}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename)
+                #link_name = '{}/{}{}_{:04d}_saxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+                
+                if os.path.isfile(link_name):
+                    i = 1
+                    while os.path.isfile('{}.{:d}'.format(link_name,i)):
+                        i += 1
+                    os.rename(link_name, '{}.{:d}'.format(link_name,i))
+                os.symlink(filename, link_name)
+                
+                if verbosity>=3:
+                    print('  Data linked as: {}'.format(link_name))
 
-            #savename = md['filename'][:-5]
-            #savename = self.get_savename(savename_extra=extra)
-            savename = md['filename']
-            #savename = '{}/{}{}_{:04d}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
-            savename = '{}/{}{}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename)
+
+        #elif detector.name is 'PhotonicSciences_CMS':
             
-            shutil.copy(filename, savename)
-            if verbosity>=3:
-                print('  Data saved to: {}'.format(savename))
+            #self.set_attribute('exposure_time', detector.exposure_time)
+            
+            #filename = '{:s}/{:s}.tif'.format( detector.file_path, detector.file_name )
 
+            #if subdirs:
+                #subdir = '/waxs/'
+
+            ##savename = md['filename'][:-5]
+            ##savename = self.get_savename(savename_extra=extra)
+            #savename = md['filename']
+            ##savename = '{}/{}{}_{:04d}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+            #savename = '{}/{}{}_waxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename)
+            
+            #shutil.copy(filename, savename)
+            #if verbosity>=3:
+                #print('  Data saved to: {}'.format(savename))
         
         else:
             if verbosity>=1:
@@ -1621,6 +1825,39 @@ class Sample_Generic(CoordinateSystem):
                     SAXSx.move(SAXSx_o)
                 if SAXSy.user_readback.value != SAXSy_o:
                     SAXSy.move(SAXSy_o)
+            if cms.detector == [pilatus800]:
+                
+                WAXSy_o = WAXSy.user_readback.value
+                WAXSx_o = WAXSx.user_readback.value
+                
+                extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
+                md['detector_position'] = 'lower_left'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                #extra x movement is needed for pilatus2M. 
+
+                WAXSy.move(WAXSy.user_readback.value + 5.16)
+                extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
+                md['detector_position'] = 'upper_left'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                WAXSx.move(WAXSx.user_readback.value - 5.16)
+                extra_current = 'pos4' if extra is None else '{}_pos4'.format(extra)
+                md['detector_position'] = 'upper_right'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+                
+                
+                WAXSy.move(WAXSy.user_readback.value + -5.16)
+                extra_current = 'pos3' if extra is None else '{}_pos3'.format(extra)
+                md['detector_position'] = 'lower_right'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+
+                WAXSx.move(WAXSx.user_readback.value + 5.16)
+
+                if WAXSx.user_readback.value != WAXSx_o:
+                    WAXSx.move(WAXSx_o)
+                if WAXSy.user_readback.value != WAXSy_o:
+                    WAXSy.move(WAXSy_o)
 
         elif tiling is 'ygaps':
             if cms.detector == [pilatus2M]:
@@ -1637,10 +1874,11 @@ class Sample_Generic(CoordinateSystem):
                 extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
                 md['detector_position'] = 'upper'
                 SAXSy.move(SAXSy.user_readback.value + 5.16)
+                time.sleep(5)
                 self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
                 
-                SAXSy.move(SAXSy.user_readback.value + -5.16)
-
+                SAXSy.move(SAXSy.user_readback.value - 5.16)
+                time.sleep(5)
                 if SAXSx.user_readback.value != SAXSx_o:
                     SAXSx.move(SAXSx_o)
                 if SAXSy.user_readback.value != SAXSy_o:
@@ -1666,7 +1904,26 @@ class Sample_Generic(CoordinateSystem):
 
                 if MAXSy.user_readback.value != MAXSy_o:
                     MAXSy.move(MAXSy_o)
-    
+
+            if cms.detector == [pilatus800]:
+
+                WAXSy_o = WAXSy.user_readback.value
+
+                extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
+                md['detector_position'] = 'lower'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+
+
+                WAXSy.move(WAXSy.user_readback.value + 5.16)
+                extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
+                md['detector_position'] = 'upper'
+                self.measure_single(exposure_time=exposure_time, extra=extra_current, measure_type=measure_type, verbosity=verbosity, stitchback=True,**md)
+
+
+                WAXSy.move(WAXSy.user_readback.value - 5.16)
+
+                if WAXSy.user_readback.value != WAXSy_o:
+                    WAXSy.move(MAXSy_o)    
         #if tiling is 'big':
             # TODO: Use multiple images to fill the entire detector motion range
         
@@ -1778,20 +2035,20 @@ class Sample_Generic(CoordinateSystem):
         if exposure_time is not None:
             #for detector in gs.DETS:
             for detector in get_beamline().detector:
-                if detector.name is 'pilatus2M' and exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
+                if exposure_time != detector.cam.acquire_time.get():  #caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
                     RE(detector.setExposureTime(exposure_time, verbosity=verbosity))
-                if detector.name is 'pilatus300' and exposure_time != detector.cam.acquire_time.get():
-                    detector.setExposureTime(exposure_time, verbosity=verbosity)
-                    #extra wait time when changing the exposure time.  
+                #if detector.name is 'pilatus300' and exposure_time != detector.cam.acquire_time.get():
+                    #detector.setExposureTime(exposure_time, verbosity=verbosity)
+                    ##extra wait time when changing the exposure time.  
+                    ##time.sleep(2)
+                    #############################################
+                    ##extra wait time for adjusting pilatus2M 
+                    ##this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
+                    ##Note by 091918
+                    #############################################
                     #time.sleep(2)
-                    ############################################
-                    #extra wait time for adjusting pilatus2M 
-                    #this extra wait time has to be added. Otherwise, the exposure will be skipped when the exposure time is increased
-                    #Note by 091918
-                    ############################################
-                    time.sleep(2)
-                elif detector.name is 'PhotonicSciences_CMS':
-                    detector.setExposureTime(exposure_time, verbosity=verbosity)
+                #elif detector.name is 'PhotonicSciences_CMS':
+                    #detector.setExposureTime(exposure_time, verbosity=verbosity)
        
 
 
@@ -1821,9 +2078,12 @@ class Sample_Generic(CoordinateSystem):
             elif detector.name is 'pilatus2M':
                 current_exposure_time = caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime')
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
-            elif detector.name is 'PhotonicSciences_CMS':
-                current_exposure_time = detector.exposure_time
+            elif detector.name is 'pilatus800':
+                current_exposure_time = caget('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime')
                 max_exposure_time = max(max_exposure_time, current_exposure_time)
+            #elif detector.name is 'PhotonicSciences_CMS':
+                #current_exposure_time = detector.exposure_time
+                #max_exposure_time = max(max_exposure_time, current_exposure_time)
             else:
                 if verbosity>=1:
                     print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
@@ -1843,6 +2103,9 @@ class Sample_Generic(CoordinateSystem):
                     elif detector.name is 'pilatus2M':
                         if caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
                             status *= 0
+                    elif detector.name is 'pilatus800':
+                        if caget('XF:11BMB-ES{Det:PIL800K}:cam1:Acquire')==1:
+                            status *= 0
                     elif detector.name is 'PhotonicSciences_CMS':
                         if not detector.detector_is_ready(verbosity=0):
                             status *= 0
@@ -1854,9 +2117,10 @@ class Sample_Generic(CoordinateSystem):
         
         if verbosity>=3 and caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
             print('Warning: Detector pilatus300 still not done acquiring.')
-
         if verbosity>=3 and caget('XF:11BMB-ES{Det:PIL2M}:cam1:Acquire')==1:
             print('Warning: Detector pilatus2M still not done acquiring.')
+        if verbosity>=3 and caget('XF:11BMB-ES{Det:PIL800K}:cam1:Acquire')==1:
+            print('Warning: Detector pilatus800 still not done acquiring.')
  
         
         get_beamline().beam.off()
@@ -2503,7 +2767,8 @@ class SampleTSAXS_Generic(Sample_Generic):
         temp_data = self.transmission_data_output(beam.absorber()[0])
 
         cms.modeMeasurement()
-        beam.setAbsorber(0)
+        #beam.setAbsorber(0)
+        beam.absorber_out()
        
         #output_data = output_data.iloc[0:0]
 
@@ -2545,6 +2810,293 @@ class SampleTSAXS_Generic(Sample_Generic):
         
 
         return pds.DataFrame(data=current_data)
+
+class SampleGISAXS_Generic(Sample_Generic):
+    
+    def __init__(self, name, base=None, **md):
+        
+        super().__init__(name=name, base=base, **md)
+        self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
+        self.incident_angles_default = [0.08, 0.10, 0.12, 0.15, 0.20]
+        
+        
+    def measureSpots(self, num_spots=2, translation_amount=0.1, axis='x', exposure_time=None, extra=None, measure_type='measureSpots', **md):
+        super().measureSpots(num_spots=num_spots, translation_amount=translation_amount, axis=axis, exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
+    
+    
+    def measureIncidentAngle(self, angle, exposure_time=None, extra=None, tiling=None, **md):
+        
+        self.thabs(angle)
+        time.sleep(.2)
+        self.measure(exposure_time=exposure_time, extra=extra, tiling=tiling, **md)
+
+
+    def measureIncidentAngles(self, angles=None, exposure_time=None, extra=None, tiling=None, **md):
+        
+        if angles is None:
+            angles = self.incident_angles_default
+        
+        for angle in angles:
+            self.measureIncidentAngle(angle, exposure_time=exposure_time, extra=extra, tiling=tiling, **md)
+
+    
+    
+    def _alignOld(self, step=0):
+        '''Align the sample with respect to the beam. GISAXS alignment involves
+        vertical translation to the beam center, and rocking theta to get the
+        sample plane parralel to the beam.
+        
+        The 'step' argument can optionally be given to jump to a particular
+        step in the sequence.'''
+        
+        # TODO: Deprecate and delete
+        
+        if step<=0:
+            # TODO: Check what mode we are in, change if necessary...
+            # get_beamline().modeAlignment()
+            beam.on()
+        
+        # TODO: Improve implementation
+        if step<=2:
+            #fit_scan(smy, 2.6, 35, fit='HM')
+            fit_scan(smy, 2.6, 35, fit='sigmoid_r')
+        
+        
+        if step<=4:
+            #fit_scan(smy, 0.6, 17, fit='HM')
+            fit_scan(smy, 0.6, 17, fit='sigmoid_r')
+            fit_scan(sth, 1.2, 21, fit='max')
+
+        #if step<=6:
+        #    fit_scan(smy, 0.3, 17, fit='sigmoid_r')
+        #    fit_scan(sth, 1.2, 21, fit='COM')
+
+        if step<=8:
+            fit_scan(smy, 0.2, 17, fit='sigmoid_r')
+            fit_scan(sth, 0.8, 21, fit='gauss')
+        
+        if step<=9:
+            #self._testing_refl_pos()
+            #movr(sth,.1)
+            #fit_scan(sth, 0.2, 41, fit='gauss')
+            #fit_scan(smy, 0.2, 21, fit='gauss')
+            #movr(sth,-.1)
+            
+            
+            beam.off()
+    
+    
+    
+    def align(self, step=0, reflection_angle=0.08, verbosity=3):
+        '''Align the sample with respect to the beam. GISAXS alignment involves
+        vertical translation to the beam center, and rocking theta to get the
+        sample plane parralel to the beam. Finally, the angle is re-optimized
+        in reflection mode.
+        
+        The 'step' argument can optionally be given to jump to a particular
+        step in the sequence.'''
+
+        if verbosity>=4:
+            print('  Aligning {}'.format(self.name))
+        
+        if step<=0:
+            # Prepare for alignment
+            
+            if RE.state!='idle':
+                RE.abort()
+                
+            if get_beamline().current_mode!='alignment':
+                #if verbosity>=2:
+                    #print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
+                print("Switching to alignment mode (current mode is '{}')".format(get_beamline().current_mode))
+                get_beamline().modeAlignment()
+                
+                
+            get_beamline().setDirectBeamROI()
+            
+            beam.on()
+
+        
+        if step<=2:
+            if verbosity>=4:
+                print('    align: searching')
+                
+            # Estimate full-beam intensity
+            value = None
+            if True:
+                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
+                self.yr(-2)
+                #detector = gs.DETS[0]
+                detector = get_beamline().detector[0]
+                value_name = get_beamline().TABLE_COLS[0]
+                RE(count([detector]))
+                value = detector.read()[value_name]['value']
+                self.yr(+2)
+            
+            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
+                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
+                
+            # Find the step-edge
+            self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
+            
+            # Find the peak
+            self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
+        
+        
+        if step<=4:
+            if verbosity>=4:
+                print('    align: fitting')
+            
+            fit_scan(smy, 1.2, 21, fit='HMi')
+            ##time.sleep(2)
+            fit_scan(sth, 1.5, 21, fit='max')
+            ##time.sleep(2)            
+            
+        #if step<=5:
+        #    #fit_scan(smy, 0.6, 17, fit='sigmoid_r')
+        #    fit_edge(smy, 0.6, 17)
+        #    fit_scan(sth, 1.2, 21, fit='max')
+
+
+        if step<=8:
+            #fit_scan(smy, 0.3, 21, fit='sigmoid_r')
+            
+            fit_edge(smy, 0.6, 21)
+            #time.sleep(2)
+            #fit_edge(smy, 0.4, 21)
+            fit_scan(sth, 0.8, 21, fit='COM')
+            #time.sleep(2)            
+            self.setOrigin(['y', 'th'])
+        
+        
+        if step<=9 and reflection_angle is not None:
+            # Final alignment using reflected beam
+            if verbosity>=4:
+                print('    align: reflected beam')
+            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
+            
+            self.thabs(reflection_angle)
+            
+            result = fit_scan(sth, 0.4, 41, fit='max') 
+            #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
+            sth_target = result.values['x_max']-reflection_angle
+            
+            if result.values['y_max']>50:
+                th_target = self._axes['th'].motor_to_cur(sth_target)
+                self.thsetOrigin(th_target)
+
+            #fit_scan(smy, 0.2, 21, fit='max')
+            self.setOrigin(['y'])            
+
+        if step<=10:
+            self.thabs(0.0)
+            beam.off()
+            
+            
+    def alignQuick(self, align_step=8, reflection_angle=0.08, verbosity=3):
+        
+        get_beamline().modeAlignment()
+        #self.yo()
+        self.tho()
+        beam.on()
+        self.align(step=align_step, reflection_angle=reflection_angle, verbosity=verbosity)
+        
+        
+
+    
+    def level(self, step=0,pos_x_left=-5, pos_x_right=5):
+        
+        #TODO: Move this code. (This should be a property of the GIBar object.)
+        
+        #level sample by checking bar height at pos_left and pos_right
+        print('checking the level of Sample')
+        if step<=1:
+           cms.modeAlignment()
+           self.tho()
+           self.yo()
+           
+        self.xabs(pos_x_left)
+        #beam.on()
+        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
+        time.sleep(1)
+        pos_y_left=smy.position
+        #pos_y_left=smy.user_readback.value
+        print('BEFORE LEVEL: pos_y_left = {}'.format(pos_y_left))
+        
+        self.xabs(pos_x_right)
+        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
+        time.sleep(1)
+        pos_y_right=smy.position
+        print('BEFORE LEVEL: pos_y_right = {}'.format(pos_y_right))
+
+        offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)*180/np.pi
+        print('The schi offset is {} degrees'.format(offset_schi))
+        schi.move(schi.position - offset_schi)
+        
+        
+        #double-check the chi offset
+        self.xabs(pos_x_left)
+        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
+        time.sleep(1)
+        pos_y_left=smy.position
+        print('AFTER LEVEL: pos_y_left = {}'.format(pos_y_left))
+        
+        self.xabs(pos_x_right)
+        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
+        time.sleep(1)
+        pos_y_right=smy.position
+        print('AFTER LEVEL: pos_y_right = {}'.format(pos_y_right))
+        #beam.off()
+        
+        self.xo()
+        offset_schi=(pos_y_right-pos_y_left)/(pos_x_right-pos_x_left)*180/np.pi
+
+        if offset_schi<=0.1:
+            print('schi offset is aligned successfully!')
+
+        else:
+            print('schi offset is WRONG. Please redo the level command')
+        fit_edge(smy, .6, 17)  #it's better not to move smy after scan but only the center position
+        self.setOrigin(['y'])
+        
+        
+    
+    def do(self, step=0, align_step=0, **md):
+        
+        if step<=1:
+            get_beamline().modeAlignment()
+            
+        if step<=2:
+            self.xo() # goto origin
+
+
+        if step<=4:
+            self.yo()
+            self.tho()
+        
+        if step<=5:
+            self.align(step=align_step, reflection_angle=0.12)
+            #self.setOrigin(['y','th']) # This is done within align
+
+        #if step<=7:
+            #self.xr(0.2)
+
+        if step<=8:
+            get_beamline().modeMeasurement()
+        
+        if step<=10:
+            #detselect([pilatus300, psccd])
+            #detselect(psccd)
+            #detselect(pilatus300)
+            detselect(pilatus2M)
+            for detector in get_beamline().detector:
+                if detector.name == 'pilatus2M': 
+                    RE(detector.setExposureTime(self.md['exposure_time']))
+                else: 
+                    detector.setExposureTime(self.md['exposure_time'])
+            self.measureIncidentAngles(self.incident_angles_default, **md)
+            self.thabs(0.0)
 
 class SampleGISAXS_Generic(Sample_Generic):
     
@@ -2856,6 +3408,434 @@ class SampleCDSAXS_Generic(Sample_Generic):
         for angle in angles:
             self.measureAngle(angle, exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
         
+#test code for pilatus800 
+class SampleXR_test(SampleGISAXS_Generic):
+
+    ################# Specular reflectivity (XR) measurement ####################
+
+    def XR_scan(self, scan_type='theta_scan', theta_range=[0,1.6], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None):
+        ''' Run x-ray reflectivity measurement for thin film samples. 
+        Parameters
+        ----------
+        scan_type : list
+            theta_scan: in step of theta
+            q_scan: in step of q
+        theta_range: list 
+            The scanning range. It can be single section or multiple sections with various step_size.
+            Examples:  
+            [0, 1.6] or 
+            [[0, .3],[0.3, 1], [1, 1.6]]                    
+        theta_delta: float or list
+            The scaning step. Examples:
+            0.02    or
+            [0.005, 0.1, 0.2]
+        roi_size: float
+            The szie of ROI1.
+        exposure_time: float
+            The mininum exposure time
+        min_step : float
+            The final (minimum) step size to try
+        intensity : float
+            The expected full-beam intensity readout
+        threshold : float
+            The threshold of minimum intensity. Exposure time increases automatically if < max_exposure_time 
+        max_exposure_time : float
+            The maximum of exposure time to limit the total time.
+ 
+        '''
+        #TODO:
+        #if theta_end < theta_start:
+        #    print("The theta_end is larger than theta_start!!!")
+        
+        #disable the besteffortcallback and plot all ROIs
+        #bec.disable_table()
+        cms.modeXRMeasurement()
+        
+        bec.disable_plots()
+
+        pilatus_name.stats1.total.kind = 'hinted'
+        pilatus_name.stats2.total.kind = 'hinted'
+
+        self.naming_scheme_hold = self.naming_scheme
+        self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
+        default_SAXSy = SAXSy.position
+        #initial exposure period
+        #N = 1
+        
+        #move in absorber and move out the beamstop
+        slot_pos = 6
+        beam.setAbsorber(slot_pos)
+        if beam.absorber()[0]>=4:
+            bsx.move(bsx.position+6)
+            beam.setTransmission(1)
+        
+        #create a clean dataframe and a direct beam images
+        self.yr(-2)
+        self.tho()
+        #Energy = 13.5kev
+        if abs(beam.energy(verbosity=1)-13.5) < 0.1:
+            direct_beam_slot = 4
+        #Energy = 17kev
+        if abs(beam.energy(verbosity=1)-17) < 0.1:
+            direct_beam_slot = 5
+            slot_pos = 5
+        beam.setAbsorber(direct_beam_slot)
+        get_beamline().setSpecularReflectivityROI(total_angle=0,size=roi_size,default_SAXSy=-73)
+        self.measure(exposure_time, extra='direct_beam')
+        self.yo()
+        
+        output_data = self.XR_data_output(direct_beam_slot, exposure_time)
+        #output_data = output_data.iloc[0:0]
+
+        #create a data file to save the XRR data
+        if output_file is None:
+            header = db[-1]
+            #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
+            #XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
+            #XR_FILENAME='{}/data/{}_{}.csv'.format(header.start['experiment_alias_directory'],header.start['sample_name'], header.get('start').get('scan_id')+1)
+            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'],md['filename'])
+            
+        else:
+            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
+
+        #load theta positions in scan
+        if scan_type == 'theta_scan':
+            #list the sth positions in scan
+            theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            
+            #
+            '''
+            if np.size(theta_range) == 2:
+                theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            #multiple sections for measurement
+            else: 
+                theta_list=[]
+                if np.shape(theta_range)[0] != np.size(theta_delta):
+                    print("The theta_range does not match theta_delta")
+                    return
+                if np.shape(theta_range)[-1] != 2:
+                    print("The input of theta_range is incorrect.")
+                    return                
+                for number, item in enumerate(theta_range):
+                    theta_list_temp = np.arange(item[0], item[1], theta_delta[number])
+                    theta_list.append(theta_list_temp)
+                theta_list = np.hstack(theta_list)
+            
+            '''
+        elif scan_type == 'qz_scan':
+            if qz_list is not None:
+                qz_list = qz_list
+            else:
+               qz_list = self.qz_list_default
+            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A']/4/np.pi))
+
+       
+        for theta in theta_list:
+
+            self.thabs(theta)
+            #get_beamline().setSpecularReflectivityROI(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
+
+            get_beamline().setSpecularReflectivityROI_update(total_angle=theta*2,size=roi_size,default_WAXSy=-73)
+
+
+            if cms.beamOutXR(total_angle=theta*2, size=roi_size):
+                
+                
+                
+                cms.modeXRMeasurement()       
+                print('=========The beamstop is inserted to block the direct beam.=============')
+            
+            self.measure(exposure_time, extra=extra)
+            temp_data = self.XR_data_output(slot_pos, exposure_time)
+            
+            #initial exposure period
+            N = 1
+            N_last = 1
+            if threshold is not None and type(threshold) == int :
+                    
+                    
+                while temp_data['e_I1'][temp_data.index[-1]] < threshold and N < max_exposure_time:   
+                    if slot_pos > 0:
+                        if temp_data['e_I1'][temp_data.index[-1]] < 10: #The count is too small to evaluate the next slot_pos.
+                            slot_pos = slot_pos - 1
+                        else:
+                           slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
+                           for slot_no in np.arange(5, 0, -1):
+                               if slot_current > beam.absorber_transmission_list[slot_no]:
+                                   slot_pos = slot_no - 1 
+                              
+                        beam.setAbsorber(slot_pos)
+                        print('The absorber is slot {}\n'.format(slot_pos))
+                        print('The theta is {}\n'.format(theta))
+                        self.measure(exposure_time, extra=extra)
+                        temp_data = self.XR_data_output(slot_pos, exposure_time)
+                    else:
+                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time and N_last < max_exposure_time:
+                            N = np.ceil(N_last*threshold/float(temp_data['e_I1'][temp_data.index[-1]]))
+                            print('e_I1={}'.format(float(temp_data['e_I1'][temp_data.index[-1]])))
+                            print('N={}'.format(N))
+                            print('exposure time  = {}'.format(N*exposure_time))
+                        else:  
+                            N = max_exposure_time
+                            print('exposure time is MAX')
+                        print('The absorber is slot {}\n'.format(slot_pos))
+                        print('The theta is {}\n'.format(theta))
+
+
+                        self.measure(N*exposure_time, extra=extra)                        
+                        temp_data = self.XR_data_output(slot_pos, N*exposure_time)
+                        N_last = N
+                        
+            elif len(threshold)>1 and temp_data['e_I1'][temp_data.index[-1]] > threshold[-1]:
+                slot_pos = slot_pos+1
+                print('The absorber is slot {}\n'.format(slot_pos))
+                print('The theta is {}\n'.format(theta))
+                beam.setAbsorber(slot_pos)
+                self.measure(exposure_time, extra=extra)
+                temp_data = self.XR_data_output(slot_pos, exposure_time)
+
+
+            output_data = output_data.append(temp_data, ignore_index=True)    
+            #save to file 
+            output_data.to_csv(XR_FILENAME)
+        
+        #reset the changed items
+        bec.enable_plots()
+        #bec.enable_table()
+        self.naming_scheme = self.naming_scheme_hold
+        #remove the absorber completely out of the beam
+        beam.absorber_out()
+
+        pilatus_name.stats3.total.kind = 'hinted'
+        pilatus_name.stats4.total.kind = 'hinted'
+        
+        SAXSy.move(default_SAXSy)
+
+    def XR_abort(self):        
+        '''Reset the beamline status back to origin before XRR measurement.
+        '''        
+        beam.off()        
+        cms.modeXRMeasurement()
+        beam.setAbsorber(0)
+        #remove the absorber completely out of the beam
+        beam.absorber_out()
+        
+        self.xo()
+        self.yo()
+        self.tho()
+
+        bec.enable_plots()
+        bec.enable_table()
+        pilatus_name.hints = {'fields': ['pilatus800_stats3_total', 'pilatus800_stats4_total']}
+
+        
+    def XR_data_output(self, slot_pos, exposure_time):
+        '''XRR data output in DataFrame format, including: 
+                        'a_qz': qz,                  #qz
+                        'b_th':sth_pos,              #incident angle 
+                        'c_scanID': scan_id,         #scan ID
+                        'd_I0': I0,                  #bim5 flux
+                        'e_I1': I1,                  #ROI1
+                        'f_I2': I2,                  #ROI2
+                        'g_I3': I3,                  #2*ROI1-ROI2
+                        'h_In': In,                  #reflectivity
+                        'i_absorber_slot': slot_pos, #absorption slot No.
+                        'j_exposure_seconds': exposure_time}   #exposure time
+        '''
+        
+        h = db[-1]
+        dtable = h.table()
+        
+        #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
+
+        #Energy = 13.5kev
+        if abs(beam.energy(verbosity=1)-13.5) < 0.1:        
+            beam.absorber_transmission_list = beam.absorber_transmission_list_13p5kev
+
+        #Energy = 17kev
+        elif abs(beam.energy(verbosity=1)-17) < 0.1:        
+            beam.absorber_transmission_list = beam.absorber_transmission_list_17kev
+        
+        else: 
+            print("The absorber has not been calibrated under current Energy!!!")
+            
+            
+        sth_pos = h.start['sample_th']
+        qz = 4*np.pi*np.sin(np.deg2rad(sth_pos))/h.start['calibration_wavelength_A']
+        scan_id = h.start['scan_id']     
+        I0 = h.start['beam_int_bim5']  #beam intensity from bim5
+        I1 = dtable.pilatus800_stats1_total
+        I2 = dtable.pilatus800_stats2_total
+        I3 = 2*dtable.pilatus800_stats1_total - dtable.pilatus800_stats2_total
+        In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
+
+        current_data = {'a_qz': qz,                  #qz
+                        'b_th':sth_pos,              #incident angle 
+                        'c_scanID': scan_id,         #scan ID
+                        'd_I0': I0,                  #bim5 flux
+                        'e_I1': I1,                  #ROI1
+                        'f_I2': I2,                  #ROI2
+                        'g_I3': I3,                  #2*ROI1-ROI2
+                        'h_In': In,                  #reflectivity
+                        'i_absorber_slot': slot_pos, #absorption slot No.
+                        'j_exposure_seconds': exposure_time}   #exposure time
+
+        return pds.DataFrame(data=current_data)
+        
+    def XR_align(self, step=0, reflection_angle=0.15, verbosity=3):
+        '''Specific alignment for XRR
+        
+        Align the sample with respect to the beam. XR alignment involves
+        vertical translation to the beam center, and rocking theta to get the
+        sample plane parralel to the beam. Finally, the angle is re-optimized
+        in reflection mode.
+        
+        The 'step' argument can optionally be given to jump to a particular
+        step in the sequence.'''
+
+        cms.modeAlignment()
+
+        if verbosity>=4:
+            print('  Aligning {}'.format(self.name))
+        
+        if step<=0:
+            # Prepare for alignment
+            cms.modeAlignment()
+            if RE.state!='idle':
+                RE.abort()
+            if get_beamline().current_mode!='alignment':
+                if verbosity>=2:
+                    print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
+                #get_beamline().modeAlignment()
+            get_beamline().setDirectBeamROI()
+            beam.on()
+        
+        if step<=2:
+            if verbosity>=4:
+                print('    align: searching')
+                
+            # Estimate full-beam intensity
+            value = None
+            if True:
+                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
+                self.yr(-2)
+                #detector = gs.DETS[0]
+                detector = get_beamline().detector[0]
+                value_name = get_beamline().TABLE_COLS[0]
+                RE(count([detector]))
+                value = detector.read()[value_name]['value']
+                self.yr(+2)
+            
+            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
+                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
+                
+            # Find the step-edge
+            self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
+            
+            # Find the peak
+            self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
+        
+        
+        if step<=4:
+            if verbosity>=4:
+                print('    align: fitting')
+            
+            fit_scan(smy, 1.2, 21, fit='HMi')
+            #time.sleep(2)
+            fit_scan(sth, 1.5, 21, fit='max')
+            #time.sleep(2)            
+            
+        if step<=8:
+            
+            #fit_scan(smy, 0.6, 21, fit='sigmoid_r')
+            
+            fit_edge(smy, 0.6, 21)
+            #time.sleep(2)
+            #fit_edge(smy, 0.4, 21)
+            fit_scan(sth, 0.8, 21, fit='COM')
+            #time.sleep(2)            
+            self.setOrigin(['y', 'th'])
+        
+        
+        if step<=9 and reflection_angle is not None:
+            # Final alignment using reflected beam
+            if verbosity>=4:
+                print('    align: reflected beam')
+                
+            if abs(beam.energy(verbosity)-17)<0.1:
+                reflection_angle = 0.15
+
+            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
+            
+            self.thabs(reflection_angle)
+            
+            result = fit_scan(sth, 0.1, 41, fit='max') 
+            #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
+            sth_target = result.values['x_max']-reflection_angle
+            
+            if result.values['y_max']>50:
+                th_target = self._axes['th'].motor_to_cur(sth_target)
+                self.thsetOrigin(th_target)
+
+            #fit_scan(smy, 0.2, 21, fit='max')
+            #self.setOrigin(['y'])            
+
+        if step<=10:
+            self.thabs(0.0)
+            beam.off()
+
+    def XR_check_alignment(self, int_angle=1, exposure_time=1, roi_size=[12, 30]):
+        ''' Check the alignment of the XR.
+        The total_angle is the incident angle. 
+        The reflection spot should be located in the center of ROI2'''
+        cms.modeXRMeasurement()
+        #cms.setXRROI(total_angle=int_angle*2, size=roi_size, default_WAXSy=-73)                    
+        self.yo()
+        self.thabs(int_angle)
+        self.measure(exposure_time)
+        print('===========sam.th moves to {}deg and ROI1 is set at {}deg. ============'.format(int_angle, int_angle*2))
+        print('======Please check the ROI whether at the reflected position. =======')
+        print('========If not, modify sam.th or schi to meet the reflected beam. ===========')
+
+
+class SampleCDSAXS_Generic(Sample_Generic):
+    
+    def __init__(self, name, base=None, **md):
+        
+        super().__init__(name=name, base=base, **md)
+        self.naming_scheme = ['name', 'extra', 'phi', 'exposure_time']
+        self.rot_angles_default = np.arange(-45, +45+1, +1)
+        #self.rot_angles_default = np.linspace(-45, +45, num=90, endpoint=True)
+        
+    def _set_axes_definitions(self):
+        '''Internal function which defines the axes for this stage. This is kept
+        as a separate function so that it can be over-ridden easily.'''
+        super()._set_axes_definitions()
+        
+        self._axes_definitions.append( {'name': 'phi',
+                            'motor': srot,
+                            'enabled': True,
+                            'scaling': +1.0,
+                            'units': 'deg',
+                            'hint': None,
+                            } )
+        
+    def measureAngle(self, angle, exposure_time=None, extra=None, measure_type='measure', **md):
+        
+        self.phiabs(angle)
+        
+        self.measure(exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
+        
+        
+    def measureAngles(self, angles=None, exposure_time=None, extra=None, measure_type='measureAngles', **md):
+        
+        if angles is None:
+            angles = self.rot_angles_default
+        
+        for angle in angles:
+            self.measureAngle(angle, exposure_time=exposure_time, extra=extra, measure_type=measure_type, **md)
+        
 class SampleXR(SampleGISAXS_Generic):
 
     ################# Specular reflectivity (XR) measurement ####################
@@ -2904,7 +3884,7 @@ class SampleXR(SampleGISAXS_Generic):
         pilatus_name.stats2.total.kind = 'hinted'
 
         self.naming_scheme_hold = self.naming_scheme
-        self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
+        self.naming_scheme = ['name', 'extra', 'x', 'th', 'exposure_time']
         default_SAXSy = SAXSy.position
         #initial exposure period
         #N = 1
@@ -2972,7 +3952,7 @@ class SampleXR(SampleGISAXS_Generic):
                 qz_list = qz_list
             else:
                qz_list = self.qz_list_default
-            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A'] /4*np.pi))
+            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A']/4/np.pi))
 
        
         for theta in theta_list:
@@ -3189,9 +4169,9 @@ class SampleXR(SampleGISAXS_Generic):
             
         if step<=8:
             
-            fit_scan(smy, 0.6, 21, fit='sigmoid_r')
+            #fit_scan(smy, 0.6, 21, fit='sigmoid_r')
             
-            #fit_edge(smy, 0.6, 21)
+            fit_edge(smy, 0.6, 21)
             #time.sleep(2)
             #fit_edge(smy, 0.4, 21)
             fit_scan(sth, 0.8, 21, fit='COM')
@@ -3241,6 +4221,572 @@ class SampleXR(SampleGISAXS_Generic):
         print('======Please check the ROI whether at the reflected position. =======')
         print('========If not, modify sam.th or schi to meet the reflected beam. ===========')
 
+class SampleXR_WAXS(SampleGISAXS_Generic):
+
+    ################# Specular reflectivity (XR) measurement ####################
+
+    def XR_scan(self, scan_type='theta_scan', theta_range=[0,1.6], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None, **md):
+        ''' Run x-ray reflectivity measurement for thin film samples on WAXS pilatus800k. 
+        There will be two WAXSy positions for XR. 
+        The 1st position is the beam shining directly on the detector with maximum attenuation.
+        This position is defined by cms.WAXS.setCalibration([734, 1090],0.255, [-65, -73])
+        The 2nd position is the beam out of the WAXS detector. 
+        The detector will be moved to the 2nd position when the reflected beam out of beam stop. 
+        
+        Parameters
+        ----------
+        scan_type : list
+            theta_scan: in step of theta
+            q_scan: in step of q
+        theta_range: list 
+            The scanning range. It can be single section or multiple sections with various step_size.
+            Examples:  
+            [0, 1.6] or 
+            [[0, .3],[0.3, 1], [1, 1.6]]                    
+        theta_delta: float or list
+            The scaning step. Examples:
+            0.02    or
+            [0.005, 0.1, 0.2]
+        roi_size: float
+            The szie of ROI1.
+        exposure_time: float
+            The mininum exposure time
+        min_step : float
+            The final (minimum) step size to try
+        intensity : float
+            The expected full-beam intensity readout
+        threshold : float
+            The threshold of minimum intensity. Exposure time increases automatically if < max_exposure_time 
+        max_exposure_time : float
+            The maximum of exposure time to limit the total time.
+ 
+        '''
+        #TODO:
+        #if theta_end < theta_start:
+        #    print("The theta_end is larger than theta_start!!!")
+        
+        #disable the besteffortcallback and plot all ROIs
+        #bec.disable_table()
+        cms.modeXRMeasurement()
+        cms.definePos(size=roi_size)
+        
+        bec.disable_plots()
+        
+        
+        cms.WAXS.detector.stats1.total.kind = 'hinted'
+        cms.WAXS.detector.stats2.total.kind = 'hinted'
+
+        self.naming_scheme_hold = self.naming_scheme
+        self.naming_scheme = ['name', 'extra', 'x', 'th', 'exposure_time']
+        #default_WAXSy = WAXSy.position
+        
+        #move in absorber and move out the beamstop
+        slot_pos = 6
+        beam.setAbsorber(slot_pos)
+        if beam.absorber()[0]>=4:
+            bsx.move(bsx.position+6)
+            beam.setTransmission(1)
+        
+        #create a clean dataframe and a direct beam images
+        self.yr(-2)
+        self.tho()
+        #Energy = 13.5kev
+        if abs(beam.energy(verbosity=1)-13.5) < 0.1:
+            direct_beam_slot = 4
+        #Energy = 17kev
+        if abs(beam.energy(verbosity=1)-17) < 0.1:
+            direct_beam_slot = 5
+            slot_pos = 5
+        beam.setAbsorber(direct_beam_slot)
+        #TODO:move detector to the 1st position and setROI
+        get_beamline().setWAXSpos(total_angle=0, roi=cms.XR_pos1)
+        get_beamline().setXRROI(total_angle=0,size=roi_size,default_WAXSy=None)
+        self.measure(exposure_time, extra='direct_beam')
+        self.yo()
+        
+        output_data = self.XR_data_output(direct_beam_slot, exposure_time)
+        #output_data = output_data.iloc[0:0]
+
+        #create a data file to save the XRR data
+        if output_file is None:
+            header = db[-1]
+            #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
+            #XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
+            #XR_FILENAME='{}/data/{}_{}.csv'.format(header.start['experiment_alias_directory'],header.start['sample_name'], header.get('start').get('scan_id')+1)
+            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.start['filename'])            
+        else:
+            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
+
+        #load theta positions in scan
+        if scan_type == 'theta_scan':
+            #list the sth positions in scan
+            theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            
+            #
+            '''
+            if np.size(theta_range) == 2:
+                theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            #multiple sections for measurement
+            else: 
+                theta_list=[]
+                if np.shape(theta_range)[0] != np.size(theta_delta):
+                    print("The theta_range does not match theta_delta")
+                    return
+                if np.shape(theta_range)[-1] != 2:
+                    print("The input of theta_range is incorrect.")
+                    return                
+                for number, item in enumerate(theta_range):
+                    theta_list_temp = np.arange(item[0], item[1], theta_delta[number])
+                    theta_list.append(theta_list_temp)
+                theta_list = np.hstack(theta_list)
+            
+            '''
+        elif scan_type == 'qz_scan':
+            if qz_list is not None:
+                qz_list = qz_list
+            else:
+               qz_list = self.qz_list_default
+            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A']/4/np.pi))
+
+       
+        pos_flag = 0
+        for theta in theta_list:
+
+            self.thabs(theta)
+            #get_beamline().setSpecularReflectivityROI(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
+            
+            #if cms.out_of_beamstop(total_angle=theta*2, size=roi_size):
+            if cms.beamOutXR(total_angle=theta*2,roi=cms.XR_pos2)==False:
+                get_beamline().setWAXSpos(total_angle=0, roi=cms.XR_pos1)
+                get_beamline().setXRROI(total_angle=theta*2,size=roi_size)
+                print('WAXS in POS1 for XR')
+            elif pos_flag == 0:
+                get_beamline().setWAXSpos(total_angle=0, roi=cms.XR_pos2)
+                get_beamline().setXRROI(total_angle=theta*2,size=roi_size)
+                print('WAXS in POS2 for XR')
+                pos_flag=1
+            else: 
+                get_beamline().setXRROI(total_angle=theta*2,size=roi_size)
+                print('WAXS in POS2 for XR')
+                pos_flag=1
+                
+            self.measure(exposure_time, extra=extra)
+            temp_data = self.XR_data_output(slot_pos, exposure_time)
+            
+            #initial exposure period
+            N = 1
+            N_last = 1
+            if threshold is not None and type(threshold) == int :                    
+                while temp_data['e_I1'][temp_data.index[-1]] < threshold and N < max_exposure_time:   
+                    if slot_pos > 0:
+                        if temp_data['e_I1'][temp_data.index[-1]] < 10: #The count is too small to evaluate the next slot_pos.
+                            slot_pos = slot_pos - 1
+                        else:
+                           slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
+                           for slot_no in np.arange(5, 0, -1):
+                               if slot_current > beam.absorber_transmission_list[slot_no]:
+                                   slot_pos = slot_no - 1 
+                              
+                        beam.setAbsorber(slot_pos)
+                        print('The absorber is slot {}\n'.format(slot_pos))
+                        print('The theta is {}\n'.format(theta))
+                        self.measure(exposure_time, extra=extra)
+                        temp_data = self.XR_data_output(slot_pos, exposure_time)
+                    else:
+                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time and N_last < max_exposure_time:
+                            N = np.ceil(N_last*threshold/float(temp_data['e_I1'][temp_data.index[-1]]))
+                            print('e_I1={}'.format(float(temp_data['e_I1'][temp_data.index[-1]])))
+                            print('N={}'.format(N))
+                            print('exposure time  = {}'.format(N*exposure_time))
+                        else:  
+                            N = max_exposure_time
+                            print('exposure time is MAX')
+                        print('The absorber is slot {}\n'.format(slot_pos))
+                        print('The theta is {}\n'.format(theta))
+
+
+                        self.measure(N*exposure_time, extra=extra)                        
+                        temp_data = self.XR_data_output(slot_pos, N*exposure_time)
+                        N_last = N
+                        
+            elif len(threshold)>1 and temp_data['e_I1'][temp_data.index[-1]] > threshold[-1]:
+                slot_pos = slot_pos+1
+                print('The absorber is slot {}\n'.format(slot_pos))
+                print('The theta is {}\n'.format(theta))
+                beam.setAbsorber(slot_pos)
+                self.measure(exposure_time, extra=extra)
+                temp_data = self.XR_data_output(slot_pos, exposure_time)
+
+
+            output_data = output_data.append(temp_data, ignore_index=True)    
+            #save to file 
+            output_data.to_csv(XR_FILENAME)
+        
+        #reset the changed items
+        bec.enable_plots()
+        #bec.enable_table()
+        self.naming_scheme = self.naming_scheme_hold
+        #remove the absorber completely out of the beam
+        beam.absorber_out()
+
+    def XR_abort(self):        
+        '''Reset the beamline status back to origin before XRR measurement.
+        '''        
+        beam.off()        
+        cms.modeMeasurement()
+        beam.setAbsorber(0)
+        #remove the absorber completely out of the beam
+        beam.absorber_out()
+        
+        self.xo()
+        self.yo()
+        self.tho()
+
+        bec.enable_plots()
+        bec.enable_table()
+        pilatus_name.hints = {'fields': ['pilatus800_stats3_total', 'pilatus800_stats4_total']}
+
+        
+    def XR_data_output(self, slot_pos, exposure_time):
+        '''XRR data output in DataFrame format, including: 
+                        'a_qz': qz,                  #qz
+                        'b_th':sth_pos,              #incident angle 
+                        'c_scanID': scan_id,         #scan ID
+                        'd_I0': I0,                  #bim5 flux
+                        'e_I1': I1,                  #ROI1
+                        'f_I2': I2,                  #ROI2
+                        'g_I3': I3,                  #2*ROI1-ROI2
+                        'h_In': In,                  #reflectivity
+                        'i_absorber_slot': slot_pos, #absorption slot No.
+                        'j_exposure_seconds': exposure_time}   #exposure time
+        '''
+        
+        h = db[-1]
+        dtable = h.table()
+        
+        #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
+
+        #Energy = 13.5kev
+        if abs(beam.energy(verbosity=1)-13.5) < 0.1:        
+            beam.absorber_transmission_list = beam.absorber_transmission_list_13p5kev
+
+        #Energy = 17kev
+        elif abs(beam.energy(verbosity=1)-17) < 0.1:        
+            beam.absorber_transmission_list = beam.absorber_transmission_list_17kev
+        
+        else: 
+            print("The absorber has not been calibrated under current Energy!!!")
+            
+            
+        sth_pos = h.start['sample_th']
+        qz = 4*np.pi*np.sin(np.deg2rad(sth_pos))/h.start['calibration_wavelength_A']
+        scan_id = h.start['scan_id']     
+        I0 = h.start['beam_int_bim5']  #beam intensity from bim5
+        I1 = dtable.pilatus800_stats1_total
+        I2 = dtable.pilatus800_stats2_total
+        I3 = 2*dtable.pilatus800_stats1_total - dtable.pilatus800_stats2_total
+        In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
+
+        current_data = {'a_qz': qz,                  #qz
+                        'b_th':sth_pos,              #incident angle 
+                        'c_scanID': scan_id,         #scan ID
+                        'd_I0': I0,                  #bim5 flux
+                        'e_I1': I1,                  #ROI1
+                        'f_I2': I2,                  #ROI2
+                        'g_I3': I3,                  #2*ROI1-ROI2
+                        'h_In': In,                  #reflectivity
+                        'i_absorber_slot': slot_pos, #absorption slot No.
+                        'j_exposure_seconds': exposure_time}   #exposure time
+
+        return pds.DataFrame(data=current_data)
+        
+    def XR_align(self, step=0, reflection_angle=0.15, verbosity=3):
+        '''Specific alignment for XRR
+        
+        Align the sample with respect to the beam. XR alignment involves
+        vertical translation to the beam center, and rocking theta to get the
+        sample plane parralel to the beam. Finally, the angle is re-optimized
+        in reflection mode.
+        
+        The 'step' argument can optionally be given to jump to a particular
+        step in the sequence.'''
+
+        
+        #
+
+        if verbosity>=4:
+            print('  Aligning {}'.format(self.name))
+        
+        if step<=0:
+            cms.modeXRAlignment()
+            cms.modeAlignment()
+            detselect(pilatus2M)
+            # Prepare for alignment
+            if RE.state!='idle':
+                RE.abort()
+            if get_beamline().current_mode!='alignment':
+                if verbosity>=2:
+                    print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
+                #get_beamline().modeAlignment()
+            get_beamline().setDirectBeamROI()
+            beam.on()
+        
+        if step<=2:
+            if verbosity>=4:
+                print('    align: searching')
+                
+            # Estimate full-beam intensity
+            value = None
+            if True:
+                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
+                self.yr(-2)
+                #detector = gs.DETS[0]
+                detector = get_beamline().detector[0]
+                value_name = get_beamline().TABLE_COLS[0]
+                RE(count([detector]))
+                value = detector.read()[value_name]['value']
+                self.yr(+2)
+            
+            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
+                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
+                
+            # Find the step-edge
+            self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
+            
+            # Find the peak
+            self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
+        
+        
+        if step<=4:
+            if verbosity>=4:
+                print('    align: fitting')
+            
+            fit_scan(smy, 1.2, 21, fit='HMi')
+            #time.sleep(2)
+            fit_scan(sth, 1.5, 21, fit='max')
+            #time.sleep(2)            
+            
+        if step<=8:
+            
+            #fit_scan(smy, 0.6, 21, fit='sigmoid_r')
+            
+            fit_edge(smy, 0.6, 21)
+            #time.sleep(2)
+            #fit_edge(smy, 0.4, 21)
+            fit_scan(sth, 0.8, 21, fit='COM')
+            #time.sleep(2)            
+            self.setOrigin(['y', 'th'])
+        
+        
+        if step<=9 and reflection_angle is not None:
+            # Final alignment using reflected beam
+            if verbosity>=4:
+                print('    align: reflected beam')
+                
+            if abs(beam.energy(verbosity)-17)<0.1:
+                reflection_angle = 0.15
+
+            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
+            
+            self.thabs(reflection_angle)
+            
+            result = fit_scan(sth, 0.1, 41, fit='max') 
+            #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
+            sth_target = result.values['x_max']-reflection_angle
+            
+            if result.values['y_max']>50:
+                th_target = self._axes['th'].motor_to_cur(sth_target)
+                self.thsetOrigin(th_target)
+
+            #fit_scan(smy, 0.2, 21, fit='max')
+            #self.setOrigin(['y'])            
+
+        if step<=10:
+            self.thabs(0.0)
+            beam.off()
+            
+            detselect(pilatus800)
+
+    def XR_check_alignment(self, th_angle=1, exposure_time=1, roi_size=[10, 10]):
+        ''' Check the alignment of the XR.
+        The total_angle is the incident angle. 
+        The reflection spot should be located in the center of ROI2'''
+        cms.modeXRMeasurement()
+        #TODO: set a default position
+        get_beamline().setWAXSpos(total_angle=0, roi=cms.XR_pos2)
+        get_beamline().setXRROI(total_angle=th_angle*2,size=roi_size)
+        #sam.xo()
+        sam.yo()
+        sam.thabs(th_angle)
+        sam.measure(exposure_time)
+        print('===========sam.th moves to {}deg and ROI1 is set at {}deg. ============'.format(th_angle, th_angle*2))
+        print('======Please check the ROI whether at the reflected position. =======')
+        print('========If not, modify sam.th or schi to meet the reflected beam. ===========')
+
+    #define a theta-2theta scan by rotating sample by sth and accordingly changing roi1 and roi2 at 2theta position
+    
+    def th2thscan(self, scan_type='theta_scan', theta_range=[1,4], theta_delta=0.1, qz_list=None, roi_size=[10,10], exposure_time=1, threshold=20000, max_exposure_time=10, extra='th2th_scan', output_file=None):
+        ''' Run x-ray reflectivity measurement for thin film samples on WAXS pilatus800k. 
+        There will be two WAXSy positions for XR. 
+        The 1st position is the beam shining directly on the detector with maximum attenuation.
+        This position is defined by cms.WAXS.setCalibration([734, 1090],0.255, [-65, -73])
+        The 2nd position is the beam out of the WAXS detector. 
+        The detector will be moved to the 2nd position when the reflected beam out of beam stop. 
+        
+        Parameters
+        ----------
+        scan_type : list
+            theta_scan: in step of theta
+            q_scan: in step of q
+            
+        theta_range: list 
+            The scanning range. It can be single section or multiple sections with various step_size.
+            Examples:  
+            [0, 1.6] or 
+            [[0, .3],[0.3, 1], [1, 1.6]]                    
+        theta_delta: float or list
+            The scaning step. Examples:
+            0.02    or
+            [0.005, 0.1, 0.2]
+        roi_size: float
+            The szie of ROI1.
+        exposure_time: float
+            The mininum exposure time
+        min_step : float
+            The final (minimum) step size to try
+        intensity : float
+            The expected full-beam intensity readout
+        threshold : float
+            The threshold of minimum intensity. Exposure time increases automatically if < max_exposure_time 
+        max_exposure_time : float
+            The maximum of exposure time to limit the total time.
+ 
+        '''
+        #TODO:
+        
+        
+        [theta_start, theta_end] = theta_range
+        if theta_end < theta_start:
+            print("The theta_end is larger than theta_start!!!")
+        if theta_start<.25:
+            print("For th2th scan, the start of the scan has to be larger than 0.5deg")
+            return 
+        
+        #disable the besteffortcallback and plot all ROIs
+        #bec.disable_table()
+        cms.modeXRMeasurement()
+        cms.definePos(size=roi_size)
+        
+        bec.disable_plots()
+        
+        
+        cms.WAXS.detector.stats1.total.kind = 'hinted'
+        cms.WAXS.detector.stats2.total.kind = 'hinted'
+
+        self.naming_scheme_hold = self.naming_scheme
+        self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
+        #default_WAXSy = WAXSy.position
+        
+        #move in absorber and move out the beamstop
+        slot_pos = 6
+        beam.setAbsorber(slot_pos)
+        if beam.absorber()[0]>=4:
+            bsx.move(bsx.position+6)
+            beam.setTransmission(1)
+        
+        #create a clean dataframe and a direct beam images
+        self.yr(-2)
+        self.tho()
+        #Energy = 13.5kev
+        if abs(beam.energy(verbosity=1)-13.5) < 0.1:
+            direct_beam_slot = 4
+        #Energy = 17kev
+        if abs(beam.energy(verbosity=1)-17) < 0.1:
+            direct_beam_slot = 5
+            slot_pos = 5
+        beam.setAbsorber(direct_beam_slot)
+        #move detector to the 1st position and setROI
+        get_beamline().setWAXSpos(total_angle=0, roi=cms.XR_pos1)
+        get_beamline().setXRROI(total_angle=0,size=roi_size,default_WAXSy=None)
+        self.measure(exposure_time, extra='direct_beam')
+        self.yo()
+        #move detector to POS2 and start the th2th scan
+        get_beamline().setWAXSpos(total_angle=0, roi=cms.XR_pos2)
+        
+        output_data = self.XR_data_output(direct_beam_slot, exposure_time)
+        #output_data = output_data.iloc[0:0]
+
+        #create a data file to save the XRR data
+        if output_file is None:
+            header = db[-1]
+            #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
+            #XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
+            th2th_FILENAME='{}/data/{}_{}.csv'.format(header.start['experiment_alias_directory'],header.start['sample_name'], header.get('start').get('scan_id')+1)
+        else:
+            th2th_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
+
+        #load theta positions in scan
+        if scan_type == 'theta_scan':
+            #list the sth positions in scan
+            theta_list=np.arange(theta_start, theta_end+0.001, theta_delta)
+        elif scan_type == 'qz_scan':
+            if qz_list is not None:
+                qz_list = qz_list
+            else:
+               qz_list = self.qz_list_default
+            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A']/4/np.pi))
+
+       
+        pos_flag = 0
+        for theta in theta_list:
+
+            self.thabs(theta)
+            #th2th scan starts with POS2 directly
+            get_beamline().setXRROI_update(total_angle=theta*2,size=roi_size)
+                
+            self.measure(exposure_time, extra=extra)
+            temp_data = self.XR_data_output(slot_pos, exposure_time)
+            
+            #initial exposure period
+            if threshold is not None and type(threshold) == int :                    
+                if slot_pos > 0:
+                    if temp_data['e_I1'][temp_data.index[-1]] < 10: #The count is too small to evaluate the next slot_pos.
+                        slot_pos = slot_pos - 1
+                    else:
+                        slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
+                        for slot_no in np.arange(5, 0, -1):
+                            if slot_current > beam.absorber_transmission_list[slot_no]:
+                                slot_pos = slot_no - 1 
+                            
+                    beam.setAbsorber(slot_pos)
+                    print('The absorber is slot {}\n'.format(slot_pos))
+                    print('The theta is {}\n'.format(theta))
+                    self.measure(exposure_time, extra=extra)
+                    temp_data = self.XR_data_output(slot_pos, exposure_time)
+                #else:
+                    ##self.measure(exposure_time, extra=extra)                        
+                    #temp_data = self.XR_data_output(slot_pos, exposure_time)
+                        
+            elif len(threshold)>1 and temp_data['e_I1'][temp_data.index[-1]] > threshold[-1]:
+                slot_pos = slot_pos+1
+                print('The absorber is slot {}\n'.format(slot_pos))
+                print('The theta is {}\n'.format(theta))
+                beam.setAbsorber(slot_pos)
+                self.measure(exposure_time, extra=extra)
+                temp_data = self.XR_data_output(slot_pos, exposure_time)
+
+
+            output_data = output_data.append(temp_data, ignore_index=True)    
+            #save to file 
+            output_data.to_csv(th2th_FILENAME)
+        
+        #reset the changed items
+        bec.enable_plots()
+        #bec.enable_table()
+        self.naming_scheme = self.naming_scheme_hold
+        #remove the absorber completely out of the beam
+        beam.absorber_out()
 
 class Stage(CoordinateSystem):
     
@@ -3839,8 +5385,9 @@ class GIBar(PositionalHolder):
         if step<=5:
             for sample in self.getSamples(range=range):
                 sample.gotoOrigin(['x','y','th'])
+                sample.gotoOrigin(['x'])
                 sample.xr(x_offset)
-                sample.align(step=align_step)
+                sample.align(step=align_step, reflection_angle=0.12)
             
             
         if step<=10:
@@ -3861,8 +5408,9 @@ class GIBar(PositionalHolder):
         if step<=5:
             for sample in self.getSamples(range=range):
                 sample.gotoOrigin(['x','y','th'])
+                sample.gotoOrigin(['x'])
                 sample.xr(x_offset)
-                sample.alignQuick(reflection_angle=0.07)
+                sample.alignQuick(reflection_angle=0.12) #=0.07)
             
             
         if step<=10:
@@ -3886,9 +5434,12 @@ class GIBar(PositionalHolder):
         if step<=5:
             for sample in self.getSamples(range=range):
                 sample.gotoOrigin(['x','y','th'])
+                sample.gotoOrigin(['x'])
                 sample.xr(x_offset)
                 sample.alignVeryQuick(intensity=INTENSITY_EXPECTED_025, mode_control=False)
-                
+
+        if step<=8:
+            beam.off()                
              
         if step<=10:
             if verbosity>=3:
@@ -3915,6 +5466,7 @@ class GIBar(PositionalHolder):
                     print('Measuring sample {}...'.format(sample.name))
                 
                 sample.gotoOrigin(['x','y','th'])
+                sample.gotoOrigin(['x'])
                 sample.xr(x_offset)
                 sample.measureIncidentAngles(angles=angles, verbosity=verbosity, exposure_time=exposure_time, **md)
             
@@ -4029,8 +5581,10 @@ class CapillaryHolder(PositionalHolder):
         # Set the x and y origin to be the center of slot 8
         #self.xsetOrigin(-16.7)
         #self.ysetOrigin(-2.36985)
-        self.ysetOrigin(-2.36985)  
-        self.xsetOrigin(-16.7+-0.3)
+        #self.ysetOrigin(-2.36985)  
+        #self.xsetOrigin(-16.7+-0.3)
+        self.ysetOrigin(-1.8)  
+        self.xsetOrigin(-17.2)
         
         self.mark('right edge', x=+54.4)
         self.mark('left edge', x=-54.4)
@@ -4042,6 +5596,29 @@ class CapillaryHolder(PositionalHolder):
         '''Return the motor position for the requested slot number.'''
         
         return +1*self.x_spacing*(slot-8)
+        
+        
+    def measureSamples(self, range=None, step=0, angles=None, exposure_time=15, x_offset=0, verbosity=3, **md):
+        '''Measures all the samples.
+        
+        If the optional range argument is provided (2-tuple), then only sample
+        numbers within that range (inclusive) are run. If range is instead a 
+        string, then all samples with names that match are returned.'''
+
+        if step<=0:
+            get_beamline().modeMeasurement()
+
+        if step<=5:
+            for sample in self.getSamples(range=range):
+                if verbosity>=3:
+                    print('Measuring sample {}...'.format(sample.name))
+                
+                sample.gotoOrigin(['x','y'])
+                sample.gotoOrigin(['x'])
+                sample.xr(x_offset)
+                sample.measureIncident(exposure_time=exposure_time, verbosity=verbosity, **md)
+            
+            
         
         
 class CapillaryHolderHeated(CapillaryHolder):

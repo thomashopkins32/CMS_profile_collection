@@ -86,13 +86,15 @@ configured_logbook_func = partial(generic_logbook_func, logbooks=LOGBOOKS)
 
 # This is for ophyd.commands.get_logbook, which simply looks for
 # a variable called 'logbook' in the global IPython namespace.
-logbook = simple_olog_client
+
+##RL comment all below out at 06/11/19 to disable the olog. Expecting the newer version to fix it from DAMA.
+#logbook = simple_olog_client
 
 
-#logbook_cb = logbook_cb_factory(configured_logbook_func)
-logbook_cb = logbook_cb_factory(configured_logbook_func, desc_dispatch=TEMPLATES)
+##logbook_cb = logbook_cb_factory(configured_logbook_func)
+#logbook_cb = logbook_cb_factory(configured_logbook_func, desc_dispatch=TEMPLATES)
 
-# uncomment this for debugging and comment the next two lines
-#RE.subscribe(logbook_cb)
-import nslsii
-nslsii.configure_olog(get_ipython().user_ns, callback=logbook_cb)
+## uncomment this for debugging and comment the next two lines
+##RE.subscribe(logbook_cb)
+#import nslsii
+#nslsii.configure_olog(get_ipython().user_ns, callback=logbook_cb)
