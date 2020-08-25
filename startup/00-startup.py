@@ -61,7 +61,7 @@ def _epicssignal_get(self, *, as_string=None, connection_timeout=1.0, **kwargs):
     if as_string is None:
         as_string = self._string
 
-    with self._lock:
+    with self._metadata_lock:
         if not self._read_pv.connected:
             if not self._read_pv.wait_for_connection(connection_timeout):
                 raise TimeoutError('Failed to connect to %s' %
@@ -95,9 +95,12 @@ from ophyd import EpicsSignal
 from ophyd import EpicsSignalRO
 from ophyd.areadetector import EpicsSignalWithRBV
 
-EpicsSignal.get = _epicssignal_get
-EpicsSignalRO.get = _epicssignal_get
-EpicsSignalWithRBV.get = _epicssignal_get
+# We have commented this because we would like to identify the PVs that are causing problems.
+# Then the controls group can investigate why it is not working as expected.
+# Increasing the get() timeout argument is the prefered way to work around this problem.
+#EpicsSignal.get = _epicssignal_get
+#EpicsSignalRO.get = _epicssignal_get
+#EpicsSignalWithRBV.get = _epicssignal_get
 
 from pathlib import Path
 
