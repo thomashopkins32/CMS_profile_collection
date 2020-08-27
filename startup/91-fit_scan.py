@@ -422,7 +422,6 @@ class LivePlot_Custom(LivePlot):
         #super().setup()
         
         #self.ax.figure.canvas.manager.toolbar.pan()
-        self.ax.figure.canvas.mpl_connect('scroll_event', self.scroll_event )
         
         
     def start(self, doc):
@@ -443,6 +442,7 @@ class LivePlot_Custom(LivePlot):
             line.set_linewidth(lw)
             
         super().start(doc)
+        self.ax.figure.canvas.mpl_connect('scroll_event', self.scroll_event )
         
         
     def update_plot(self):
