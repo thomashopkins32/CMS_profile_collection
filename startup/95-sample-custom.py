@@ -335,8 +335,9 @@ class SampleGISAXS_Generic(Sample_Generic):
                 value = detector.read()[value_name]['value']
                 self.yr(+2)
             
-            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
-                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
+            if 'beam_intensity_expected' in RE.md:
+                if value<RE.md['beam_intensity_expected']*0.75:
+                    print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
                 
             # Find the step-edge
             self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
