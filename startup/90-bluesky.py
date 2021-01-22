@@ -340,8 +340,8 @@ def pump_chm(onoff, q=0):
 
 
 #PROFILE_ROOT = os.path.dirname(__file__)
-PROFILE_ROOT = os.getcwd()
-CMS_CONFIG_FILENAME =  PROFILE_ROOT + "/.cms_config"
+PROFILE_ROOT = '/home/xf11bm/.ipython/profile_collection/startup'
+CMS_CONFIG_FILENAME =  os.path.join(PROFILE_ROOT, '.cms_config')
 
 ## CMS config file
 import pandas as pds
