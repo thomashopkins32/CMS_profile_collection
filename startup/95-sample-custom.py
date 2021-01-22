@@ -1,6 +1,5 @@
 ################################################################################
 # Code for customer-made holders and sample stages, 
-
 # Samples include : 
 # 1. SampleTSAXS_Generic : TSAXS/TWAXS
 # 2. SampleGISAXS_Generic : GISAXS/GIWAXS
@@ -18,7 +17,8 @@
 # 6. PaloniThermalStage: special stage made in brass by UCSB group. 
 # 7. DSCStage : tranmission stage for DSC capsules
 # 8. InstecStage60 : HCS 60, From Sam Sprunt (Kent State U. )
-# 8. InstecStage402 : HCS 402, beamline owned
+# 9. InstecStage402 : HCS 402, beamline owned
+# 10.OffCenteredHoder: GTSAXS 
 # TODO: some clean-ups.
 # 1. make rotational stage as custom stage with phi, strans, strans2, tilt, tilt2 stages. 
 #  
@@ -108,7 +108,8 @@ class SampleGISAXS_Generic(Sample_Generic):
     def measureIncidentAngle(self, angle, exposure_time=None, extra=None, tiling=None, **md):
          
         self.thabs(angle)
-        time.sleep(.2)
+        while sth.moving==True:
+            time.sleep(.1)
         self.measure(exposure_time=exposure_time, extra=extra, tiling=tiling, **md)
         
     def measureIncidentAngles(self, angles=None, exposure_time=None, extra=None, tiling=None, **md):
@@ -144,7 +145,7 @@ class SampleGISAXS_Generic(Sample_Generic):
             SAXSx_o = SAXSx.user_readback.value
             WAXSy_o = WAXSy.user_readback.value
             WAXSx_o = WAXSx.user_readback.value
-            #MAXSy_o = MAXSy.user_readback.value
+            MAXSy_o = MAXSy.user_readback.value
 
             for angle in angles:
                 self.thabs(angle)
@@ -165,8 +166,8 @@ class SampleGISAXS_Generic(Sample_Generic):
                 SAXSy.move(SAXSy_o)
             if WAXSy.user_readback.value != WAXSy_o:
                 WAXSy.move(WAXSy_o)    
-            #if MAXSy.user_readback.value != MAXSy_o:
-                #MAXSy.move(MAXSy_o)                
+            if MAXSy.user_readback.value != MAXSy_o:
+                MAXSy.move(MAXSy_o)                
                 
         elif tiling == 'xygaps':
             if angles is None:
@@ -207,7 +208,7 @@ class SampleGISAXS_Generic(Sample_Generic):
 
                 if pilatus2M in cms.detector:
                     SAXSx.move(SAXSx_o + 5.16)
-                    SAXSy.move(SAXSy.o + 5.16)
+                    SAXSy.move(SAXSy_o + 5.16)
                 if pilatus800 in cms.detector:
                     WAXSx.move(WAXSx_o - 5.16)
                     WAXSy.move(WAXSy_o + 5.16)
@@ -390,7 +391,7 @@ class SampleGISAXS_Generic(Sample_Generic):
                 self.thsetOrigin(th_target)
 
             #fit_scan(smy, 0.2, 21, fit='max')
-            self.setOrigin(['y'])            
+            #self.setOrigin(['y'])            
 
         if step<=10:
             self.thabs(0.0)
@@ -1490,9 +1491,9 @@ class GIBar(PositionalHolder):
         else: 
             sample.measure_setting['detector'] = detector_opt
         if exposure_time==None:
-            sample.measure_setting['exposure_time '] = self.exposure_time
+            sample.measure_setting['exposure_time'] = self.exposure_time
         else:
-            sample.measure_setting['exposure_time '] = exposure_time
+            sample.measure_setting['exposure_time'] = exposure_time
         if incident_angles==None:
             sample.measure_setting['incident_angles'] =self.incident_angles
         else:
@@ -2089,6 +2090,190 @@ class GIBar_long_thermal(GIBar):
         self.mark('left edge', x=0)
         self.mark('center', x=76.2, y=0)
 
+    def alignSamples(self, step=0, align_step=0, verbosity=3, **md):
+    
+        for sample in self.getSamples():
+            if verbosity>=3:
+                print('Doing sample {}...'.format(sample.name))
+
+            if step<=1:
+                saxs_on()
+                get_beamline().modeAlignment()
+                
+            if step<=2:
+                sample.xo() # goto origin
+            if step<=4:
+                sample.yo()
+                sample.tho()
+            
+            if step<=5:
+                sample.align(step=align_step)   
+
+
+    def alignSamples_Custom(self, step=0, align_step=8, verbosity=3, **md):
+    
+        #first_sample = self.getSamples()
+        #hol_xcenter = 4.3*25.4/2
+        cali_sample = self.getSample(1) 
+
+        sample_pos_list = []
+        
+        for sample in self.getSamples():
+            sample_pos_list.append(sample.position)
+        hol_xcenter = min(sample_pos_list)/2+max(sample_pos_list)/2
+        
+        print(sample_pos_list)
+        
+        #locate the sample for alignning the holder
+        for sample in self.getSamples():
+            if abs(sample.position-hol_xcenter) < abs(cali_sample.position-hol_xcenter):
+                cali_sample = sample
+            print('The current calibraion sample is {}'.format(cali_sample.name))
+
+        print('The calibraion sample is {}'.format(cali_sample.name))
+                
+        #full alignment on cali_sample
+        #cali_sample.align()
+        if verbosity>=3:
+            print('Doing holder on sample {}...'.format(cali_sample.name))
+
+        saxs_on()
+        get_beamline().modeAlignment()
+        
+        cali_sample.xo() # goto origin
+        cali_sample.yo()
+        cali_sample.tho()
+        cali_sample.align(step=0)           
+        
+        cali_sample.xo()
+        cali_sample.yo()
+        cali_sample.tho()
+        
+        for sample in self.getSamples():
+            sample.setOrigin(['th', 'y'])
+        
+        for sample in self.getSamples():
+            if verbosity>=3:
+                print('Doing sample {}...'.format(sample.name))
+            if step<=1:
+                saxs_on()
+                get_beamline().modeAlignment()
+            if step<=2:
+                sample.xo() # goto origin
+                sample.yo()
+                sample.tho()
+            
+            if step<=5:
+                sample.align(step=align_step)   
+
+
+    def measureSamples(self, det='SWAXS', tiling=None, verbosity=3, **md):
+        
+        cms.modeMeasurement()
+        
+        if det == 'SAXS':
+            saxs_on()
+            for sample in self.getSamples():
+                sample.gotoOrigin()
+                
+                if sample.incident_angles==None:
+                    incident_angles = sample.incident_angles_default
+                else:
+                    incident_angles = sample.incident_angles
+                
+                sample.measureIncidentAngles_Stitch(incident_angles, exposure_time=sample.SAXS_time, tiling=tiling, **md)
+
+        elif det == 'WAXS':
+            waxs_on() # edited from waxs_on 3/25/19 through a saxs_on error
+            for sample in self.getSamples():
+                sample.gotoOrigin()
+                
+                if sample.incident_angles==None:
+                    incident_angles = sample.incident_angles_default
+                else:
+                    incident_angles = sample.incident_angles
+                #for detector in get_beamline().detector:
+                    #detector.setExposureTime(self.MAXS_time)
+                sample.measureIncidentAngles_Stitch(incident_angles, exposure_time=sample.WAXS_time, tiling=tiling, **md)
+                
+                sample.gotoOrigin()
+
+        elif det == 'SWAXS':
+
+            swaxs_on()
+            for sample in self.getSamples():
+                sample.gotoOrigin()
+                
+                if sample.incident_angles==None:
+                    incident_angles = sample.incident_angles_default
+                else:
+                    incident_angles = sample.incident_angles
+                
+                sample.measureIncidentAngles_Stitch(incident_angles, exposure_time=sample.SWAXS_time, tiling=tiling, **md)
+                
+        elif det == 'BOTH':
+
+            saxs_on()
+            for sample in self.getSamples():
+                sample.gotoOrigin()
+                
+                if sample.incident_angles==None:
+                    incident_angles = sample.incident_angles_default
+                else:
+                    incident_angles = sample.incident_angles
+                
+                sample.measureIncidentAngles_Stitch(incident_angles, exposure_time=sample.SAXS_time, tiling=tiling, **md)
+            waxs_on() # edited from waxs_on 3/25/19 through a saxs_on error
+            for sample in self.getSamples():
+                sample.gotoOrigin()
+                
+                if sample.incident_angles==None:
+                    incident_angles = sample.incident_angles_default
+                else:
+                    incident_angles = sample.incident_angles
+                #for detector in get_beamline().detector:
+                    #detector.setExposureTime(self.MAXS_time)
+                sample.measureIncidentAngles_Stitch(incident_angles, exposure_time=sample.WAXS_time, tiling=tiling, **md)
+                
+                sample.gotoOrigin()
+
+        else:
+            print('Wrong det input. Options are SAXS/WAXS/SWAXS/BOTH')
+            
+    def doTemperatures(self, temperature_list=None, output_file='Transmission_output', int_measure=False, wait_time=600, WAXS_expo_time=5, temperature_probe='A', output_channel='1', temperature_tolerance=1, range=None, verbosity=3, poling_period=2.0, **md):
+
+        #cms.modeMeasurement()
+        if temperature_list==None:
+            temperature_list = self.temperature_list
+            
+            
+        for index, temperature in enumerate(temperature_list):
+            # Set new temperature
+            #self.setTemperature(temperature, output_channel=output_channel, verbosity=verbosity)
+            
+            # Wait until we reach the temperature
+            #while abs(self.temperature(verbosity=0) - temperature)>temperature_tolerance:
+            while abs(self.temperature(temperature_probe=temperature_probe, verbosity=0) - temperature)>temperature_tolerance:
+                if verbosity>=3:
+                    print('  setpoint = {:.3f}°C, Temperature = {:.3f}°C          \r'.format(self.temperature_setpoint()-273.15, self.temperature(temperature_probe=temperature_probe, verbosity=0)), end='')
+                time.sleep(poling_period)
+                
+            # Allow for additional equilibration at this temperature
+            
+            if index%4 == 0:
+                self.alignSamples_Custom()
+                #self.alignSamples()
+            elif wait_time is not None:
+                time.sleep(wait_time)
+                
+            post_to_slack('set to Temperature {}'.format(temperature))
+            self.measureSamples()
+            #self.doSamples(SAXS_expo_time=SAXS_expo_time, verbosity=verbosity, **md)
+            if int_measure:
+                self.intMeasure(output_file=output_file)   
+
+        self.setTemperature(25)
+        
 class WellPlateHolder(PositionalHolder):
     '''This class is a sample holder for 96 well plate. 
        row: A--E; column: 1--12
@@ -2110,7 +2295,7 @@ class WellPlateHolder(PositionalHolder):
         self._axes['x'].origin = -49.25
         self._axes['yy'].origin = 3.3
         
-        
+            
         self.x_spacing = 9 # 9mm seperation both in x and yy direction
         self.yy_spacing = 9 
         
@@ -2329,9 +2514,9 @@ class DSCStage(CapillaryHolder):
     def __init__(self, name='CapillaryHolder', base=None, **kwargs):
         super().__init__(name=name, base=base, **kwargs)
         #TODO: search the origin position and check the spacing
-        self._axes['y'].origin = -5
-        self.x_spacing = 1.375 *25.4 # 1.375 seperation in x
-        self.y_spacing = 32.13 + 23.25 # 2.25 seperation in y
+        self._axes['y'].origin = -2.2
+        self.x_spacing = 8.2  #0.325 *25.4 # 0.375 seperation in x
+        self.y_spacing = 12.7 # 1/2 inch seperation in y
 
     def slot(self, sample_number):
         '''Moves to the selected slot in the holder.'''
@@ -2482,6 +2667,48 @@ class InstecStage60(CapillaryHolder):
         #for ii in len(self.tscan_seconds):
             #tscan_data = tscan_data.append({'scan_id':RE.md['scan_id']-1-len(self.tscan_seconds)+ii, 'degC':self.tscan_degC, 'seconds':self.tscan_seconds}, ignore_index=True)
         self.tscan_data.to_csv(self.tscan_filename)    
+        
+        
+class OffCenteredHoder(GIBar):
+    '''The special sample holder for GTSAXS and TSAXS along thin film edges.
+       It contains 17 slots with fixed position, similar to Capillary Holders. But the holder dimensions and functions are similar to GIBar. 
+       
+    '''
+        
+    def __init__(self, name='OffCenteredHoder', base=None, **kwargs):
+        
+        super().__init__(name=name, base=base, **kwargs)
+        
+        self._positional_axis = 'x'
+        
+        self.x_spacing = 6.342 # 3.5 inches / 16 spaces
+        
+        # slot  1; smx = +26.60
+        # slot  8; smx = -17.80
+        # slot 15; smx = -61.94
+        
+        # Set the x and y origin to be the center of slot 8
+        self._axes['x'].origin = -17.2    # -0.3
+        self._axes['y'].origin = 5.38   # -0.1
+        #self.ysetOrigin(5.38)
+        #self.xsetOrigin(-17.2)
+        
+        self.mark('right edge', x=+54.4)
+        self.mark('left edge', x=-54.4)
+        self.mark('bottom edge', y=-12.71)
+        self.mark('center', x=0, y=0)
+                
+        #measurement measure_settings
+        self.detector=None
+        self.exposure_time = None
+        self.incident_angles = None
+        self.tiling = None
+        self.measure_setting={}
+                
+    def get_slot_position(self, slot):
+        '''Return the motor position for the requested slot number.'''
+        
+        return +1*self.x_spacing*(slot-8)
         
 """#abandoned code
 class SampleXR(SampleGISAXS_Generic):

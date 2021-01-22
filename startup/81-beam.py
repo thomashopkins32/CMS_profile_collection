@@ -926,7 +926,8 @@ class CMSBeam(object):
         #the position is defined in 'config_update'. This position is a good reference. 
         #self.armr_absorber_o = -55.1
         #self.armr_absorber_o = -9.8
-        self.armr_absorber_o = -24.5
+        #self.armr_absorber_o = -24.5
+        self.armr_absorber_o = 1.3-3
         self.armr_absorber_out = -55.1
         self.absorber_transmission_list_13p5kev = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
         self.absorber_transmission_list_17kev = [1, 1.847e-1, 3.330e-2, 6.064e-3, 1.101e-3, 1.966e-4, 3.633e-5]    # at E = 17keV
@@ -1678,7 +1679,9 @@ class CMSBeam(object):
             
             # The foil layers 
             slot = np.floor((armr.position - self.armr_absorber_o+3-.1)/6)
-                    
+            if slot >6 or slot<0:
+                return print('Absorber slot should in the range of [0, 6]')
+            
             return self.absorberCalcTransmission(slot, verbosity=verbosity)
 
     def absorber_out(self, verbosity=3):

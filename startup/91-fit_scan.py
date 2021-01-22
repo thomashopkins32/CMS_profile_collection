@@ -1063,8 +1063,8 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
         fig.canvas.set_window_title(title)
         ax = fig.gca()
     
-        #liveplot = LivePlot_Custom(plot_y, motor.name, ax=ax)
-        liveplot = LivePlot(plot_y, motor.name, ax=ax)
+        liveplot = LivePlot_Custom(plot_y, motor.name, ax=ax)
+        #liveplot = LivePlot(plot_y, motor.name, ax=ax)
         subs.append(liveplot)
     
     if wait_time is not None:
