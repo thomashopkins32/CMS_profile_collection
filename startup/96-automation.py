@@ -1506,9 +1506,10 @@ que = Queue()
 #config_load()
 
 ###############slack communication##############
+import requests
 
 slack_channel_xf11bm = 'https://hooks.slack.com/services/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'
-slack_channel_CMSstatus = 'https://hooks.slack.com/services/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'
+slack_channel_CMSstatus = 'https://hooks.slack.com/services/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'
 slack_channel_rp = None
 
 #json_data = {"text":"test"}

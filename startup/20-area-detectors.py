@@ -17,7 +17,9 @@ from nslsii.ad33 import SingleTriggerV33,  StatsPluginV33
 #class Elm(SingleTrigger, DetectorBase):
  #   pass
 
-
+Pilatus2M_on = True
+Pilatus300_on = False
+Pilatus800_on = True
 
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
@@ -356,11 +358,10 @@ for camera in all_standard_pros:
 #pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL
 #pilatus300 section is unmarked.  032018-MF
 #pilatus300 section is marked out for bluesky upgrade.  010819-RL
-time.sleep(1)
 
+#pilatus300 section
 #if True:
-#if True:
-if False:
+if Pilatus300_on == True:
     pilatus300 = Pilatus300V33('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
     #pilatus300 = PilatusV33('XF:11BMB-ES{Det:SAXS}:', name='pilatus300')
     pilatus300.tiff.read_attrs = []
@@ -377,8 +378,9 @@ else:
     pilatus300 = 'Pil300ISNOTWORKING'
 
 #pilatus800 section
-if True:
 #if False:
+#if True:
+if Pilatus800_on == True:
     pilatus800 = Pilatus800V33('XF:11BMB-ES{Det:PIL800K}:', name='pilatus800')
     pilatus800.tiff.read_attrs = []
     pilatus800.stats3.total.kind = 'hinted'
@@ -421,7 +423,7 @@ else:
 
 #pilatus2M section
 #if False:
-if True:
+if Pilatus2M_on == True:
     pilatus2M = Pilatus2MV33('XF:11BMB-ES{Det:PIL2M}:', name='pilatus2M')
     pilatus2M.tiff.read_attrs = []
     STATS_NAMES2M = ['stats1', 'stats2', 'stats3', 'stats4']

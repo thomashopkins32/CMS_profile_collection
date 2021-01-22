@@ -394,8 +394,7 @@ class LiveStatPlot(LivePlot):
 
 class LivePlot_Custom(LivePlot):
     
-    def __init__(self, y, x=None, *, legend_keys=None, xlim=None, ylim=None,
-                 ax=None, fig=None, **kwargs):
+    def __init__(self, y, x=None, *, legend_keys=None, xlim=None, ylim=None,ax=None, fig=None, **kwargs):
         
         kwargs_update = { 
             'color' : 'k' ,
@@ -420,9 +419,9 @@ class LivePlot_Custom(LivePlot):
         plt.matplotlib.rcParams.update(rcParams_update)
         
         super().__init__(y, x, legend_keys=legend_keys, xlim=xlim, ylim=ylim, ax=ax, fig=fig, **kwargs_update)
+        #super().setup()
         
         #self.ax.figure.canvas.manager.toolbar.pan()
-        self.ax.figure.canvas.mpl_connect('scroll_event', self.scroll_event )
         
         
     def start(self, doc):
@@ -443,6 +442,7 @@ class LivePlot_Custom(LivePlot):
             line.set_linewidth(lw)
             
         super().start(doc)
+        self.ax.figure.canvas.mpl_connect('scroll_event', self.scroll_event )
         
         
     def update_plot(self):
@@ -909,7 +909,8 @@ def fit_scan(motor, span, num=11, detectors=None, detector_suffix='', exposure_t
     
     livetable = LiveTable([motor] + list(detectors))
     #subs.append(livetable)
-    liveplot = LivePlot_Custom(plot_y, motor.name, ax=ax)
+    #liveplot = LivePlot_Custom(plot_y, motor.name, ax=ax)
+    liveplot = LivePlot(plot_y, motor.name, ax=ax)
     subs.append(liveplot)
     
     if wait_time is not None:
@@ -1063,6 +1064,7 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
         ax = fig.gca()
     
         liveplot = LivePlot_Custom(plot_y, motor.name, ax=ax)
+        #liveplot = LivePlot(plot_y, motor.name, ax=ax)
         subs.append(liveplot)
     
     if wait_time is not None:
@@ -1145,7 +1147,7 @@ def fit_edge(motor, span, num=11, detectors=None, detector_suffix='', plot=True,
             xe = 0.25
             fit_x = np.linspace(np.min(livetable.xdata)-xe*x_span, np.max(livetable.xdata)+xe*x_span, num=500)
             fit_y = model(lm_result.params.valuesdict(), fit_x)
-            liveplot.add_line(fit_x, fit_y, color='b', linewidth=2.5)
+            #liveplot.add_line(fit_x, fit_y, color='b', linewidth=2.5)
             
             
         # Detect bad fits

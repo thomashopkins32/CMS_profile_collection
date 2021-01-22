@@ -38,7 +38,8 @@ class Agilent_34970A(Device):
     def connect_socket(self):
         
         #self.server_address= '10.11.130.51'
-        self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        #self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        self.server_address= '10.68.82.73'     # NEW IP, 20201112
         #self.server_IP = '10.11.129.2'
         self.port_number = 9
         self.server_port = 4000 + self.port_number
@@ -242,7 +243,8 @@ class Keithley_2000(Device):
     def connect_socket(self):
         
         #self.server_address= '10.11.130.51'
-        self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        #self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        self.server_address= '10.68.82.73'     # NEW IP, 20201112
         #self.server_IP = '10.11.129.2'
         self.port_number = 10
         self.server_port = 4000 + self.port_number
@@ -549,7 +551,8 @@ class Minichiller(Device):
     def connect_socket(self):
         
         #self.server_address= '10.11.130.51'
-        self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        #self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        self.server_address= '10.68.82.73'     # NEW IP, 20201112
         #self.server_IP = '10.11.129.2'
         self.port_number = 11
         self.server_port = 4000 + self.port_number
@@ -679,7 +682,8 @@ class SyringePump(Device):
     def connect_socket(self):
         
         #self.server_address= '10.11.130.51'
-        self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        #self.server_address= '10.11.130.53'     # Moxa inside Endstation hutch
+        self.server_address= '10.68.82.73'     # NEW IP, 20201112
         #self.server_IP = '10.11.129.2'
         self.port_number = 11
         self.server_port = 4000 + self.port_number

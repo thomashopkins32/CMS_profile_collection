@@ -1149,10 +1149,6 @@ class Sample_Generic(CoordinateSystem):
     
         return md_return
     
-    
-    
-    
-        
         
     # Naming scheme methods
     ########################################
@@ -2127,7 +2123,8 @@ class Sample_Generic(CoordinateSystem):
         
         start_time = time.time()
         # Define the rock 
-        rock_scan=list_scan(get_beamline().detector, armr, [0], per_step = functools.partial(rock_motor_per_step, rock_motor=rock_motor, rock_motor_limits=rock_motor_limits) )
+        #rock_scan=list_scan(get_beamline().detector, armr, [0], per_step = functools.partial(rock_motor_per_step, rock_motor=rock_motor, rock_motor_limits=rock_motor_limits) )
+        rock_scan=list_scan(get_beamline().detector, armr, [0], per_step = lambda detectors, motor, step: rock_motor_per_step(detectors, motor, step, rock_motor=rock_motor, rock_motor_limits=rock_motor_limits) )
         #uids = RE(count(get_beamline().detector, 1), **md)
         uids = RE(rock_scan, **md_current)
         
@@ -3520,6 +3517,7 @@ class PositionalHolder(Holder):
         sample.detector = detector_opt
         sample.incident_angles = incident_angles
         sample.transmission = transmission
+        sample.position = position
         #sample.exposure_time_SAXS = exposure_time_SAXS 
         #sample.exposure_time_WAXS = exposure_time_WAXS 
         #sample.exposure_time_MAXS = exposure_time_MAXS 

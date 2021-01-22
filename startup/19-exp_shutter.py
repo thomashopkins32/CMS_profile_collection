@@ -29,6 +29,16 @@ def xshutter_trigger():
     sleep(sleep_time)
     caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
 
+trigger_pv = EpicsSignal('XF:11BMB-CT{MC:06}Asyn.AOUT')
+shutter_sts_pv = EpicsSignal('XF:11BMB-OP{PSh:2}Pos:1-Sts')
+def xshutter_trigger_RE(verbosity=3):
+    yield from bps.mv(trigger_pv, 'M112=1')
+    yield from bps.mv(trigger_pv, 'M111=1')
+    yield from bps.mv(trigger_pv, 'M112=0')
+    yield from bps.mv(trigger_pv, 'M111=1')
+    if verbosity>=3:
+        value = yield from bps.read(shutter_sts_pv.read())
+        print(value[shutter_sts_pv.name]['value'])
 
 def xshutter(inout,q=0):
     global xshutter_state
