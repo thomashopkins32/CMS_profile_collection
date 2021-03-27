@@ -17,6 +17,20 @@ class TriState(Device):
         else:
             raise ValueError("value must be in {'Open', 'Close', 'Soft'}")
 
+#class TriState(Device):
+    #full = Cpt(TwoButtonShutterNC, 'V:1}')
+    #soft = Cpt(TwoButtonShutterNC, 'V:1_Soft}')
+    #def set(self, value):
+        #if value == 'Open':
+            #return self.full.set('Open') #& self.soft.set('Open')
+        #elif value == 'Soft':
+            #return self.soft.set('Open') & self.full.set('Not Open')
+        #elif value == 'Not Open':
+            #return self.full.set('Not Open') & self.soft.set('Not Open')
+        #else:
+            #raise ValueError("value must be in {'Open', 'Not Open', 'Soft'}")
+
+
 def tri_plan(tri, value):
     if value == 'Open':
         yield from bps.mov(tri.full, 'Open')

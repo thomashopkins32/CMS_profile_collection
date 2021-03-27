@@ -135,7 +135,9 @@ class SampleGISAXS_Generic(Sample_Generic):
             #pos1 
             for angle in angles:
                 self.thabs(angle)
-                time.sleep(.2)
+                while sth.moving==True:
+                    time.sleep(0.1)
+                time.sleep(.5)
                 extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
                 md['detector_position'] = 'lower'
                 self.measure_single(exposure_time=exposure_time, extra=extra_current, verbosity=verbosity, stitchback=True,**md)
@@ -146,17 +148,18 @@ class SampleGISAXS_Generic(Sample_Generic):
             WAXSy_o = WAXSy.user_readback.value
             WAXSx_o = WAXSx.user_readback.value
             MAXSy_o = MAXSy.user_readback.value
-
+            if pilatus2M in cms.detector:
+                SAXSy.move(SAXSy_o + 5.16)
+            if pilatus800 in cms.detector:
+                WAXSy.move(WAXSy_o + 5.16)
+            if pilatus300 in cms.detector:
+                MAXSy.move(MAXSy_o + 5.16)
+                
             for angle in angles:
                 self.thabs(angle)
-                time.sleep(.2)
-
-                if pilatus2M in cms.detector:
-                    SAXSy.move(SAXSy_o + 5.16)
-                if pilatus800 in cms.detector:
-                    WAXSy.move(WAXSy_o + 5.16)
-                if pilatus300 in cms.detector:
-                    MAXSy.move(MAXSy_o + 5.16)
+                while sth.moving==True:
+                    time.sleep(0.1)
+                time.sleep(.5)
 
                 extra_current = 'pos2' if extra is None else '{}_pos2'.format(extra)
                 md['detector_position'] = 'upper'
@@ -175,7 +178,7 @@ class SampleGISAXS_Generic(Sample_Generic):
             #pos1 
             for angle in angles:
                 self.thabs(angle)
-                time.sleep(.2)
+                time.sleep(.5)
                 extra_current = 'pos1' if extra is None else '{}_pos1'.format(extra)
                 md['detector_position'] = 'lower_left'
                 self.measure_single(exposure_time=exposure_time, extra=extra_current, verbosity=verbosity, stitchback=True,**md)
@@ -808,7 +811,7 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
 
     ################# Specular reflectivity (XR) measurement ####################
 
-    def XR_scan(self, scan_type='theta_scan', theta_range=[0,1.6], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None, **md):
+    def XR_scan(self, scan_type='theta_scan', theta_range=[0,1.6], theta_delta=0.1, theta_list=None, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None, **md):
         ''' Run x-ray reflectivity measurement for thin film samples on WAXS pilatus800k. 
         There will be two WAXSy positions for XR. 
         The 1st position is the beam shining directly on the detector with maximum attenuation.
@@ -878,8 +881,8 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
             direct_beam_slot = 4
         #Energy = 17kev
         if abs(beam.energy(verbosity=1)-17) < 0.1:
-            direct_beam_slot = 5
-            slot_pos = 5
+            direct_beam_slot = 6
+            slot_pos = 6
 
         #Energy = 17kev
         if abs(beam.energy(verbosity=1)-10) < 0.1:
@@ -901,14 +904,18 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
             #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
             #XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
             #XR_FILENAME='{}/data/{}_{}.csv'.format(header.start['experiment_alias_directory'],header.start['sample_name'], header.get('start').get('scan_id')+1)
-            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.start['filename'])            
+            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.start['filename'])   
+            print('FILENAME= {}'.format(XR_FILENAME))
         else:
             XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
 
         #load theta positions in scan
         if scan_type == 'theta_scan':
             #list the sth positions in scan
-            theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            if theta_list==None:
+                theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
+            else:
+                theta_list = theta_list
             
             #
             '''
@@ -960,14 +967,14 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
                 
             self.measure(exposure_time, extra=extra)
             temp_data = self.XR_data_output(slot_pos, exposure_time)
-            
+            print('data = {}'.format(temp_data))
             #initial exposure period
             N = 1
             N_last = 1
             if threshold is not None and type(threshold) == int :                    
                 while temp_data['e_I1'][temp_data.index[-1]] < threshold and N < max_exposure_time:   
                     if slot_pos > 0:
-                        if temp_data['e_I1'][temp_data.index[-1]] < 10: #The count is too small to evaluate the next slot_pos.
+                        if temp_data['e_I1'][temp_data.index[-1]] < threshold: #The count is too small to evaluate the next slot_pos.
                             slot_pos = slot_pos - 1
                         else:
                            slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
@@ -2515,7 +2522,7 @@ class DSCStage(CapillaryHolder):
         super().__init__(name=name, base=base, **kwargs)
         #TODO: search the origin position and check the spacing
         self._axes['y'].origin = -2.2
-        self.x_spacing = 8.2  #0.325 *25.4 # 0.375 seperation in x
+        self.x_spacing = 9.2  #0.325 *25.4 # 0.375 seperation in x
         self.y_spacing = 12.7 # 1/2 inch seperation in y
 
     def slot(self, sample_number):
@@ -2573,7 +2580,9 @@ class HumidityStage(GIBar):
         self._axes['th'].origin = 0
 
     def humidity(self, AI_chan=7, temperature=25, verbosity=3):        
-        return ioL.readRH(AI_chan=7, temperature=temperature, verbosity=verbosity)
+        #AI_chan=7, the independent sensor
+        #AI_chan=3, the integrated sensor in the flow control panel
+        return ioL.readRH(AI_chan=AI_chan, temperature=temperature, verbosity=verbosity)
 
     def setFlow(self, channel, voltage=0):
         #device = 'A1'

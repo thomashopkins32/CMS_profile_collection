@@ -2673,10 +2673,10 @@ class Sample_Generic(CoordinateSystem):
                 caput('XF:11BMB-ES{Det:PIL2M}:cam1:NumImages', num_frames)
                 
             if detector.name is 'pilatus800':
-                if exposure_time != caget('XF:11BMB-ES{Det:PIL800}:cam1:AcquireTime'):
-                    caput('XF:11BMB-ES{Det:PIL800}:cam1:AcquireTime', exposure_time)
-                caput('XF:11BMB-ES{Det:PIL800}:cam1:AcquirePeriod', exposure_period)
-                caput('XF:11BMB-ES{Det:PIL800}:cam1:NumImages', num_frames)
+                if exposure_time != caget('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime'):
+                    caput('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime', exposure_time)
+                caput('XF:11BMB-ES{Det:PIL800K}:cam1:AcquirePeriod', exposure_period)
+                caput('XF:11BMB-ES{Det:PIL800K}:cam1:NumImages', num_frames)
 
             if detector.name is 'pilatus300' :
                 if exposure_time != caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'):
@@ -2741,7 +2741,7 @@ class Sample_Generic(CoordinateSystem):
             if detector.name is 'pilatus300' :
                 caput('XF:11BMB-ES{Det:SAXS}:cam1:NumImages', 1)
             if detector.name is 'pilatus800' :
-                caput('XF:11BMB-ES{Det:PIL800}:cam1:NumImages', 1)
+                caput('XF:11BMB-ES{Det:PIL800K}:cam1:NumImages', 1)
         
     def initialDetector(self):
                 #reset the num_frame back to 1
@@ -2751,7 +2751,7 @@ class Sample_Generic(CoordinateSystem):
             if detector.name is 'pilatus300' :
                 caput('XF:11BMB-ES{Det:SAXS}:cam1:NumImages', 1)
             if detector.name is 'pilatus800' :
-                caput('XF:11BMB-ES{Det:PIL800}:cam1:NumImages', 1)
+                caput('XF:11BMB-ES{Det:PIL800K}:cam1:NumImages', 1)
 
     def handle_fileseries(self, detector, num_frames=None, extra=None, verbosity=3, subdirs=True, **md):
     
@@ -2842,10 +2842,18 @@ class Sample_Generic(CoordinateSystem):
                         if num_frame == 0 or num_frame == np.max(num_frames):
                             print('  Data {} linked as: {}'.format(filename_new, link_name_new))
 
-        elif detector.name is  'pilatus800':
-            chars = caget('XF:11BMB-ES{Det:PIL800}:TIFF1:FullFileName_RBV')
+        #elif detector.name is  'pilatus800':
+            #chars = caget('XF:11BMB-ES{Det:PIL800K}:TIFF1:FullFileName_RBV')
+            #filename = ''.join(chr(char) for char in chars)[:-1]
+            #filename_part1 = ''.join(chr(char) for char in chars)[:-13]
+
+        elif detector.name is 'pilatus800':
+            foldername = '/nsls2/xf11bm/'
+            
+            chars = caget('XF:11BMB-ES{Det:PIL800K}:TIFF1:FullFileName_RBV')
             filename = ''.join(chr(char) for char in chars)[:-1]
-            filename_part1 = ''.join(chr(char) for char in chars)[:-13]
+            filename = foldername + filename
+            filename_part1 = foldername + ''.join(chr(char) for char in chars)[:-13]
 
             print('pilatus800 data handling')
             
@@ -2861,7 +2869,7 @@ class Sample_Generic(CoordinateSystem):
             #if md['measure_type'] is not 'snap':
             if True:
                 
-                self.set_attribute('exposure_time', caget('XF:11BMB-ES{Det:PIL800}:cam1:AcquireTime'))
+                self.set_attribute('exposure_time', caget('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime'))
                 
                 # Create symlink
                 #link_name = '{}/{}{}'.format(RE.md['experiment_alias_directory'], subdir, md['filename'])

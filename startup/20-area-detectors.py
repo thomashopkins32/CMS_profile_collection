@@ -18,7 +18,7 @@ from nslsii.ad33 import SingleTriggerV33,  StatsPluginV33
  #   pass
 
 Pilatus2M_on = True
-Pilatus300_on = False
+Pilatus300_on = True
 Pilatus800_on = True
 
 

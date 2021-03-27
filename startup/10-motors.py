@@ -97,6 +97,7 @@ if beamline_stage == 'default':
 elif beamline_stage == 'open_MAXS':
     smx = EpicsMotor('XF:11BMB-ES{Chm:Smpl2-Ax:X}Mtr', name='smx')
     smy = EpicsMotor('XF:11BMB-ES{Chm:Smpl2-Ax:Y}Mtr', name='smy')
+    smz = EpicsMotor('XF:11BMB-ES{Chm:Smpl2-Ax:Z}Mtr', name='smz')
     #sth = EpicsMotor('XF:11BMB-ES{SM:2-Ax:theta}Mtr', name='sth')
     #schi = EpicsMotor('XF:11BMB-ES{SM:2-Ax:chi}Mtr', name='schi')
     #swap sth and schi at 082219 by RL
