@@ -2225,7 +2225,7 @@ class Sample_Generic(CoordinateSystem):
         md_current['measure_type'] = measure_type
         #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
         #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
-        md_current['filename'] = '{:s}_{:04d}'.format(savename, RE.md['scan_id'])
+        md_current['filename'] = '{:s}_{:06d}'.format(savename, RE.md['scan_id'])
         md_current.update(md)
 
        
