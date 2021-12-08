@@ -16,3 +16,9 @@ jobs:
   - template: nsls2-collection-2021-2.2-py39.yml@templates
     parameters:
       beamline_acronym: CMS
+  - template: nsls2-collection-2021-3.0-py37.yml@templates
+    parameters:
+      beamline_acronym: CMS
+  - template: nsls2-collection-2021-3.0-py39.yml@templates
+    parameters:
+      beamline_acronym: CMS
