@@ -3,6 +3,7 @@
 
 
 ########## Endstation ##########
+###TODO: change bim3, bim4, bim5 to EPICS signal
 
 ## Ion chamber: FMB Oxford I404
 from math import exp

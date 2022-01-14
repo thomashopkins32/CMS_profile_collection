@@ -11,6 +11,9 @@
 
     
 Diode_AO=EpicsSignal('XF:11BMB-CT{DIODE-Local:3}OutCh00:Data-SP')
+Diode_A1=EpicsSignal('XF:11BMB-CT{DIODE-Local:3}OutCh01:Data-SP')
+Diode_A2=EpicsSignal('XF:11BMB-CT{DIODE-Local:3}OutCh02:Data-SP')
+Diode_A3=EpicsSignal('XF:11BMB-CT{DIODE-Local:3}OutCh03:Data-SP')
 #caput('XF:11BMB-CT{DIODE-Local:3}OutCh00:Data-SP.DESC', 'Diode AO 1')
 #Diode_AO.get()
 #Diode_AO.set()

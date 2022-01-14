@@ -340,7 +340,7 @@ def pump_chm(onoff, q=0):
 
 
 #PROFILE_ROOT = os.path.dirname(__file__)
-PROFILE_ROOT = '/nsls2/xf11bm/ipython_profiles/profile_collection/startup'
+PROFILE_ROOT = '/nsls2/data/cms/legacy/xf11bm/ipython_profiles/profile_collection/startup'
 CMS_CONFIG_FILENAME =  os.path.join(PROFILE_ROOT, '.cms_config')
 
 ## CMS config file
@@ -375,6 +375,7 @@ def config_update():
     #save to file
     cms_config_update.to_csv(CMS_CONFIG_FILENAME)
     
+    config_load()
     
 def config_load():
 

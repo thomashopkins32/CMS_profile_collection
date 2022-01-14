@@ -19,6 +19,10 @@
 # 8. InstecStage60 : HCS 60, From Sam Sprunt (Kent State U. )
 # 9. InstecStage402 : HCS 402, beamline owned
 # 10.OffCenteredHoder: GTSAXS 
+# 11.HumidityStage: GI humidity stage
+# 12.HumidityTransmissionStage: Trans humidity stage
+# 13.GIBar_Linkam : Linkam GI holder with N2 protective dome
+
 # TODO: some clean-ups.
 # 1. make rotational stage as custom stage with phi, strans, strans2, tilt, tilt2 stages. 
 #  
@@ -246,6 +250,70 @@ class SampleGISAXS_Generic(Sample_Generic):
             if SAXSy.user_readback.value != SAXSy_o:
                 SAXSy.move(SAXSy_o)       
 
+    ################# Direct beam transmission measurement ####################
+    def intMeasure(self, output_file, exposure_time):
+        '''Measure the transmission intensity of the sample by ROI4.
+        The intensity will be saved in output_file
+        '''        
+        if abs(beam.energy(verbosity=0) - 13.5) < 0.1:
+            beam.setAbsorber(4)
+        elif abs(beam.energy(verbosity=0) - 17) < 0.1:
+            beam.setAbsorber(6)
+
+        print('Absorber is moved to position {}'.format(beam.absorber()[0]))
+
+        detselect([pilatus2M])
+        if beam.absorber()[0]>=4:
+            bsx.move(bsx.position+6)
+            beam.setTransmission(1)
+            
+        self.measure(exposure_time)
+        
+        temp_data = self.transmission_data_output(beam.absorber()[0])
+
+        cms.modeMeasurement()
+        #beam.setAbsorber(0)
+        beam.absorber_out()
+       
+        #output_data = output_data.iloc[0:0]
+
+        #create a data file to save the INT data
+        INT_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , output_file)            
+        
+        if os.path.isfile(INT_FILENAME):
+            output_data = pds.read_csv(INT_FILENAME, index_col=0)
+            output_data = output_data.append(temp_data, ignore_index=True)    
+            output_data.to_csv(INT_FILENAME)
+        else:
+            temp_data.to_csv(INT_FILENAME)
+            
+    def transmission_data_output(self, slot_pos):
+        '''Output the tranmission of direct beam
+        '''
+        h = db[-1]
+        dtable = h.table()
+        
+        #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
+        scan_id = h.start['scan_id']     
+        I_bim5 = h.start['beam_int_bim5']  #beam intensity from bim5
+        I0 = dtable.pilatus2M_stats4_total
+        filename = h.start['sample_name']
+        exposure_time = h.start['sample_exposure_time']
+        #I2 = dtable.pilatus2M_stats2_total
+        #I3 = 2*dtable.pilatus2M_stats1_total - dtable.pilatus2M_stats2_total
+        #In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
+
+        current_data = {'a_filename': filename,
+                        'b_scanID': scan_id,
+                        'c_I0': I0,
+                        'd_I_bim5': I_bim5,
+                        'e_absorber_slot': slot_pos,
+                        #'f_absorber_ratio': beam.absorber_transmission_list[slot_pos],
+                        'f_absorber_ratio': beam.absorber()[1],
+                        'g_exposure_seconds': exposure_time}
+        
+        return pds.DataFrame(data=current_data)
+
     
     def _alignOld(self, step=0):
         '''Align the sample with respect to the beam. GISAXS alignment involves
@@ -293,7 +361,7 @@ class SampleGISAXS_Generic(Sample_Generic):
     
     
     
-    def align(self, step=0, reflection_angle=0.08, verbosity=3):
+    def align(self, step=0, reflection_angle=0.12, verbosity=3):
         '''Align the sample with respect to the beam. GISAXS alignment involves
         vertical translation to the beam center, and rocking theta to get the
         sample plane parralel to the beam. Finally, the angle is re-optimized
@@ -2027,7 +2095,77 @@ class CapillaryHolder(PositionalHolder):
                 sample.gotoOrigin(['x'])
                 sample.xr(x_offset)
                 sample.measureIncident(exposure_time=exposure_time, verbosity=verbosity, **md)
-                
+
+class CapillaryHolderThreeRows(CapillaryHolder):
+    '''This class is a sample holder that has 15x3 slots for transmission geometry.'''
+
+    # Core methods
+    ########################################
+
+    def __init__(self, name='CapillaryHolderThreeRows', base=None, **kwargs):
+        
+        super().__init__(name=name, base=base, **kwargs)
+        
+        # Set the x and y origin to be the center of slot 8
+        
+        self.mark('right edge', x=+54.4)
+        self.mark('left edge', x=-54.4)
+        self.mark('bottom edge', y=-12.71)
+        self.mark('center', x=0, y=0)
+
+        self._positional_axis = ['x','y']
+
+        self._axes['y'].origin = -1.8  #The origin is the #8 hole in the top row
+        self._axes['x'].origin = -16.9
+        
+        self.x_spacing = 6.342 # 3.5 inches / 14 spaces
+        self.y_spacing = 0.25*25.4 # 2.5 inches / 14 spaces
+
+        
+    # def _set_axes_definitions(self):
+    #     '''Internal function which defines the axes for this stage. This is kept
+    #     as a separate function so that it can be over-ridden easily.'''
+        
+    #     # The _axes_definitions array holds a list of dicts, each defining an axis
+    #     super()._set_axes_definitions()
+
+    #     self._axes_definitions.append ( {'name': 'yy',
+    #                         'motor': smy2,
+    #                         'enabled': True,
+    #                         'scaling': +1.0,
+    #                         'units': 'mm',
+    #                         'hint': 'positive moves stage up',
+    #                         } )
+                        
+
+    def slot(self, sample_number):
+        '''Moves to the selected slot in the holder.'''
+        
+        getattr(self, self._positional_axis[0]+'abs')( self.get_slot_position(sample_number) )
+        
+    def get_slot_position(self, slot):
+        '''Return the motor position for the requested slot number.'''
+        # This method should be over-ridden in sub-classes, so as to properly
+        # implement the positioning appropriate for that holder.
+        # This is the critical to define the position for the 10 samples. 
+        
+        position_y = int((slot-1)/15)
+        position_x = (slot-1)%15-7
+
+        return position_x*self.x_spacing,  position_y*self.y_spacing
+
+       
+    def addSampleSlot(self, sample, slot):
+        '''Adds a sample to the specified "slot" (defined/numbered sample 
+        holding spot on this holder).'''
+ 
+       
+        self.addSample(sample, sample_number=slot)
+        sample.setOrigin( ['x'], [self.get_slot_position(slot)[0]] )
+        sample.setOrigin( ['y'], [self.get_slot_position(slot)[1]] )
+
+
+
 class CapillaryHolderHeated(CapillaryHolder):
     
     def update_sample_names(self):
@@ -2280,7 +2418,26 @@ class GIBar_long_thermal(GIBar):
                 self.intMeasure(output_file=output_file)   
 
         self.setTemperature(25)
+
+class GIBar_Linkam(GIBar):
+    '''This class is a sample bar with heating/cooling feature and 6" long bar for grazing-incidence (GI) experiments.'''
+    
+    # Core methods
+    ########################################
+
+    def __init__(self, name='GIBar', base=None, **kwargs):
         
+        super().__init__(name=name, base=base, **kwargs)
+        
+        self._positional_axis = 'x'
+        
+        # Set the x and y origin to be the center of slot 8
+
+        #self.xsetOrigin(-71.89405-22.1) # TODO: Update this value
+        self._axes['y'].origin = -16.8
+        self._axes['y'].origin = 2.06
+        
+
 class WellPlateHolder(PositionalHolder):
     '''This class is a sample holder for 96 well plate. 
        row: A--E; column: 1--12
@@ -2554,6 +2711,50 @@ class DSCStage(CapillaryHolder):
         sample.setOrigin( ['x'], [self.get_slot_position(slot)[0]] )
         sample.setOrigin( ['y'], [self.get_slot_position(slot)[1]] )
 
+class CapillaryHolderThermal(CapillaryHolder):
+    '''This class is a sample holder for 2row capillary holder. 
+       The stage has 15(x) by 2(y) = 39 samples in total. 
+       It has the same dimension as the regular capillary holder.
+       It uses two stages, smx and smy to locate the sample.
+       X origin is the center (#8). Y origin is the top rack.
+    '''    
+    def __init__(self, name='CapillaryHolder', base=None, **kwargs):
+        super().__init__(name=name, base=base, **kwargs)
+        #TODO: search the origin position and check the spacing
+        self._axes['y'].origin = 8.65
+        # self.x_spacing = 9.2  #0.325 *25.4 # 0.375 seperation in x
+        self.y_spacing = 12.7 # 1/2 inch seperation in y
+
+    def slot(self, sample_number):
+        '''Moves to the selected slot in the holder.'''
+        
+        getattr(self, self._positional_axis[0]+'abs')( self.get_slot_position(sample_number) )
+        
+    
+    def get_slot_position(self, slot):
+        '''Return the motor position for the requested slot number.'''
+        # This method should be over-ridden in sub-classes, so as to properly
+        # implement the positioning appropriate for that holder.
+        # This is the critical to define the position for the 10 samples. 
+        
+        if slot < 15.5:
+            position_x = 0.0 + slot - 8
+        elif slot > 15.5:
+            position_x = 0.0 + slot -15 -6
+
+        position_y = 0.0 + int(slot/15.5)*1.0
+        
+        return position_x*self.x_spacing,  position_y*self.y_spacing
+        
+        
+    def addSampleSlot(self, sample, slot):
+        '''Adds a sample to the specified "slot" (defined/numbered sample 
+        holding spot on this holder).'''
+        
+        self.addSample(sample, sample_number=slot)
+        sample.setOrigin( ['x'], [self.get_slot_position(slot)[0]] )
+        sample.setOrigin( ['y'], [self.get_slot_position(slot)[1]] )
+
 class GIBarSecondStage(GIBar):
     '''This class is a sample bar for grazing-incidence (GI) experiments at the 2nd sample stage.'''
     
@@ -2564,7 +2765,7 @@ class GIBarSecondStage(GIBar):
         
         super().__init__(name=name, base=base, **kwargs)
         
-        self._axes['x'].origin = -58.4
+        self._axes['x'].origin = 8.65
         self._axes['y'].origin = 22.35
         self._axes['th'].origin = 0.348
 
@@ -2591,6 +2792,36 @@ class HumidityStage(GIBar):
         ioL.set(AO[channel], voltage)
         #MFC.setMode(channeldevice=device, mode=1)
 
+class HumidityTransmissionStage(CapillaryHolder):
+    '''This class is for the humidity transmission stage for multiple samples.'''
+    
+    def __init__(self, name='HumidityTransmissionStage', base=None, **kwargs):
+        
+        super().__init__(name=name, base=base, **kwargs)
+        
+        self._positional_axis = 'x'
+        
+        self.x_spacing = 6.43
+        
+        # slot  1; smx = +26.60
+        # slot  8; smx = -17.80
+        # slot 15; smx = -61.94
+        
+        self._axes['x'].origin = -64.4
+        self._axes['y'].origin = 10
+        self._axes['th'].origin = 0
+
+    def humidity(self, AI_chan=7, temperature=25, verbosity=3):        
+        #AI_chan=7, the independent sensor
+        #AI_chan=3, the integrated sensor in the flow control panel
+        return ioL.readRH(AI_chan=AI_chan, temperature=temperature, verbosity=verbosity)
+
+    def setFlow(self, channel, voltage=0):
+        #device = 'A1'
+        ioL.set(AO[channel], 0)
+        time.sleep(1)
+        ioL.set(AO[channel], voltage)
+        #MFC.setMode(channeldevice=device, mode=1)
 
 class InstecStage60(CapillaryHolder):
     

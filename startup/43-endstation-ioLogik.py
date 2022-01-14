@@ -10,21 +10,33 @@ from ophyd import Device
 
 # MFC: 
 
+
+#20210907, change the AI/AO/DIO Moxa boxes to Ecat channels. 
+#add TTL signals, see more in 19_shutter.py
+
+
 # PV list of Moxa ioLogik:: AO, Analog Output
 class AOpv(object):    
     def __init__(self, ii):
         self.name = 'AO_Chan{}'.format(ii)
-        self.sp = 'XF:11BMB-ES{}AO:{}-SP'.format('{IO}', ii)
-        self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
+        self.sp = 'XF:11BM-ES{{Ecat:AO{}}}'.format(ii)
+        # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
+        self.sts = self.sp
+        # self.name = 'AO_Chan{}'.format(ii)
+        # self.sp = 'XF:11BMB-ES{}AO:{}-SP'.format('{IO}', ii)
+        # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
 AO=[None]
-for ii in range(1, 9):
+for ii in range(1, 5):
     AO.append(AOpv(ii))
 
 # PV list of Moxa ioLogik:: AI, Analog Input
 class AIpv(object):    
     def __init__(self, ii):
         self.name = 'AI_Chan{}'.format(ii)
-        self.sts = 'XF:11BMB-ES{}AI:{}-I'.format('{IO}', ii)
+        # self.sts = 'XF:11BM-ES{Ecat:AI1_1}'
+        self.sts = 'XF:11BM-ES{{Ecat:AI{}}}'.format(ii)
+        # self.sp = 'XF:11BMB-ES{}AI:{}-SP'.format('{IO}', ii)
+        
 AI=[None]
 for ii in range(1, 9):
     AI.append(AIpv(ii))

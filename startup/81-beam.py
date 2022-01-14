@@ -85,6 +85,8 @@ class CMS_SAXS_Detector(BeamlineDetector):
     
     def get_md(self, prefix='detector_SAXS_', **md):
         
+        ###TODO: change all ROI settings without caget. 
+
         md_return = self.md.copy()
     
         x0, y0 = self.direct_beam
@@ -95,12 +97,9 @@ class CMS_SAXS_Detector(BeamlineDetector):
         md_return['name'] = self.detector.name
         md_return['epics_name'] = '{Det:PIL2M}'
 
-        #if pilatus_name==pilatus300k:
-            #md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
-            #md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
-        if pilatus_name==pilatus2M:
-            md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
-            md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
+        md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
+        md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
+
         md_return['distance_m'] = self.distance
     
         md_return['ROI1_X_min'] = caget('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname))
@@ -939,14 +938,14 @@ class CMSBeam(object):
             #self.fs2 = DiagnosticScreen( 'fs2', 29.1, pv='XF:11BMA-BI{FS:2}', epics_signal=StandardProsilica('XF:11BMA-BI{FS:2-Cam:1}', name='fs2') )
             self.fs3 = DiagnosticScreen( 'fs3', 55.8, pv='XF:11BMB-BI{FS:3}', epics_signal=StandardProsilica('XF:11BMB-BI{FS:3-Cam:1}', name='fs3') )
             self.fs4 = DiagnosticScreen( 'fs4', 58.2, pv='XF:11BMB-BI{FS:4}', epics_signal=StandardProsilica('XF:11BMB-BI{FS:4-Cam:1}', name='fs4') )
-            self.fs5 = DiagnosticScreen( 'fs5', 70.0, pv='XF:11BMB-BI{FS:Test-Cam:1}', epics_signal=StandardProsilica('XF:11BMB-BI{FS:4-Cam:1}', name='fs5') )
+            # self.fs5 = DiagnosticScreen( 'fs5', 70.0, pv='XF:11BMB-BI{FS:Test-Cam:1}', epics_signal=StandardProsilica('XF:11BMB-BI{FS:4-Cam:1}', name='fs5') )
         else:
             # Rely on the fact that these are defined in 20-area-detectors.py
             self.fs1 = DiagnosticScreen( 'fs1', 27.2, pv='XF:11BMA-BI{FS:1}', epics_signal=fs1 )
             #self.fs2 = DiagnosticScreen( 'fs2', 29.1, pv='XF:11BMA-BI{FS:2}', epics_signal=fs2 )
             self.fs3 = DiagnosticScreen( 'fs3', 55.8, pv='XF:11BMB-BI{FS:3}', epics_signal=fs3 )
             self.fs4 = DiagnosticScreen( 'fs4', 58.2, pv='XF:11BMB-BI{FS:4}', epics_signal=fs4 )
-            self.fs5 = DiagnosticScreen( 'fs5', 70.0, pv='XF:11BMB-BI{FS:Test-Cam:1}', epics_signal=fs5 )
+            # self.fs5 = DiagnosticScreen( 'fs5', 70.0, pv='XF:11BMB-BI{FS:Test-Cam:1}', epics_signal=fs5 )
             
             
         self.bim3 = IonChamber_CMS(beam=self)
@@ -1208,25 +1207,111 @@ class CMSBeam(object):
     # Experimental Shutter
     ########################################
     
+    # def _old_is_on(self, verbosity=3):
+    #     '''Returns true if the beam is on (experimental shutter open).'''
+        
+    #     blade1 = caget('XF:11BMB-OP{PSh:2}Pos:1-Sts')
+    #     blade2 = caget('XF:11BMB-OP{PSh:2}Pos:2-Sts')
+        
+    #     if blade1==1 and blade2==1:
+    #         if verbosity>=4:
+    #             print('Beam on (shutter open).')
+            
+    #         return True
+        
+    #     else:
+    #         if verbosity>=4:
+    #             print('Beam off (shutter closed).')
+            
+    #         return False
+    
+    
+    # def _old_on(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
+    #     '''Turn on the beam (open experimental shutter).
+    #     update: 090517, RL: change the wait_time from 0.005 to 0.1, change sleep to time.sleep'''
+        
+    #     if self.is_on(verbosity=0):
+    #         if verbosity>=4:
+    #             print('Beam on (shutter already open.)')
+                
+    #     else:
+            
+    #         itry = 0
+    #         while (not self.is_on(verbosity=0)) and itry<max_retries:
+            
+    #             # Trigger the shutter to toggle state
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
+    #             time.sleep(wait_time)
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+    #             time.sleep(wait_time)
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
+    #             time.sleep(wait_time)
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+    #             time.sleep(wait_time)
+                
+    #             # Give the system a chance to update
+    #             start_time = time.time()
+    #             while (not self.is_on(verbosity=0)) and (time.time()-start_time)<retry_time:
+    #                 if verbosity>=5:
+    #                     print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
+    #                 time.sleep(poling_period)
+                
+    #             itry += 1
+                
+
+    #         if verbosity>=4:
+    #             if self.is_on(verbosity=0):
+    #                 print('Beam on (shutter opened).')
+    #             else:
+    #                 print("Beam off (shutter didn't open).")
+
+
+    # def _old_off(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
+    #     '''Turn off the beam (close experimental shutter).
+    #     update: 090517, RL: change the wait_time from 0.005 to 0.1, change sleep to time.sleep'''
+        
+    #     if self.is_on(verbosity=0):
+            
+    #         itry = 0
+    #         while self.is_on(verbosity=0) and itry<max_retries:
+    #             # Trigger the shutter to toggle state
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
+    #             time.sleep(wait_time)
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+    #             time.sleep(wait_time)
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
+    #             time.sleep(wait_time)
+    #             caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
+    #             time.sleep(wait_time)
+
+    #             # Give the system a chance to update
+    #             start_time = time.time()
+    #             while self.is_on(verbosity=0) and (time.time()-start_time)<retry_time:
+    #                 if verbosity>=5:
+    #                     print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
+    #                 time.sleep(poling_period)
+                
+    #             itry += 1
+
+
+
+    #         if verbosity>=4:
+    #             if self.is_on(verbosity=0):
+    #                 print("Beam on (shutter didn't close).")
+    #             else:
+    #                 print('Beam off (shutter closed).')
+                
+    #     else:
+    #         if verbosity>=4:
+    #             print('Beam off (shutter already closed).')
+                
+
     def is_on(self, verbosity=3):
-        '''Returns true if the beam is on (experimental shutter open).'''
-        
-        blade1 = caget('XF:11BMB-OP{PSh:2}Pos:1-Sts')
-        blade2 = caget('XF:11BMB-OP{PSh:2}Pos:2-Sts')
-        
-        if blade1==1 and blade2==1:
-            if verbosity>=4:
-                print('Beam on (shutter open).')
-            
-            return True
-        
-        else:
-            if verbosity>=4:
-                print('Beam off (shutter closed).')
-            
-            return False
-    
-    
+        '''Returns 1 if the beam is on (experimental shutter open).'''
+        if verbosity>=3:
+            shutter_state(verbosity=verbosity)
+        return shutter_state(verbosity=0)
+
     def on(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
         '''Turn on the beam (open experimental shutter).
         update: 090517, RL: change the wait_time from 0.005 to 0.1, change sleep to time.sleep'''
@@ -1237,35 +1322,12 @@ class CMSBeam(object):
                 
         else:
             
-            itry = 0
-            while (not self.is_on(verbosity=0)) and itry<max_retries:
-            
-                # Trigger the shutter to toggle state
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
-                
-                # Give the system a chance to update
-                start_time = time.time()
-                while (not self.is_on(verbosity=0)) and (time.time()-start_time)<retry_time:
-                    if verbosity>=5:
-                        print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
-                    time.sleep(poling_period)
-                
-                itry += 1
-                
-
+            RE(shutter_on(verbosity=0))
             if verbosity>=4:
                 if self.is_on(verbosity=0):
                     print('Beam on (shutter opened).')
                 else:
                     print("Beam off (shutter didn't open).")
-
     
     def off(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
         '''Turn off the beam (close experimental shutter).
@@ -1273,28 +1335,7 @@ class CMSBeam(object):
         
         if self.is_on(verbosity=0):
             
-            itry = 0
-            while self.is_on(verbosity=0) and itry<max_retries:
-                # Trigger the shutter to toggle state
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
-
-                # Give the system a chance to update
-                start_time = time.time()
-                while self.is_on(verbosity=0) and (time.time()-start_time)<retry_time:
-                    if verbosity>=5:
-                        print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
-                    time.sleep(poling_period)
-                
-                itry += 1
-
-
+            RE(shutter_off(verbosity=0))
 
             if verbosity>=4:
                 if self.is_on(verbosity=0):
@@ -1340,108 +1381,6 @@ class CMSBeam(object):
             
             return False
                 
-    def _test_on(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
-        '''Turn on the beam (open experimental shutter).'''
- 
-        print('1')
-        print(sam.clock())
-        if self.is_on(verbosity=0):
-            if verbosity>=4:
-                print('Beam on (shutter already open.)')
-                
-        else:
-            
-            itry = 0
-            while (not self.blade1_is_on(verbosity=0)) and itry<max_retries:
-            
-                # Trigger the shutter to toggle state
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
-                #time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                #time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
-                #time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                #time.sleep(wait_time)
-                
-                # Give the system a chance to update
-                start_time = time.time()
-                
-                print('2')
-                print(sam.clock())
-                
-               
-                while (not self.blade1_is_on(verbosity=0)) and (time.time()-start_time)<retry_time:
-                    if verbosity>=5:
-                        print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
-                    time.sleep(poling_period)
-                    print('3')
-                    print(sam.clock())
-                
-                itry += 1
-                
-
-            if verbosity>=4:
-                if self.blade1_is_on(verbosity=0):
-                    print('Beam on (shutter opened).')
-                else:
-                    print("Beam off (shutter didn't open).")
-        print('4')
-        print(sam.clock())
-        
-        
-    def _test_off(self, verbosity=3, wait_time=0.1, poling_period=0.10, retry_time=2.0, max_retries=5):
-        '''Turn off the beam (close experimental shutter).'''
-        
-        print('1')
-        print(sam.clock())
-        
-        if self.is_on(verbosity=0):
-            
-            itry = 0
-            while self.is_on(verbosity=0) and itry<max_retries:
-                # Trigger the shutter to toggle state
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=1')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M112=0')
-                time.sleep(wait_time)
-                caput('XF:11BMB-CT{MC:06}Asyn.AOUT','M111=1')
-                time.sleep(wait_time)
-
-                # Give the system a chance to update
-                start_time = time.time()
-                
-                print('2')
-                print(sam.clock())
-                
-                while self.is_on(verbosity=0) and (time.time()-start_time)<retry_time:
-                    if verbosity>=5:
-                        print('  try {:d}, t = {:02.2f} s, state = {:s}'.format(itry+1, (time.time()-start_time), 'OPEN_____' if self.is_on(verbosity=0) else 'CLOSE===='))
-                    time.sleep(poling_period)
-                    
-                    print('3')
-                    print(sam.clock())
-                
-                itry += 1
-
-
-
-            if verbosity>=4:
-                if self.blade1_is_on(verbosity=0):
-                    print("Beam on (shutter didn't close).")
-                else:
-                    print('Beam off (shutter closed).')
-            print('4')
-            print(sam.clock())
-                
-        else:
-            if verbosity>=4:
-                print('Beam off (shutter already closed).')    
-
-        #print('5')
-        #print(sam.clock())
 
 
     # Attenuator/Filter Box
@@ -2905,7 +2844,7 @@ class CMS_Beamline(Beamline):
         md_current['motor_bsy'] = bsy.user_readback.value
         md_current['motor_bsphi'] = bsphi.user_readback.value
         
-        md_current.update(self.SAXS.get_md(prefix='detector_SAXS_'))
+        # md_current.update(self.SAXS.get_md(prefix='detector_SAXS_'))
         
         md_current.update(md)
         
@@ -3088,7 +3027,10 @@ class CMS_Beamline(Beamline):
         
 
 class CMS_Beamline_GISAXS(CMS_Beamline):
-    
+
+    def __init__(self, **kwargs):
+        
+        super().__init__(**kwargs)    
     
     def modeAlignment(self, verbosity=3):
         
@@ -3106,8 +3048,9 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
             time.sleep(0.5)
             self.beam.setTransmission(1e-6)
             
-        pilatus_name = pilatus2M
-        pilatus_Epicsname = '{Det:PIL2M}'        
+        # pilatus_name = pilatus2M
+        # pilatus_Epicsname = '{Det:PIL2M}'        
+
         #mov(bsx, -11.55)
         #mov(bsx, -11.55+2) # changed at 06/02/17, Osuji beam time
         #mov(bsx, -14.73+2) # changed at 06/04/17, SAXS, 3m, Osuji beam time
@@ -3148,8 +3091,8 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         
         self.beam.off()
 
-        pilatus_name = pilatus2M
-        pilatus_Epicsname = '{Det:PIL2M}'        
+        # pilatus_name = pilatus2M
+        # pilatus_Epicsname = '{Det:PIL2M}'        
         #bsx_pos=-16.74
         #mov(bsx, -16.55)
         #mov(bsx, -13.83) #change it at 06/02/17, Osuji Beam time
@@ -3201,12 +3144,19 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         (in the format [width, height]). A size=[6,4] is reasonable.
         The size is changed to [10, 4] for possible beam drift during a user run (changed at 08/16/17)'''
         
-        detector = self.SAXS
+        if pilatus_name.name == 'pilatus2M':
+            detector = self.SAXS
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_SAXS_x0_pix']
+            y0 = det_md['detector_SAXS_y0_pix']        
+        if pilatus_name.name == 'pilatus800':
+            detector = self.WAXS
 
-        # These positions are updated based on current detector position
-        det_md = detector.get_md()
-        x0 = det_md['detector_SAXS_x0_pix']
-        y0 = det_md['detector_SAXS_y0_pix']
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_WAXS_x0_pix']
+            y0 = det_md['detector_WAXS_y0_pix']
         
         #caput('XF:11BMB-ES{Det:SAXS}:ROI4:MinX', int(x0-size[0]/2))
         #caput('XF:11BMB-ES{Det:SAXS}:ROI4:SizeX', int(size[0]))
@@ -3229,12 +3179,19 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         The size argument controls the size (in pixels) of the ROI itself
         (in the format [width, height]). A size=[6,2] is reasonable.'''
         
-        detector = self.SAXS
+        if pilatus_name.name == 'pilatus2M':
+            detector = self.SAXS
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_SAXS_x0_pix']
+            y0 = det_md['detector_SAXS_y0_pix']        
+        if pilatus_name.name == 'pilatus800':
+            detector = self.WAXS
 
-        # These positions are updated based on current detector position
-        det_md = detector.get_md()
-        x0 = det_md['detector_SAXS_x0_pix']
-        y0 = det_md['detector_SAXS_y0_pix']
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_WAXS_x0_pix']
+            y0 = det_md['detector_WAXS_y0_pix']
         
         d = detector.distance*1000.0 # mm
         pixel_size = detector.pixel_size # mm
@@ -3242,13 +3199,16 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         y_offset_mm = np.tan(np.radians(total_angle))*d
         y_offset_pix = y_offset_mm/pixel_size
         
-        #for pilatus300k
-        #y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        #for pilatus800k
+        # if pilatus_name = pilatus800:
+        #     y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #for pilatus2M, placed up-side down
         #y_pos = int( y0 - size[1]/2 + y_offset_pix )
 
         #for pilatus2M, with pattern rotated 180deg. changed at 052918
+        # if pilatus_name = pilatus2m:
+        #     y_pos = int( y0 - size[1]/2 - y_offset_pix )
         y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinX', int(x0-size[0]/2))
@@ -3301,14 +3261,16 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         y_offset_mm = np.tan(np.radians(total_angle))*d
         y_offset_pix = y_offset_mm/pixel_size
         
-        #for pilatus300k
-        #y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        #for pilatus800k
+        if pilatus_name.name == 'pilatus800':
+            y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #for pilatus2M, placed up-side down
         #y_pos = int( y0 - size[1]/2 + y_offset_pix )
 
         #for pilatus2M, with pattern rotated 180deg. changed at 052918
-        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        if pilatus_name.name == 'pilatus2M':
+            y_pos = int( y0 - size[1]/2 - y_offset_pix )
         
         #y pixels for intermodule gaps, for pilatus2M (195 pixels high module, 17 pixels high gap)
         y_gap_2M = []
@@ -3983,8 +3945,8 @@ class CMS_Beamline_XR(CMS_Beamline_GISAXS):
 
     
 #cms = CMS_Beamline()
-cms = CMS_Beamline_XR()
-#cms = CMS_Beamline_GISAXS()
+# cms = CMS_Beamline_XR()
+cms = CMS_Beamline_GISAXS()
 
 def get_beamline():
     return cms

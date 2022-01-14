@@ -425,7 +425,7 @@ class LivePlot_Custom(LivePlot):
         
         
     def start(self, doc):
-        
+        print(f"*** LivePlot_Custom.start() got {doc}")
         # Make all the 'older' lines greyed-out
         for line in self.ax.lines:
             

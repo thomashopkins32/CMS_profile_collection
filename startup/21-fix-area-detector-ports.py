@@ -1,4 +1,4 @@
-for cam_number, fs in zip([1,2,3,4,5], [fs1, fs2, fs3, fs4, fs5]):
+for cam_number, fs in zip([1,2,3,4], [fs1, fs2, fs3, fs4]):
     G, port_dict = fs.get_asyn_digraph()
     cam = port_dict['cam{:02}'.format(cam_number)]
     for v in port_dict.values():

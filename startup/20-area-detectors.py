@@ -18,9 +18,21 @@ from nslsii.ad33 import SingleTriggerV33,  StatsPluginV33
  #   pass
 
 Pilatus2M_on = True
-Pilatus300_on = True
-Pilatus800_on = True
+Pilatus300_on = False
+#ONLY 1 Pilatus800 will be turned on at the same time. changed by RL, 20210831
+#
+beamline_stage = 'default'
+# beamline_stage = 'open_MAXS'
+if beamline_stage == 'open_MAXS' or beamline_stage == 'BigHuber':
+    Pilatus800_on = False
+    Pilatus800_2_on = True
+elif beamline_stage == 'default':
+    Pilatus800_on = True
+    Pilatus800_2_on = False
 
+# Pilatus800_on = True
+# # Pilatus800_2_on = False
+# Pilatus800_2_on = False
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
@@ -44,27 +56,28 @@ class ProsilicaDetectorCamV33(ProsilicaDetectorCam):
             if hasattr(cpt, 'ensure_nonblocking'):
                 cpt.ensure_nonblocking()
 
-class Pilatus2M(SingleTrigger, PilatusDetector):
-    image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPlugin, 'Stats1:')
-    stats2 = Cpt(StatsPlugin, 'Stats2:')
-    stats3 = Cpt(StatsPlugin, 'Stats3:')
-    stats4 = Cpt(StatsPlugin, 'Stats4:')
-    stats5 = Cpt(StatsPlugin, 'Stats5:')
-    roi1 = Cpt(ROIPlugin, 'ROI1:')
-    roi2 = Cpt(ROIPlugin, 'ROI2:')
-    roi3 = Cpt(ROIPlugin, 'ROI3:')
-    roi4 = Cpt(ROIPlugin, 'ROI4:')
-    proc1 = Cpt(ProcessPlugin, 'Proc1:')
+# class Pilatus2M(SingleTrigger, PilatusDetector):
+#     image = Cpt(ImagePlugin, 'image1:')
+#     stats1 = Cpt(StatsPlugin, 'Stats1:')
+#     stats2 = Cpt(StatsPlugin, 'Stats2:')
+#     stats3 = Cpt(StatsPlugin, 'Stats3:')
+#     stats4 = Cpt(StatsPlugin, 'Stats4:')
+#     stats5 = Cpt(StatsPlugin, 'Stats5:')
+#     roi1 = Cpt(ROIPlugin, 'ROI1:')
+#     roi2 = Cpt(ROIPlugin, 'ROI2:')
+#     roi3 = Cpt(ROIPlugin, 'ROI3:')
+#     roi4 = Cpt(ROIPlugin, 'ROI4:')
+#     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
-    tiff = Cpt(TIFFPluginWithFileStore,
-               suffix='TIFF1:',
-               write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',
-               root='/nsls2/xf11bm')
+#     tiff = Cpt(TIFFPluginWithFileStore,
+#                suffix='TIFF1:',
+#             #    write_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus2M/%Y/%m/%d/',
+#                write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',
+#                root='/nsls2/xf11bm')
 
-    def setExposureTime(self, exposure_time, verbosity=3):
-        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
-        caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+#     def setExposureTime(self, exposure_time, verbosity=3):
+#         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+#         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
 
 
 class StandardProsilica(SingleTrigger, ProsilicaDetector):
@@ -125,27 +138,27 @@ class PilatusDetectorCamV33(PilatusDetectorCam):
 
 
 
-class Pilatus(SingleTrigger, PilatusDetector):
-    image = Cpt(ImagePlugin, 'image1:')
-    stats1 = Cpt(StatsPluginV33, 'Stats1:')
-    stats2 = Cpt(StatsPluginV33, 'Stats2:')
-    stats3 = Cpt(StatsPluginV33, 'Stats3:')
-    stats4 = Cpt(StatsPluginV33, 'Stats4:')
-    stats5 = Cpt(StatsPluginV33, 'Stats5:')
-    roi1 = Cpt(ROIPlugin, 'ROI1:')
-    roi2 = Cpt(ROIPlugin, 'ROI2:')
-    roi3 = Cpt(ROIPlugin, 'ROI3:')
-    roi4 = Cpt(ROIPlugin, 'ROI4:')
-    proc1 = Cpt(ProcessPlugin, 'Proc1:')
+# class Pilatus(SingleTrigger, PilatusDetector):
+#     image = Cpt(ImagePlugin, 'image1:')
+#     stats1 = Cpt(StatsPluginV33, 'Stats1:')
+#     stats2 = Cpt(StatsPluginV33, 'Stats2:')
+#     stats3 = Cpt(StatsPluginV33, 'Stats3:')
+#     stats4 = Cpt(StatsPluginV33, 'Stats4:')
+#     stats5 = Cpt(StatsPluginV33, 'Stats5:')
+#     roi1 = Cpt(ROIPlugin, 'ROI1:')
+#     roi2 = Cpt(ROIPlugin, 'ROI2:')
+#     roi3 = Cpt(ROIPlugin, 'ROI3:')
+#     roi4 = Cpt(ROIPlugin, 'ROI4:')
+#     proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
-    tiff = Cpt(TIFFPluginWithFileStore,
-               suffix='TIFF1:',
-               write_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
-               root='/nsls2/xf11bm')
+#     tiff = Cpt(TIFFPluginWithFileStore,
+#                suffix='TIFF1:',
+#                write_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
+#                root='/nsls2/xf11bm')
 
-    def setExposureTime(self, exposure_time, verbosity=3):
-        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
-        caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
+#     def setExposureTime(self, exposure_time, verbosity=3):
+#         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
+#         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
 
 class PilatusV33(SingleTriggerV33, PilatusDetector):
     cam = Cpt(PilatusDetectorCamV33, 'cam1:')
@@ -171,21 +184,79 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
         yield from mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+0.1)
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_time+0.1)
+    def setExposurePeriod(self, exposure_period, verbosity=3):
+        yield from mv(self.cam.acquire_period, exposure_period)
 
+    def setExposureNumber(self, exposure_number, verbosity=3):
+        yield from mv(self.cam.num_images, exposure_number)
 
-class Pilatus800V33(PilatusV33):
+# class Pilatus800V33(PilatusV33):
+#     tiff = Cpt(TIFFPluginWithFileStore,
+#                suffix='TIFF1:',
+#             #    write_path_template='/Pilatus800K/%Y/%m/%d/',       
+#             #    read_path_template='/nsls2/xf11bm/Pilatus800K/%Y/%m/%d/',   
+#             #    root='/nsls2/xf11bm')
+#                write_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus800/%Y/%m/%d/',       
+#             #    read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus800/%Y/%m/%d/',   
+#                root='/nsls2/data/cms/legacy/xf11bm')
+
+class Pilatus800V33(SingleTriggerV33, PilatusDetector):
+    cam = Cpt(PilatusDetectorCamV33, 'cam1:')
+    image = Cpt(ImagePlugin, 'image1:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
+    roi1 = Cpt(ROIPlugin, 'ROI1:')
+    roi2 = Cpt(ROIPlugin, 'ROI2:')
+    roi3 = Cpt(ROIPlugin, 'ROI3:')
+    roi4 = Cpt(ROIPlugin, 'ROI4:')
+    proc1 = Cpt(ProcessPlugin, 'Proc1:')
+
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/Pilatus800K/%Y/%m/%d/',       
-               read_path_template='/nsls2/xf11bm/Pilatus800K/%Y/%m/%d/',   
-               root='/nsls2/xf11bm')
+            #    write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',     # GPFS client
+               #write_path_template='/Pilatus2M/%Y/%m/%d/',                 # NSF-mount of GPFS directory
+            #    root='/nsls2/xf11bm'
+               read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus800/%Y/%m/%d/',   
+
+               write_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus800/%Y/%m/%d/',       
+               root='/nsls2/data/cms/legacy/xf11bm')
+               #root='/')
+
+    def setExposureTime(self, exposure_time, verbosity=3):
+        yield from mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+0.1)
+        #self.cam.acquire_time.put(exposure_time)
+        #self.cam.acquire_period.put(exposure_time+.1)
+        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
+        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+
+    def setExposurePeriod(self, exposure_period, verbosity=3):
+        yield from mv(self.cam.acquire_period, exposure_period)
+
+    def setExposureNumber(self, exposure_number, verbosity=3):
+        yield from mv(self.cam.num_images, exposure_number)
+
+class Pilatus8002V33(PilatusV33):
+    tiff = Cpt(TIFFPluginWithFileStore,
+               suffix='TIFF1:',
+            #    write_path_template='/Pilatus800K/%Y/%m/%d/',       
+            #    read_path_template='/nsls2/xf11bm/Pilatus800K/%Y/%m/%d/',   
+            #    root='/nsls2/xf11bm')
+               write_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus800_2/%Y/%m/%d/',       
+            #    read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus800/%Y/%m/%d/',   
+               root='/nsls2/data/cms/legacy/xf11bm')
 
 class Pilatus300V33(PilatusV33):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
-               read_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
-               root='/nsls2/xf11bm')
+               write_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/',
+            #    read_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
+            #    root='/nsls2/xf11bm')
+            #    read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/',
+               read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/',   
+               root='/nsls2/data/cms/legacy/xf11bm')
     
 class Pilatus2M(SingleTrigger, PilatusDetector):
 
@@ -217,11 +288,8 @@ class Pilatus2M(SingleTrigger, PilatusDetector):
 
         yield from mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+0.1)
         #yield from mv(self.cam.acquire_period, exposure_time+0.1)
-        
-        #self.cam.acquire_time.put(exposure_time)
-        #self.cam.acquire_period.put(exposure_time+.1)
-        ##caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
-        #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
+
+
 
 class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
     cam = Cpt(PilatusDetectorCamV33, 'cam1:')
@@ -240,9 +308,11 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',     # GPFS client
+            #    write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',     # GPFS client
                #write_path_template='/Pilatus2M/%Y/%m/%d/',                 # NSF-mount of GPFS directory
-               root='/nsls2/xf11bm')
+            #    root='/nsls2/xf11bm'
+               write_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus2M/%Y/%m/%d/',     # Lustre client
+               root='/nsls2/data/cms/legacy/xf11bm')
                #root='/')
 
     def setExposureTime(self, exposure_time, verbosity=3):
@@ -251,7 +321,13 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
         #self.cam.acquire_period.put(exposure_time+.1)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
         #caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_time+0.1)
-    
+
+    def setExposurePeriod(self, exposure_period, verbosity=3):
+        yield from mv(self.cam.acquire_period, exposure_period)
+
+    def setExposureNumber(self, exposure_number, verbosity=3):
+        yield from mv(self.cam.num_images, exposure_number)
+
     def stage(self):
         error = None
         #wrap the staging process in a retry loop
@@ -305,7 +381,7 @@ fs3 = StandardProsilicaV33('XF:11BMB-BI{FS:3-Cam:1}', name='fs3')
 time.sleep(1)
 fs4 = StandardProsilicaV33('XF:11BMB-BI{FS:4-Cam:1}', name='fs4')
 time.sleep(1)
-fs5 = StandardProsilicaV33('XF:11BMB-BI{FS:Test-Cam:1}', name='fs5')
+# fs5 = StandardProsilicaV33('XF:11BMB-BI{FS:Test-Cam:1}', name='fs5')
 
 
 #class StandardsimDetectorV33(SingleTriggerV33, ProsilicaDetector):
@@ -326,10 +402,11 @@ fs5 = StandardProsilicaV33('XF:11BMB-BI{FS:Test-Cam:1}', name='fs5')
     #roi4 = Cpt(ROIPlugin, 'ROI4:')
     #proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
-simDetector = StandardProsilicaV33('13SIM1:', name='simDetector')
+# simDetector = StandardProsilicaV33('13SIM1:', name='simDetector')
 
 
-all_standard_pros = [fs1, fs2, fs3, fs4, fs5, simDetector]
+# all_standard_pros = [fs1, fs2, fs3, fs4, fs5, simDetector]
+all_standard_pros = [fs1, fs2, fs3, fs4]
 
 
 
@@ -421,6 +498,51 @@ if Pilatus800_on == True:
 else:
     pilatus800 = 'Pil800ISNOTWORKING'
 
+#pilatus800_2 section  changed by RL, 20210831
+#if False:
+#if True:
+if Pilatus800_2_on == True:
+    #TODO: 
+    pilatus8002 = Pilatus8002V33('XF:11BMB-ES{Det:PIL800K2}:', name='pilatus8002') #change PV
+    pilatus8002.tiff.read_attrs = []
+    pilatus8002.stats3.total.kind = 'hinted'
+    pilatus8002.stats4.total.kind = 'hinted'
+    STATS_NAMES = ['stats1', 'stats2', 'stats3', 'stats4', 'stats5']
+    pilatus8002.read_attrs = ['tiff'] + STATS_NAMES
+    for stats_name in STATS_NAMES:
+        stats_plugin = getattr(pilatus8002, stats_name)
+        stats_plugin.read_attrs = ['total']
+
+    for item in pilatus8002.stats1.configuration_attrs:
+        item_check = getattr(pilatus8002.stats1, item)
+        item_check.kind= 'omitted'
+
+    for item in pilatus8002.stats2.configuration_attrs:
+        item_check = getattr(pilatus8002.stats2, item)
+        item_check.kind= 'omitted'
+
+    for item in pilatus8002.stats3.configuration_attrs:
+        item_check = getattr(pilatus8002.stats3, item)
+        item_check.kind= 'omitted'
+
+    for item in pilatus8002.stats4.configuration_attrs:
+        item_check = getattr(pilatus8002.stats4, item)
+        item_check.kind= 'omitted'
+
+    for item in pilatus8002.stats5.configuration_attrs:
+        item_check = getattr(pilatus8002.stats5, item)
+        item_check.kind= 'omitted'
+
+    for item in pilatus8002.tiff.configuration_attrs:
+        item_check = getattr(pilatus8002.tiff, item)
+        item_check.kind= 'omitted'
+
+    for item in pilatus8002.cam.configuration_attrs:
+        item_check = getattr(pilatus8002.cam, item)
+        item_check.kind= 'omitted'
+else:
+    pilatus8002 = 'Pil800-2ISNOTWORKING'
+
 #pilatus2M section
 #if False:
 if Pilatus2M_on == True:
@@ -471,6 +593,8 @@ else:
 
 #define the current pilatus detector: pilatus_name and _Epicsname, instead of
 #pilatus300 or pilatus2M
+# pilatus_name = pilatus800
+# pilatus_Epicsname = '{Det:PIL800K}'
 pilatus_name = pilatus2M
 pilatus_Epicsname = '{Det:PIL2M}'
 

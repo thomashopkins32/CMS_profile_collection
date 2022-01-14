@@ -7,9 +7,9 @@ from ophyd import EpicsMotor, Device, Component as Cpt
 #    top = Cpt(EpicsMotor, '-Ax:T}Mtr')
 #    bottom = Cpt(EpicsMotor, '-Ax:B}Mtr')
 
-#beamline_stage = 'open_MAXS'
 beamline_stage = 'default'
-#beamline_stage = 'BigHuber'
+# beamline_stage = 'open_MAXS'
+# beamline_stage = 'BigHuber'
 
 
 #slits = Slits('XF:11BMA-OP{Slt:0', name='slits') 
@@ -49,11 +49,17 @@ class Blades(Device):
 
 
 ########## FOE motors ##########
+## stages for Front End (FE) slits (divergence) (FOE)
+# FE_x = EpicsMotor('FE:C11B-OP{Slt:12-Ax:X}t2.C', name='FE_x')
+# FE_y = EpicsMotor('FE:C11B-OP{Slt:12-Ax:Y}t2.C', name='FE_y')
+
+
 ## stages for monochromator (FOE)
 mono_bragg = EpicsMotor('XF:11BMA-OP{Mono:DMM-Ax:Bragg}Mtr', name='mono_bragg')
 mono_pitch2 = EpicsMotor('XF:11BMA-OP{Mono:DMM-Ax:P2}Mtr', name='mono_pitch2')
 mono_roll2 = EpicsMotor('XF:11BMA-OP{Mono:DMM-Ax:R2}Mtr', name='mono_roll2')
 mono_perp2 = EpicsMotor('XF:11BMA-OP{Mono:DMM-Ax:Y2}Mtr', name='mono_perp2')
+
 
 ## stages for toroidal mirror (FOE)
 mir_usx = EpicsMotor('XF:11BMA-OP{Mir:Tor-Ax:XU}Mtr', name='mir_usx')
