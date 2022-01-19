@@ -291,9 +291,9 @@ class Shutter(BeamlineElement):
         
         state_n = caget(self._pv_main+'Pos-Sts')
         
-        if state_n is 0:
+        if state_n == 0:
             return "out"
-        elif state_n is 1:
+        elif state_n == 1:
             return "block"
         else:
             return "undefined" 
@@ -339,9 +339,9 @@ class GateValve(Shutter):
         
         state_n = caget(self._pv_main+'Pos-Sts')
         
-        if state_n is 1:
+        if state_n == 1:
             return "out"
-        elif state_n is 0:
+        elif state_n == 0:
             return "block"
         else:
             return "undefined"     
@@ -385,7 +385,7 @@ class ThreePoleWiggler(BeamlineElement):
         
     def reading(self, verbosity=3):
         
-        if self.state() is 'in':
+        if self.state() == 'in':
             
             ring_current = caget('SR:OPS-BI{DCCT:1}I:Real-I')
             if verbosity>=2:
@@ -441,9 +441,9 @@ class DiagnosticScreen(Monitor):
         
         state_n = caget(self._pv_main+'Pos-Sts')
         
-        if state_n is 0:
+        if state_n == 0:
             return "out"
-        elif state_n is 1:
+        elif state_n == 1:
             return "block"
         else:
             return "undefined" 
@@ -471,7 +471,7 @@ class DiagnosticScreen(Monitor):
         
         value = self.epics_signal.stats1.total.value
         
-        if self.state() is 'block':
+        if self.state() == 'block':
             
             ring_current = caget('SR:OPS-BI{DCCT:1}I:Real-I')
             if verbosity>=2:
@@ -495,7 +495,7 @@ class PointDiode_CMS(Monitor):
         super().__init__(name=name, zposition=zposition, description=description, pv=pv, **args)
         self.has_flux = True
         
-        if epics_signal is None:
+        if epics_signal == None:
             
             #bim6 = EpicsSignalROWait("XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV", wait_time=1, name='bim6')
             #bim6_integrating = EpicsSignalROIntegrate("XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV", wait_time=0.5, integrate_num=8, integrate_delay=0.1, name='bim6')
@@ -563,7 +563,7 @@ class PointDiode_CMS(Monitor):
         
         value = self.epics_signal.read()[self.epics_signal.name]['value']
         
-        if self.state() is 'block':
+        if self.state() == 'block':
             
             if verbosity>=2:
                 print('{:s} is inserted; reading = {:.4g}'.format(self.name, value))
@@ -921,6 +921,12 @@ class CMSBeam(object):
             return self.absorber(verbosity=verbosity)[1]
         self.attenuator2.reading = reading
         self.attenuator2.transmission = reading
+
+        #def the foils
+        self.atten_filter = atten_filter
+        # filters_sts = [fil.sts.get() for fil in filters.values()]
+        # filters_cmd = [fil.cmd.get() for fil in filters.values()]
+
         #define the original position of aborber (6 Nb foils for XRR)
         #the position is defined in 'config_update'. This position is a good reference. 
         #self.armr_absorber_o = -55.1
@@ -1088,8 +1094,9 @@ class CMSBeam(object):
         
         print('mono_bragg will move to {:.4f}g deg'.format(Bragg_deg))
         response = input('    Are you sure? (y/[n]) ')
-        if response is 'y' or response is 'Y':
+        if response == 'y' or response == 'Y':
             
+
             #mov(mono_bragg, Bragg_deg)
             #mono_bragg.move = Bragg_deg
             mono_bragg.move(Bragg_deg)
@@ -1401,7 +1408,7 @@ class CMSBeam(object):
             
             # The states of the foils in the filter box
             N = [ caget('XF:11BMB-OP{{Fltr:{:d}}}Pos-Sts'.format(ifoil)) for ifoil in range(1, 8+1) ]
-            
+            # N = [fil.sts.get() for fil in self.atten_filter.values()]
             tr_tot = self.calc_transmission_filters(N, verbosity=verbosity)
                     
             return tr_tot
@@ -1430,7 +1437,7 @@ class CMSBeam(object):
             The computed transmission value of the x-ray beam through the filter box.
         """
         
-        if energy_keV is None:
+        if energy_keV == None:
             energy_keV = self.energy(verbosity=0)
             
         if len(filter_settings) != 8:
@@ -1506,7 +1513,7 @@ class CMSBeam(object):
                 else:
                     if verbosity>=3:
                         state_actual = caget( 'XF:11BMB-OP{{Fltr:{:d}}}Pos-Sts'.format(ifoil) )
-                        state_actual_str = 'IN' if state_actual is 1 else 'OUT'
+                        state_actual_str = 'IN' if state_actual == 1 else 'OUT'
                         print('WARNING: Filter state {} not recognized. Filter {:d} is {:s}.'.format(state, ifoil, state_actual_str))
                     
 
@@ -1730,7 +1737,7 @@ class CMSBeam(object):
         for element in self.elements:
             
             state = element.state()
-            if state is 'block':
+            if state == 'block':
                 beam = False
             
             if verbosity>=4:
@@ -1745,23 +1752,23 @@ class CMSBeam(object):
             if verbosity>=1:
                 
                 
-                if state is 'in':
+                if state == 'in':
                     if beam:
                         path = '(|)'
                     else:
                         path = '(-)'
-                elif state is 'out':                
+                elif state == 'out':                
                 
 
                     if beam:
                         path = ' | '
                     else:
                         path = '---'
-                elif state is 'block':
+                elif state == 'block':
                     path = '[X]'
                     beam = False
                 
-                elif state is 'undefined':
+                elif state == 'undefined':
                     if beam:
                         path = '?|?'
                     else:
@@ -1774,7 +1781,7 @@ class CMSBeam(object):
 
                 
                 
-                if flux_expected is None or not beam:
+                if flux_expected == None or not beam:
                     flux_expected_str = ''
                 else:
                     flux_expected_str = '{:11.3g}'.format(flux_expected)
@@ -1857,7 +1864,7 @@ class Beamline(object):
         md_return.update(md)
 
         # Add an optional prefix
-        if prefix is not None:
+        if prefix == not None:
             md_return = { '{:s}{:s}'.format(prefix, key) : value for key, value in md_return.items() }
     
         return md_return
@@ -2021,7 +2028,7 @@ class CMS_Beamline(Beamline):
         self.current_mode = 'measurement'
         
         # Check if gate valves are open
-        if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
+        if self.beam.GVdsbig.state() == not 'out' and verbosity>=1:
             print('Warning: Sample chamber gate valve (large, downstream) is not open.')
             
 
@@ -2088,7 +2095,7 @@ class CMS_Beamline(Beamline):
         self.current_mode = 'measurement'
         
         # Check if gate valves are open
-        if self.beam.GVdsbig.state() is not 'out' and verbosity>=1:
+        if self.beam.GVdsbig.state() == not 'out' and verbosity>=1:
             print('Warning: Sample chamber gate valve (large, downstream) is not open.')
             
     def modeBeamstopAlignment(self, verbosity=3):

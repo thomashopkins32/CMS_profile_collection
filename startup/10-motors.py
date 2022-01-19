@@ -39,6 +39,14 @@ class Blades(Device):
     xg = Cpt(EpicsMotor, '-Ax:XGap}Mtr')
     yg = Cpt(EpicsMotor, '-Ax:YGap}Mtr')
 
+class Filter(Device):
+    "Attenuator filters"
+    sts = Cpt(EpicsSignal, 'Pos-Sts')
+    in_cmd = Cpt(EpicsSignal, 'In-Cmd')
+    out_cmd = Cpt(EpicsSignal, 'Out-Cmd')
+
+
+
 #class MotorSlits(Blades, MotorCenterAndGap):
 #    "combine t b i o and xc yc xg yg"
 #    pass
@@ -83,6 +91,11 @@ s3 = MotorCenterAndGap('XF:11BMB-OP{Slt:3', name='s3')
 s4 = MotorCenterAndGap('XF:11BMB-OP{Slt:4', name='s4') 
 s5 = MotorCenterAndGap('XF:11BMB-OP{Slt:5', name='s5') 
 
+# attenuators
+filters = {f'filter{ifoil}':Filter(f'XF:11BMB-OP{{Fltr:{ifoil}}}', name=f'filter{ifoil}') for ifoil in range(1, 8+1)}
+# filters_sts = [fil.sts.get() for fil in filters.values()]
+# filters_cmd = [fil.cmd.get() for fil in filters.values()]
+# locals().update(filters) 
 
 ########## Endstation motors ##########
 ## stages for Endstation diagnostics
