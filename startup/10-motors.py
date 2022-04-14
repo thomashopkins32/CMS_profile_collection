@@ -158,7 +158,11 @@ armz = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Z}Mtr', name='armz')
 armx = EpicsMotor('XF:11BMB-ES{SM:1-Ax:X}Mtr', name='armx')
 armphi = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Yaw}Mtr', name='armphi')
 army = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Y}Mtr', name='army')
-armr = EpicsMotor('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr', name='armr')
+# armr = EpicsMotor('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr', name='armr')
+
+# The SmarAct module is broken. Need to change to a SPARE_M for armr
+armr = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:M}Mtr', name='armr')
+
 
 ## stages for detectors
 ## currently not working. The new pilatus800k is sitting on a stage with manual movement

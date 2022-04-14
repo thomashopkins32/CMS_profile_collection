@@ -923,15 +923,13 @@ class CMSBeam(object):
         self.attenuator2.transmission = reading
 
         #def the foils
-        self.atten_filter = atten_filter
+        # self.atten_filter = atten_filter
         # filters_sts = [fil.sts.get() for fil in filters.values()]
         # filters_cmd = [fil.cmd.get() for fil in filters.values()]
 
         #define the original position of aborber (6 Nb foils for XRR)
         #the position is defined in 'config_update'. This position is a good reference. 
-        #self.armr_absorber_o = -55.1
-        #self.armr_absorber_o = -9.8
-        #self.armr_absorber_o = -24.5
+        #armr_absorber_o = the center of the first edge
         self.armr_absorber_o = 1.3-3
         self.armr_absorber_out = -55.1
         self.absorber_transmission_list_13p5kev = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]    # at E = 13.5keV
@@ -940,14 +938,14 @@ class CMSBeam(object):
         #TODO: make this energy dependent
         
         if False:
-            self.fs1 = DiagnosticScreen( 'fs1', 27.2, pv='XF:11BMA-BI{FS:1}', epics_signal=StandardProsilica('XF:11BMA-BI{FS:1-Cam:1}', name='fs1') )
+            # self.fs1 = DiagnosticScreen( 'fs1', 27.2, pv='XF:11BMA-BI{FS:1}', epics_signal=StandardProsilica('XF:11BMA-BI{FS:1-Cam:1}', name='fs1') )
             #self.fs2 = DiagnosticScreen( 'fs2', 29.1, pv='XF:11BMA-BI{FS:2}', epics_signal=StandardProsilica('XF:11BMA-BI{FS:2-Cam:1}', name='fs2') )
             self.fs3 = DiagnosticScreen( 'fs3', 55.8, pv='XF:11BMB-BI{FS:3}', epics_signal=StandardProsilica('XF:11BMB-BI{FS:3-Cam:1}', name='fs3') )
             self.fs4 = DiagnosticScreen( 'fs4', 58.2, pv='XF:11BMB-BI{FS:4}', epics_signal=StandardProsilica('XF:11BMB-BI{FS:4-Cam:1}', name='fs4') )
             # self.fs5 = DiagnosticScreen( 'fs5', 70.0, pv='XF:11BMB-BI{FS:Test-Cam:1}', epics_signal=StandardProsilica('XF:11BMB-BI{FS:4-Cam:1}', name='fs5') )
         else:
             # Rely on the fact that these are defined in 20-area-detectors.py
-            self.fs1 = DiagnosticScreen( 'fs1', 27.2, pv='XF:11BMA-BI{FS:1}', epics_signal=fs1 )
+            # self.fs1 = DiagnosticScreen( 'fs1', 27.2, pv='XF:11BMA-BI{FS:1}', epics_signal=fs1 )
             #self.fs2 = DiagnosticScreen( 'fs2', 29.1, pv='XF:11BMA-BI{FS:2}', epics_signal=fs2 )
             self.fs3 = DiagnosticScreen( 'fs3', 55.8, pv='XF:11BMB-BI{FS:3}', epics_signal=fs3 )
             self.fs4 = DiagnosticScreen( 'fs4', 58.2, pv='XF:11BMB-BI{FS:4}', epics_signal=fs4 )
@@ -977,7 +975,7 @@ class CMSBeam(object):
         self.elements.append(Shutter('FE shutter', 25.0, pv='XF:11BM-PPS{Sh:FE}'))
         self.elements.append(GateValve('GV', 26.0, pv='FE:C11B-VA{GV:2}'))
         self.elements.append(self.mono)
-        self.elements.append(self.fs1)
+        # self.elements.append(self.fs1)
         # bim1
         # slit0
         # bim2
@@ -1864,7 +1862,7 @@ class Beamline(object):
         md_return.update(md)
 
         # Add an optional prefix
-        if prefix == not None:
+        if prefix is not None:
             md_return = { '{:s}{:s}'.format(prefix, key) : value for key, value in md_return.items() }
     
         return md_return
@@ -2028,7 +2026,7 @@ class CMS_Beamline(Beamline):
         self.current_mode = 'measurement'
         
         # Check if gate valves are open
-        if self.beam.GVdsbig.state() == not 'out' and verbosity>=1:
+        if self.beam.GVdsbig.state() != 'out' and verbosity>=1:
             print('Warning: Sample chamber gate valve (large, downstream) is not open.')
             
 
@@ -2095,7 +2093,7 @@ class CMS_Beamline(Beamline):
         self.current_mode = 'measurement'
         
         # Check if gate valves are open
-        if self.beam.GVdsbig.state() == not 'out' and verbosity>=1:
+        if self.beam.GVdsbig.state() != 'out' and verbosity>=1:
             print('Warning: Sample chamber gate valve (large, downstream) is not open.')
             
     def modeBeamstopAlignment(self, verbosity=3):
@@ -2501,10 +2499,10 @@ class CMS_Beamline(Beamline):
             
             try:
             
-                if range_low is not None and PV.get()<range_low:
+                if range_low != None and PV.get()<range_low:
                     monitor = False
                     
-                if range_high is not None and PV.get()>range_high:
+                if range_high != None and PV.get()>range_high:
                     monitor = False
 
                 P_mbar = PV.get()
@@ -2669,10 +2667,10 @@ class CMS_Beamline(Beamline):
             
             try:
             
-                if range_low is not None and self._chamber_pressure_pv.get()<range_low:
+                if range_low != None and self._chamber_pressure_pv.get()<range_low:
                     monitor = False
                     
-                if range_high is not None and self._chamber_pressure_pv.get()>range_high:
+                if range_high != None and self._chamber_pressure_pv.get()>range_high:
                     monitor = False
 
                 P_mbar = self._chamber_pressure_pv.get()
@@ -3078,8 +3076,8 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
 
         #self.setMonitor(monitor=['stats3', 'stats4'])        
         detselect(pilatus_name, suffix='_stats4_total')
-        caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), 0.5)
-        caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), 0.6)
+        caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), 0.1)
+        # caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), 0.6)
 
 
         #TODO: Update ROI based on current SAXSx, SAXSy and the md in cms object
@@ -3231,6 +3229,59 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         caput('XF:11BMB-ES{}:ROI3:SizeY'.format(pilatus_Epicsname), int(size[1]))
         
         detselect(pilatus_name, suffix='_stats3_total')
+
+    def setROI2ReflectBeamROI(self, total_angle=0.16, size=[10,100], verbosity=3):
+        '''Update the ROI (stats3) for the reflected beam on the Pilatus300k
+        detector. This (should) update correctly based on the current SAXSx, SAXSy.
+        
+        The size argument controls the size (in pixels) of the ROI itself
+        (in the format [width, height]). A size=[6,2] is reasonable.'''
+        
+        if pilatus_name.name == 'pilatus2M':
+            detector = self.SAXS
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_SAXS_x0_pix']
+            y0 = det_md['detector_SAXS_y0_pix']        
+        if pilatus_name.name == 'pilatus800':
+            detector = self.WAXS
+
+            # These positions are updated based on current detector position
+            det_md = detector.get_md()
+            x0 = det_md['detector_WAXS_x0_pix']
+            y0 = det_md['detector_WAXS_y0_pix']
+        
+        d = detector.distance*1000.0 # mm
+        pixel_size = detector.pixel_size # mm
+        
+        y_offset_mm = np.tan(np.radians(total_angle))*d
+        y_offset_pix = y_offset_mm/pixel_size
+        
+        #for pilatus800k
+        # if pilatus_name = pilatus800:
+        #     y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #for pilatus2M, placed up-side down
+        #y_pos = int( y0 - size[1]/2 + y_offset_pix )
+
+        #for pilatus2M, with pattern rotated 180deg. changed at 052918
+        # if pilatus_name = pilatus2m:
+        #     y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        y_pos = int( y0 - size[1]/2 - y_offset_pix )
+        
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinX', int(x0-size[0]/2))
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeX', int(size[0]))
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:MinY', y_pos)
+        #caput('XF:11BMB-ES{Det:SAXS}:ROI3:SizeY', int(size[1]))
+        
+        #detselect(pilatus300, suffix='_stats3_total')
+            
+        caput('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname), int(x0-size[0]/2))
+        caput('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname), int(size[0]))
+        caput('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname), y_pos)
+        caput('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname), int(size[1]))
+        
+        detselect(pilatus_name, suffix='_stats2_total')
 
     def setSpecularReflectivityROI(self, total_angle=0.16, size=[10,10], default_SAXSy=None, verbosity=3):
         '''Update the ROIs (stats1, stats2) for the specular reflected beam on the Pilatus

@@ -32,7 +32,7 @@ elif beamline_stage == 'default':
 
 # Pilatus800_on = True
 # # Pilatus800_2_on = False
-# Pilatus800_2_on = False
+Pilatus800_2_on = True
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
@@ -373,7 +373,7 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
 import time
 
 time.sleep(1)
-fs1 = StandardProsilicaV33('XF:11BMA-BI{FS:1-Cam:1}', name='fs1')
+# fs1 = StandardProsilicaV33('XF:11BMA-BI{FS:1-Cam:1}', name='fs1')
 time.sleep(1)
 fs2 = StandardProsilicaV33('XF:11BMA-BI{FS:2-Cam:1}', name='fs2')
 time.sleep(1)
@@ -406,7 +406,8 @@ time.sleep(1)
 
 
 # all_standard_pros = [fs1, fs2, fs3, fs4, fs5, simDetector]
-all_standard_pros = [fs1, fs2, fs3, fs4]
+# all_standard_pros = [fs1, fs2, fs3, fs4]
+all_standard_pros = [fs2, fs3, fs4]
 
 
 

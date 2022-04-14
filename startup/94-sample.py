@@ -1633,10 +1633,13 @@ class Sample_Generic(CoordinateSystem):
                     print("WARNING: Didn't recognize detector '{}'.".format(detector.name))
             
         if verbosity>=2:
+
             status = 0
             while (status==0) and (time.time()-start_time)<(max_exposure_time+20):
                 percentage = 100*(time.time()-start_time)/max_exposure_time
                 print( 'Exposing {:6.2f} s  ({:3.0f}%)      \r'.format((time.time()-start_time), percentage), end='')
+
+
                 time.sleep(poling_period)
                 
                 status = 1
@@ -1644,6 +1647,40 @@ class Sample_Generic(CoordinateSystem):
                     if detector.cam.acquire.get()==1:
                         status *= 0
 
+            # print('counting .... percentage = {}'.format(percentage))
+
+        else:
+            time.sleep(max_exposure_time)
+
+        #special solution for 2022_1/TKoga2
+        if verbosity>=5:
+            print('verbosity = {}.'.format(verbosity))
+            pct_threshold = 90
+            while percentage < pct_threshold:
+                print('sth is wrong .... percentage = {} < {}%'.format(percentage, pct_threshold))
+                start_time = time.time()
+                uids = RE(count(get_beamline().detector), **md)
+                #yield from (count(get_beamline().detector), **md)
+                
+                #get_beamline().beam.off()
+                #print('shutter is off')
+
+                # Wait for detectors to be ready
+                max_exposure_time = 0.1
+                for detector in get_beamline().detector:
+                    if detector.name is 'pilatus300':
+                        current_exposure_time = detector.cam.acquire_time.get()
+                        max_exposure_time = max(max_exposure_time, current_exposure_time)
+                    elif detector.name is 'pilatus2M':
+                        current_exposure_time = detector.cam.acquire_time.get()
+                        max_exposure_time = max(max_exposure_time, current_exposure_time)
+                    elif detector.name is 'pilatus800' or detector.name is 'pilatus8002':  
+                        current_exposure_time = detector.cam.acquire_time.get()
+                        max_exposure_time = max(max_exposure_time, current_exposure_time)
+
+                percentage = 100*(time.time()-start_time)/max_exposure_time
+                print('After re-exposing .... percentage = {} '.format(percentage))
+                
                     # if detector.name is 'pilatus300':
                     #     if caget('XF:11BMB-ES{Det:SAXS}:cam1:Acquire')==1:
                     #         status *= 0
@@ -1656,11 +1693,9 @@ class Sample_Generic(CoordinateSystem):
                     #elif detector.name is 'PhotonicSciences_CMS':
                         #if not detector.detector_is_ready(verbosity=0):
                             #status *= 0
-            print('')
                     
                 
-        else:
-            time.sleep(max_exposure_time)
+
 
         # if verbosity>=3 and caget('XF:11BMB-ES{Det:PIL800K}:cam1:Acquire')==1:
         #     print('Warning: Detector pilatus300 still not done acquiring.')
@@ -1674,6 +1709,29 @@ class Sample_Generic(CoordinateSystem):
         
         get_beamline().beam.off()
         
+        #save the percentage information
+        # if verbosity>=5:
+        #     folder = '/nsls2/data/cms/legacy/xf11bm/data/2022_1/TKoga2/'
+        #     # filename = ''
+
+        #     current_data = {'a_sample': self.name,
+        #                     'b_exposure_time': detector.cam.acquire_time.get(), 
+        #                     'c_exposure_percentage': percentage, 
+        #                     'd_align_time': md['filename'] 
+        #                     }
+            
+        #     temp_data = pds.DataFrame([current_data])
+
+        #     # INT_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , 'alignment_results.csv')            
+        #     INT_FILENAME='{}/data/{}.csv'.format(folder , 'exposure_info.csv')            
+        
+        #     if os.path.isfile(INT_FILENAME):
+        #         output_data = pds.read_csv(INT_FILENAME, index_col=0)
+        #         output_data = output_data.append(temp_data, ignore_index=True)    
+        #         output_data.to_csv(INT_FILENAME)
+        #     else:
+        #         temp_data.to_csv(INT_FILENAME)
+
         if handlefile == True:
             for detector in get_beamline().detector:
                 self.handle_file(detector, extra=extra, verbosity=verbosity, **md)
@@ -3029,7 +3087,7 @@ class Sample_Generic(CoordinateSystem):
     
         subdir = ''
         
-        if detector.name is 'pilatus300' or  detector.name is 'pilatus8002' :
+        if detector.name == 'pilatus300' or  detector.name == 'pilatus8002' :
             # chars = caget('XF:11BMB-ES{Det:SAXS}:TIFF1:FullFileName_RBV')
             # filename = ''.join(chr(char) for char in chars)[:-1]
             # filename_part1 = ''.join(chr(char) for char in chars)[:-13]
@@ -3073,7 +3131,7 @@ class Sample_Generic(CoordinateSystem):
                         if num_frame == 0 or num_frame == np.max(num_frames):
                             print('  Data {} linked as: {}'.format(filename_new, link_name_new))
 
-        elif detector.name is  'pilatus2M':
+        elif detector.name ==  'pilatus2M':
             # chars = caget('XF:11BMB-ES{Det:PIL2M}:TIFF1:FullFileName_RBV')
             # filename = ''.join(chr(char) for char in chars)[:-1]
             # filename_part1 = ''.join(chr(char) for char in chars)[:-13]
@@ -3127,7 +3185,7 @@ class Sample_Generic(CoordinateSystem):
             #filename = ''.join(chr(char) for char in chars)[:-1]
             #filename_part1 = ''.join(chr(char) for char in chars)[:-13]
 
-        elif detector.name is 'pilatus800':
+        elif detector.name == 'pilatus800':
             foldername = '/nsls2/xf11bm/'
             
             # chars = caget('XF:11BMB-ES{Det:PIL800K}:TIFF1:FullFileName_RBV')
@@ -3187,15 +3245,15 @@ class Sample_Generic(CoordinateSystem):
     
         subdir = ''
         if subdirs:
-            if detector.name is 'pilatus300' or  detector.name is 'pilatus8002' :
+            if detector.name == 'pilatus300' or  detector.name == 'pilatus8002' :
                 subdir = '/maxs/raw/'
                 detname = 'maxs'
                 print('pilatus300k data handling')
-            elif detector.name is  'pilatus2M':
+            elif detector.name ==  'pilatus2M':
                 subdir = '/saxs/raw/'
                 detname = 'saxs'
                 print('pilatus2M data handling')
-            elif detector.name is  'pilatus800':
+            elif detector.name ==  'pilatus800':
                 subdir = '/waxs/raw/'
                 detname = 'waxs'
                 print('pilatus800k data handling')
@@ -3296,8 +3354,8 @@ class Sample_Generic(CoordinateSystem):
                 current_temperature = -273.15            
         return current_temperature
 
-    def humidity(self, AI_chan=7, temperature=25, verbosity=3):        
-        return ioL.readRH(AI_chan=7, temperature=temperature, verbosity=verbosity)
+    def humidity(self, AI_chan=8, temperature=25, verbosity=3):        
+        return ioL.readRH(AI_chan=8, temperature=temperature, verbosity=verbosity)
     
     def transmission_data_output(self, slot_pos):
         '''Output the tranmission of direct beam
@@ -3578,7 +3636,7 @@ class Holder(Stage):
         (from the holder's inventory) is returned. If a string is provided, 
         the closest-matching sample (by name) is returned.'''
         
-        if type(sample_number) is int:
+        if type(sample_number) == int:
             if sample_number not in self._samples:
                 if verbosity>=1:
                     print('Error: Sample {} not defined.'.format(sample_number))
@@ -3592,7 +3650,7 @@ class Holder(Stage):
             return sample_match
         
             
-        elif type(sample_number) is str:
+        elif type(sample_number) == str:
             
             # First search for an exact name match
             matches = 0
@@ -3993,3 +4051,6 @@ if False:
     hol.addSampleSlot( SampleGISAXS_Generic('test_sample_03'), 5.0 )
     
     sam = hol.getSample(1)
+
+
+

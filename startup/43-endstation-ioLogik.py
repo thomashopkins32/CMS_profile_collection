@@ -19,7 +19,8 @@ from ophyd import Device
 class AOpv(object):    
     def __init__(self, ii):
         self.name = 'AO_Chan{}'.format(ii)
-        self.sp = 'XF:11BM-ES{{Ecat:AO{}}}'.format(ii)
+        # self.sp = 'XF:11BM-ES{{Ecat:AO{}}}'.format(ii)
+        self.sp = 'XF:11BM-ES{{Ecat:AO1}}{}'.format(ii)
         # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
         self.sts = self.sp
         # self.name = 'AO_Chan{}'.format(ii)
@@ -146,8 +147,14 @@ class ioLogik(Device):
         #coeff_slope = 0.030
 
         #For sensor 43 used in humidity stage
-        coeff_offset = 0.816887
-        coeff_slope = 0.028813
+        # coeff_offset = 0.816887
+        # coeff_slope = 0.028813
+
+
+
+        #Sensor 43 is broken. For sensor 42 used in humidity stage
+        coeff_offset = 0.814
+        coeff_slope = 0.029
 
         sensor_RH = (corr_voltage_out - coeff_offset) / coeff_slope
 

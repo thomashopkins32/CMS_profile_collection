@@ -2811,7 +2811,7 @@ class HumidityTransmissionStage(CapillaryHolder):
         self._axes['y'].origin = 10
         self._axes['th'].origin = 0
 
-    def humidity(self, AI_chan=7, temperature=25, verbosity=3):        
+    def humidity(self, AI_chan=8, temperature=25, verbosity=3):        
         #AI_chan=7, the independent sensor
         #AI_chan=3, the integrated sensor in the flow control panel
         return ioL.readRH(AI_chan=AI_chan, temperature=temperature, verbosity=verbosity)
