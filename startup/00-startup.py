@@ -9,7 +9,7 @@
 # caproto_log.addHandler(handler)       
 # logging.getLogger('caproto.ch').setLevel('DEBUG')
 import nslsii
-nslsii.configure_base(get_ipython().user_ns, 'cms')
+nslsii.configure_base(get_ipython().user_ns, 'cms', publish_documents_with_kafka=True)
 
 from bluesky.magics import BlueskyMagics
 from bluesky.preprocessors import pchain
@@ -200,3 +200,6 @@ runengine_metadata_dir = appdirs.user_data_dir(appname="bluesky") / Path("runeng
 
 # PersistentDict will create the directory if it does not exist
 RE.md = PersistentDict(runengine_metadata_dir)
+
+print('a new version of bsui')
+print('sth is happening')
