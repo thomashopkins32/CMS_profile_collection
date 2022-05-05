@@ -1929,7 +1929,7 @@ class CMS_Beamline(Beamline):
         #self.SAXS = CMS_SAXS_Detector(pilatus300)
         self.SAXS = CMS_SAXS_Detector(pilatus2M)
         self.WAXS = CMS_WAXS_Detector(pilatus800)
-        self.MAXS = CMS_SAXS_Detector(pilatus300)
+        self.MAXS = CMS_SAXS_Detector(pilatus8002)
         
         from epics import PV
         
@@ -2813,7 +2813,16 @@ class CMS_Beamline(Beamline):
         caput('XF:11BMB-VA{Chm:Det-GV:1}Cmd:Cls-Cmd', 1) # Large (downstream)
         #caput('XF:11BMB-VA{Slt:4-GV:1}Cmd:Cls-Cmd',1) # Small (upstream)
         
-        
+    #reset the IOC connection to WAXS detector after restart
+    def initialWAXS(self):
+        RE(self._initialWAXS())
+
+    def _initialWAXS(self):
+
+        yield from pialtus800.setExposureTime(1.3)
+        yield from pialtus800.setExposureNumber(1)
+        yield from pialtus800.setExposureTime(1.2)
+
     # Metatdata methods
     ########################################
     
