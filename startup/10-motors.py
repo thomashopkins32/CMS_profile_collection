@@ -135,15 +135,29 @@ elif beamline_stage == 'BigHuber':
     lasery = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:Y}Mtr', name='lasery')
     
     
-    
+# goniometer    
 smy2 = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:Y}Mtr', name='smy2')
 sphi = EpicsMotor('XF:11BMB-ES{Chm:Smpl-Ax:phi}Mtr', name='sphi')
-srot = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Srot}Mtr', name='srot')
-strans = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Strans}Mtr', name='strans')
-strans2 = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Strans2}Mtr', name='strans2')
-stilt = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Stilt}Mtr', name='stilt')
-stilt2 = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Stilt2}Mtr', name='stilt2')
+# srot = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Srot}Mtr', name='srot')
+# strans = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Strans}Mtr', name='strans')
+# strans2 = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Strans2}Mtr', name='strans2')
+# stilt = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Stilt}Mtr', name='stilt')
+# stilt2 = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Stilt2}Mtr', name='stilt2')
 
+# the srot is fixed after repair but two module controllers are broken, 
+# strans, strans2, stilt, stilt2 and strot are moved to backup controllers
+# changed by RL 20220727
+# strans =  EpicsMotor('XF:11BMB-ES{Spare:L-Ax:M}Mtr', name='strans')
+# strans2 = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:2}Mtr', name='strans2')
+# stilt = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:0}Mtr', name='stilt')
+# stilt2 = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:1}Mtr', name='stilt2')
+# srot = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:L}Mtr', name='srot')
+
+srot = None
+strans = None
+strans2 = None
+stilt = None
+stilt2 = None
 
 ## stages for on-axis sample camera mirror/lens
 camx = EpicsMotor('XF:11BMB-ES{Cam:OnAxis-Ax:X1}Mtr', name='camx')
@@ -160,8 +174,9 @@ armphi = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Yaw}Mtr', name='armphi')
 army = EpicsMotor('XF:11BMB-ES{SM:1-Ax:Y}Mtr', name='army')
 # armr = EpicsMotor('XF:11BMB-ES{SM:1-Ax:ArmR}Mtr', name='armr')
 
-# The SmarAct module is broken. Need to change to a SPARE_M for armr
-armr = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:M}Mtr', name='armr')
+# The SmarAct module is broken. Need to change to a SPARE_S for armr
+# changed from spareM to spareS by RL at 2011/07/23
+armr = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:S}Mtr', name='armr')
 
 
 ## stages for detectors
@@ -180,9 +195,14 @@ MAXSx = EpicsMotor('XF:11BMB-ES{Det:MAXS-Ax:X}Mtr', name='MAXSx')
 MAXSy = EpicsMotor('XF:11BMB-ES{Det:MAXS-Ax:Y}Mtr', name='MAXSy')
 
 ## stages for beamstops
-bsx = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:X}Mtr', name='bsx')
-bsy = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:Y}Mtr', name='bsy')
-bsphi = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:phi}Mtr', name='bsphi')
+# bsx = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:X}Mtr', name='bsx')
+# bsy = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:Y}Mtr', name='bsy')
+# bsphi = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:phi}Mtr', name='bsphi')
+
+#temporary beamstop in spare SmarAct stage
+bsx = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:S}Mtr', name='bsx')
+bsy = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:L}Mtr', name='bsy')
+bsphi = EpicsMotor('XF:11BMB-ES{Spare:L-Ax:M}Mtr', name='bsphi')
 
 ##stage for vacuum gate
 gatex = EpicsMotor('XF:11BMB-ES{Chm:Gate-Ax:X}Mtr', name='gatex')

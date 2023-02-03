@@ -340,7 +340,8 @@ def pump_chm(onoff, q=0):
 
 
 #PROFILE_ROOT = os.path.dirname(__file__)
-PROFILE_ROOT = '/nsls2/data/cms/legacy/xf11bm/ipython_profiles/profile_collection/startup'
+# PROFILE_ROOT = '/nsls2/data/cms/legacy/xf11bm/ipython_profiles/profile_collection/startup'
+PROFILE_ROOT = '/home/xf11bm/.ipython/profile_collection/startup'
 CMS_CONFIG_FILENAME =  os.path.join(PROFILE_ROOT, '.cms_config')
 
 ## CMS config file
@@ -424,6 +425,33 @@ def data_output(experiment_cycle=None, experiment_alias_directory=None):
         dtable = header.table() 
         dtable.to_csv('{}/data/{}.csv'.format(header.get('start').get('experiment_alias_directory') , header.get('start').get('scan_id')))
         
+
+# def data_output_series(mdkeys, experiment_cycle=None, experiment_alias_directory=None): 
+    
+#     """
+#     To output the scan data with the scan_id as name
+#     Please first create "data" folder under user_folder. 
+#     #updated by RL 01/06/23
+#     md is the list of the output metadata. 
+#     i.e. md = ['clock', 'roi4']
+#     """
+    
+#     #headers = db(experiment_cycle='2017_3', experiment_group= 'I. Herman (Columbia U.) group', experiment_alias_directory='/nsls2/xf11bm/data/2017_3/IHerman' )
+#     if experiment_cycle is not None:
+#         headers = db( experiment_cycle=experiment_cycle, experiment_alias_directory=experiment_alias_directory)
+#     else:
+#         headers = db( experiment_alias_directory=experiment_alias_directory)
+        
+    
+
+
+#     for header in headers:
+        
+#         dtable = header.table() 
+#         for key in mdkeys:
+#             # dtable.to_csv('{}/data/{}.csv'.format(header.get('start').get('experiment_alias_directory') , header.get('start').get('scan_id')))
+#             dtable.to_csv('{}/data/{}.csv'.format(header.get('start').get('experiment_alias_directory') , header.get('start').get('scan_id')))
+
 
 ## output the scan data and save them in user_folder/data. 
 def data_output_seires(id_range): 

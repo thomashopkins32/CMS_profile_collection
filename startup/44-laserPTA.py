@@ -2,24 +2,29 @@ class PhotoThermalAnnealer():
     
     def __init__(self, print_code='PTA> '):
         
-        self.controlTTL_PV = 'XF:11BMB-ES{IO}AO:3-SP'
-        self.powerV_PV = 'XF:11BMB-ES{IO}AO:4-SP'
-        
+        # self.controlTTL_PV = 'XF:11BMB-ES{IO}AO:3-SP'
+        self.controlTTL_PV = 'XF:11BM-ES{Ecat:DO1_2}'
+        # self.powerV_PV = 'XF:11BMB-ES{IO}AO:4-SP'
+        self.powerV_PV = 'XF:11BM-ES{Ecat:AO1}1'
+
         self.print_code = print_code
         #if verbosity>=3:
             #print('{}'.format(self.print_code))
         
         self.laserOff()
         
-        self._use_calibration_NoFlow()
+        # self._use_calibration_NoFlow()
         #self._use_calibration_N2()
         
-        #self.laser_calib_m, self.laser_calib_b, self.power_limit_low = 7.4632, -5.8773, 0.13 # BNL 70W IR Laser factory calibration (2019-Mar)
-        self.laser_calib_m, self.laser_calib_b, self.power_limit_low = 7.5376, -6.9667, 0.38 # UW 70W IR Laser factory calibration (2019-Apr)
+        self.laser_calib_m, self.laser_calib_b, self.power_limit_low = 7.4632, -5.8773, 0.13 # BNL 70W IR Laser factory calibration (2019-Mar)
+        # self.laser_calib_m, self.laser_calib_b, self.power_limit_low = 7.5376, -6.9667, 0.38 # UW 70W IR Laser factory calibration (2019-Apr)
         
         #self.power_limit_high = 65.1 # For RTP
         self.power_limit_high = 70.0 # For LZA
-    
+
+        self.calibration_m = 234/70
+        self.calibration_b = 0
+
     
     def linear_regression(self, data, verbosity=3):
         #import numpy as np
@@ -35,12 +40,16 @@ class PhotoThermalAnnealer():
     ########################################
     
     def laserOn(self):
-        caput(self.controlTTL_PV, 5)
+        caput(self.controlTTL_PV, 0)
 
     def laserOff(self):
-        caput(self.controlTTL_PV, 0)
+        caput(self.controlTTL_PV, 1)
         
-    def laserPulse(self, duration):
+    def laserPulse(self, duration, power_W=None):
+
+        if power_W is not None:
+            self.setLaserPower(power_W)
+
         self.laserOn()
         print('{}  Laser on for {:.2f} s'.format(self.print_code, float(duration)))
         time.sleep(duration)
@@ -97,75 +106,91 @@ class PhotoThermalAnnealer():
     # (conversion from laser power into temperature)
     ########################################
         
-    def _use_calibration_NoFlow(self, verbosity=3):
+    # def _use_calibration_NoFlow(self, verbosity=3):
     
-        # Normal RTP height, no air flow, open GISAXS windows
-        # [ power_W, Temperature_C ] , # power_V
-        data = [ 
-            [0, 30.0] , # 0.0
-            [10, 175.9] , # 2.13
-            [12.43, 206.7] , # 2.45
-            [15.0, 239.9] , # 2.80
-            [16.38, 257.2] , # 2.98
-            [18.35, 279.9] , # 3.25
-            [20.0, 298.4] , # 3.47
-            [25.0, 350.1] , # 4.14
-            #[50.0, >400] , # 7.49
-            ]
+    #     # Normal RTP height, no air flow, open GISAXS windows
+    #     # [ power_W, Temperature_C ] , # power_V
+    #     data = [ 
+    #         [0, 30.0] , # 0.0
+    #         [10, 175.9] , # 2.13
+    #         [12.43, 206.7] , # 2.45
+    #         [15.0, 239.9] , # 2.80
+    #         [16.38, 257.2] , # 2.98
+    #         [18.35, 279.9] , # 3.25
+    #         [20.0, 298.4] , # 3.47
+    #         [25.0, 350.1] , # 4.14
+    #         #[50.0, >400] , # 7.49
+    #         ]
         
-        m, b, r_value = self.linear_regression(data, verbosity=verbosity)
-        if verbosity>=3:
-            print("{}    Calibration updated to: m = {:.3f}°C/W; b = {:.3f}°C    [R = {:.2f}]".format(self.print_code, m, b, r_value))
-        self.calibration_m, self.calibration_b = m, b
+    #     m, b, r_value = self.linear_regression(data, verbosity=verbosity)
+    #     if verbosity>=3:
+    #         print("{}    Calibration updated to: m = {:.3f}°C/W; b = {:.3f}°C    [R = {:.2f}]".format(self.print_code, m, b, r_value))
+    #     self.calibration_m, self.calibration_b = m, b
     
     
-    def _use_calibration_N2(self, verbosity=3):
+    # def _use_calibration_N2(self, verbosity=3):
     
-        # Normal RTP height, N2 flow, Kapton GISAXS windows
-        # [ power_W, Temperature_C ] , # power_V
-        data = [ 
-            [0, 24.2] , # 0.0
-            [9.24, 164.9] , # 2.02
-            [10.79, 188.0] , # 2.23
-            [10.79, 190.9] , # 2.23
-            [12.34, 211.4] , # 2.44
-            [13.89, 227] , # 2.65
-            [15.44, 252] , # 2.65
-            [16.99, 271] , # 3.06
-            ]
+    #     # Normal RTP height, N2 flow, Kapton GISAXS windows
+    #     # [ power_W, Temperature_C ] , # power_V
+    #     data = [ 
+    #         [0, 24.2] , # 0.0
+    #         [9.24, 164.9] , # 2.02
+    #         [10.79, 188.0] , # 2.23
+    #         [10.79, 190.9] , # 2.23
+    #         [12.34, 211.4] , # 2.44
+    #         [13.89, 227] , # 2.65
+    #         [15.44, 252] , # 2.65
+    #         [16.99, 271] , # 3.06
+    #         ]
         
-        m, b, r_value = self.linear_regression(data, verbosity=verbosity)
-        if verbosity>=3:
-            print("{}    Calibration updated to: m = {:.3f}°C/W; b = {:.3f}°C    [R = {:.2f}]".format(self.print_code, m, b, r_value))
-        self.calibration_m, self.calibration_b = m, b
+    #     m, b, r_value = self.linear_regression(data, verbosity=verbosity)
+    #     if verbosity>=3:
+    #         print("{}    Calibration updated to: m = {:.3f}°C/W; b = {:.3f}°C    [R = {:.2f}]".format(self.print_code, m, b, r_value))
+    #     self.calibration_m, self.calibration_b = m, b
         
     
-    def getTemperature(self, verbosity=3):
+    def getTemperature(self, T_base=100, verbosity=3):
         
         power_W = self.getLaserPower(verbosity=0)
         m, b = self.calibration_m, self.calibration_b # [°C/W] , [°C]
-        T = m*power_W + b
+        T = m*power_W + b + T_base
         
         if verbosity>=3:
             print("{}Current set temperature is {:.2f}°C (using {:.2f} W)".format(self.print_code, T, power_W))
-            if abs(int(caget(self.controlTTL_PV))-5)>0.1:
-                print("{}  Note: Laser is not turned on.")
+            if caget(self.controlTTL_PV)==True:
+                print("{}  Note: Laser is not turned on.".format(self.print_code))
 
         return T
     
-    def setTemperature(self, T_target, verbosity=3):
+    def setTemperature(self, T_target, T_base=100, verbosity=3):
         
+        T_excess = T_target-T_base
+
         m, b = self.calibration_m, self.calibration_b # [°C/W] , [°C]
         
-        power_W = (T_target-b)/m
+        power_W = (T_excess-b)/m
         
         if verbosity>=3:
             print("{}Setting temperature to {:.2f}°C".format(self.print_code, T_target))
         self.setLaserPower(power_W)
     
         if verbosity>=3:
-            if abs(int(caget(self.controlTTL_PV))-5)>0.1:
-                print("{}  Note: Laser is not turned on.")
+            if caget(self.controlTTL_PV)==True:
+                print("{}  Note: Laser is not turned on.".format(self.print_code))
+
+    # def setVoltage(self, V_target, verbosity=3):
+        
+    #     m, b = self.calibration_m, self.calibration_b # [°C/W] , [°C]
+        
+    #     power_W = (T_target-b)/m
+        
+    #     if verbosity>=3:
+    #         print("{}Setting temperature to {:.2f}°C".format(self.print_code, T_target))
+    #     self.setLaserPower(power_W)
+    
+    #     if verbosity>=3:
+    #         if abs(int(caget(self.controlTTL_PV))-5)>0.1:
+    #             print("{}  Note: Laser is not turned on.")
 
     
     # RTP protocols
@@ -682,4 +707,4 @@ class PhotoThermalAnnealer():
         self.setLaserPower(power_W)
         self.laserPulse(duration)
 
-#pta = PhotoThermalAnnealer()
+# pta = PhotoThermalAnnealer()

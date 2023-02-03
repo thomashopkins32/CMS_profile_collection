@@ -14,6 +14,18 @@ from ophyd import Device
 #20210907, change the AI/AO/DIO Moxa boxes to Ecat channels. 
 #add TTL signals, see more in 19_shutter.py
 
+#202206, Sorrenson power supply
+
+#TTL signals
+
+
+TTL2 = EpicsSignal('XF:11BM-ES{Ecat:DO1_2}')
+
+def TTL2_on():
+    yield from bps.mov(TTL2, 0)
+    time.sleep(0.01)
+    yield from bps.mov(TTL2, 1)
+
 
 # PV list of Moxa ioLogik:: AO, Analog Output
 class AOpv(object):    
@@ -23,9 +35,12 @@ class AOpv(object):
         self.sp = 'XF:11BM-ES{{Ecat:AO1}}{}'.format(ii)
         # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
         self.sts = self.sp
+        self.PV = self.sp
+        self.signal = EpicsSignal(self.PV)
         # self.name = 'AO_Chan{}'.format(ii)
         # self.sp = 'XF:11BMB-ES{}AO:{}-SP'.format('{IO}', ii)
         # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
+
 AO=[None]
 for ii in range(1, 5):
     AO.append(AOpv(ii))
@@ -36,6 +51,8 @@ class AIpv(object):
         self.name = 'AI_Chan{}'.format(ii)
         # self.sts = 'XF:11BM-ES{Ecat:AI1_1}'
         self.sts = 'XF:11BM-ES{{Ecat:AI{}}}'.format(ii)
+        self.PV = self.sts
+        self.signal = EpicsSignal(self.PV)
         # self.sp = 'XF:11BMB-ES{}AI:{}-SP'.format('{IO}', ii)
         
 AI=[None]
@@ -212,6 +229,8 @@ class MassFlowControl(Device):
             print('The device is NOT valid.')
             device_no = 1
         print('Select Device {} in port {}'.format(device_no, device))
+        self.device = device
+
         self.FlowRate_Sts = 'XF:11BMB-ES{{FC:{}}}F-I'.format(device_no)
         self.FlowRate_SP = 'XF:11BMB-ES{{FC:{}}}F:SP-SP'.format(device_no)
         self.Mode_Sts = 'XF:11BMB-ES{{FC:{}}}Mode:Opr-Sts'.format(device_no)
@@ -220,26 +239,43 @@ class MassFlowControl(Device):
         self.ScaleFactor_Sts = 'XF:11BMB-ES{{FC:{}}}Val:ScaleFactor-RB'.format(device_no)
         self.NominalRange_SP = 'XF:11BMB-ES{{FC:{}}}F:FullRng-SP'.format(device_no)
         self.NominalRange_Sts = 'XF:11BMB-ES{{FC:{}}}F:FullRng-RB'.format(device_no)
-        
+
+
+        # self.FlowRate_Sts = 'XF:11BMB-ES{{FC:{}}}F-I'.format(device_no)
+
+
         return device_no
     
-    def setFlow(self, device, rate, tolerence=1, verbosity=3):
+    def setFlow(self,  rate, device=None, tolerence=1, verbosity=3):
         #set the setpoint of flow
+        if device==None:
+            device=self.device
+
         self.setDevice(device=device)
+
+        if rate< self.deviceRange(verbosity=0)*0.02:
+            print('The rate is too low. (<2pct of the range)')
+            return 
+            
         caput(self.FlowRate_SP, rate)
         if verbosity >= 3:
             print('The flow rate has been set to {}'.format(rate))
             print('The current flow rate is {}'.format(caget(self.FlowRate_Sts)))
         return caget(self.FlowRate_Sts)
     
-    def flow(self, device, verbosity=3):
+    def flow(self, device=None, verbosity=3):
+        if device==None:
+            device=self.device
+
         self.setDevice(device=device)
         if verbosity >= 3:
             print('The current flow rate is {}'.format(caget(self.FlowRate_Sts)))
         return caget(self.FlowRate_Sts)
         
-    def setMode(self, device, mode, verbosity=3):
+    def setMode(self,  mode, device=None,verbosity=3):
         #mode can be 0: OPEN, 1: Close, 2: SetPoint
+        if device==None:
+            device=self.device
 
         self.setDevice(device=device)
 
@@ -248,21 +284,26 @@ class MassFlowControl(Device):
         else:            
             caput(self.Mode_SP, mode)
             while self.mode(device=device) != mode:
-                time.sleep(1)
+                time.sleep(0.2)
                 caput(self.Mode_SP, mode)
             if verbosity >=3:
                 self.mode(device=device)
             return caget(self.Mode_Sts)
     
-    def mode(self, device, verbosity=3):
+    def mode(self, device=None, verbosity=3):
         #OP mode: 0: OPEN, 1: Close, 2: SetPoint
+        if device==None:
+            device=self.device
+
         self.setDevice(device=device)
         if verbosity >= 3:
             self.readMode(device=device)
         return caget(self.Mode_Sts)
     
-    def readMode(self, device, verbosity=3):
+    def readMode(self, device=None, verbosity=3):
         #OP mode: 0: OPEN, 1: Close, 2: SetPoint
+        if device==None:
+            device=self.device
         self.setDevice(device=device)
         if caget(self.Mode_Sts)==0:
             return print('The current mode is {}'.format('ON'))
@@ -271,17 +312,23 @@ class MassFlowControl(Device):
         if caget(self.Mode_Sts)==2:
             return print('The current mode is {}'.format('SETPOINT'))
 
-    def scaleFactor(self, device, verbosity=3):
+    def scaleFactor(self, device=None, verbosity=3):
         #The scale factor depends on the gas. 
         #N2 and air are default as 1. Helium is 0.18.
         #More details are listed in the manual.
+        if device==None:
+            device=self.device
+
         self.setDevice(device=device)
         if verbosity >= 3:
             print('The scale factor is {}'.format(caget(self.ScaleFactor_Sts)))
         return caget(self.ScaleFactor_Sts)
 
-    def setScaleFactor(self, device, val, verbosity=3):
+    def setScaleFactor(self, val, device=None, verbosity=3):
         #Three modes: 0: OPEN, 1: Close, 2: SetPoint
+        if device==None:
+            device=self.device
+
         self.setDevice(device=device)
 
         caput(self.ScaleFactor_SP, val)
@@ -292,17 +339,23 @@ class MassFlowControl(Device):
             self.scaleFactor()
         return caget(self.ScaleFactor_Sts)
 
-    def deviceRange(self, device, verbosity=3):
+    def deviceRange(self, device=None, verbosity=3):
         #Set the device by seting the Nominal Range. 
         #Model 201: 20SCCM. 
+        if device==None:
+            device=self.device
+
         self.setDevice(device=device)
         if verbosity >= 3:
             print('The range of this MFC device is up to {} SCCM.'.format(caget(self.NominalRange_Sts)))
         return caget(self.NominalRange_Sts)
 
-    def setDeviceRange(self, device, val, verbosity=3):
+    def setDeviceRange(self, val, device=None,  verbosity=3):
         #Set the device by seting the Nominal Range. 
         #Model 201: 20SCCM. 
+        if device==None:
+            device=self.device
+
         self.setDevice(device=device)
 
         caput(self.NominalRange_SP, val)
@@ -313,8 +366,146 @@ class MassFlowControl(Device):
             self.deviceRange()
         return caget(self.NominalRange_Sts)            
             
-        
+from bluesky.plan_stubs import null, sleep, mv, mvr
+from ophyd import Component as Cpt, EpicsSignal, EpicsSignalRO, Signal, Device, PVPositioner
+from ophyd.signal import DerivedSignal
+
+class SorrensonPowerSupply(Device):
+    '''An ophyd wrapper for Sorrenson XG40 power supply
+    At CMS, communication to XG40 is through Moxa 
+    where port 13 is connected to the RS232
+    port on the Sorrenson.
+
+    '''
     
+    cmd = Cpt(EpicsSignal, 'Enbl:OutMain-Cmd')
+    status = Cpt(EpicsSignal, 'Enbl:OutMain-Sts')
+
+    voltage = Cpt(EpicsSignalRO, 'E-I')
+    current = Cpt(EpicsSignalRO, 'I-I')
+
+    voltage_setpoint = Cpt(EpicsSignal, 'E:OutMain-SP')
+    current_setpoint = Cpt(EpicsSignal, 'I-Lim')
+
+    # XF:11BMB-ES{PS:1}Sts:Opr-Sts.BC
+    # XF:11BMB-ES{PS:1}Sts:Opr-Sts.BD
+
+    def on(self):
+        self.cmd.put(1)
+
+    def off(self):
+        self.cmd.put(0)
+
+    def _on(self):
+        return (yield from mv(self.cmd, 1))
+
+    def _off(self):
+        return (yield from mv(self.cmd, 0))
+
+    def put(self, PV, value):
+        return PV.put(value)
+
+    def _put(self, PV, value):
+        return (yield from mv(PV.put, value))
+
+    def read(self, PV):
+        return PV.get()
+
+    def state(self, verbosity=3):
+        if verbosity>=3:
+            print('SPW is {}'.format(self.cms.get()))
+        return self.cmd.get()
+
+
+    def status(self, verbosity=3):
+        '''return current power status, V and I
+        '''
+        if verbosity >=3:
+            if self.state(verbosity=0)==True:
+                print('Current status = ON')
+            else:
+                print('Current status = OFF')
+            print('Current V = {:.1f}, setpoint V = {:.1f}.'.format(self.voltage.get(), self.voltage_setpoint.get()))
+            print('Current I = {:.1f}, limit I = {:.1f}.'.format(self.current.get(), self.current_setpoint.get()))
+        return self.state(verbosity=0), self.voltage.get(), self.current.get()
+
+    def setVoltageLinear(self, Vstart, Vend, period, wait_time=0.1, verbosity=3):
+
+        start_time = time.time()
+
+        while time.time() - start_time<period+0.01:
+            self.put(self.voltage_setpoint, Vstart+(Vend-Vstart)*(time.time() - start_time)/period)
+            print(time.time()-start_time)
+            time.sleep(wait_time)
+
+    def getVoltage(self):
+        return self.read(self.voltage)
+
+    def setVoltage(self, voltage, verbosity=3):
+
+        self.put(self.voltage_setpoint, voltage)
+        start_time = time.time()
+        while abs(self.voltage.get()-voltage)>0.01 and time.time()-start_time<1:
+            time.sleep(0.1)
+        return self.voltage.get()
+    
+    def setCurrent(self, current, verbosity=3):
+        self.put(self.current_setpoint, current)
+        start_time = time.time()
+        while abs(self.current.get()-current)>0.01 and time.time()-start_time<1:
+            time.sleep(0.1)
+        return self.current.get()
+
+class Chiller(Device):
+
+    # On/Off:   XF:11BMB-ES{Chiller}TempCtrl
+    # Setpoint: XF:11BMB-ES{Chiller}T-SP
+    # T       : XF:11BMB-ES{Chiller}BathT_RBV
+
+    '''An ophyd wrapper for Sorrenson XG40 power supply
+    At CMS, communication to XG40 is through Moxa 
+    where port 13 is connected to the RS232
+    port on the Sorrenson.
+
+    '''
+    
+    cmd = Cpt(EpicsSignal, 'TempCtrl')
+    ChillerSetpoint = Cpt(EpicsSignal, 'T-SP')
+
+    ChillerT = Cpt(EpicsSignalRO, 'BathT_RBV')
+
+    def on(self):
+        self.cmd.put(1)
+
+    def off(self):
+        self.cmd.put(0)
+
+    def _on(self):
+        return (yield from mv(self.cmd, 1))
+
+    def _off(self):
+        return (yield from mv(self.cmd, 0))
+
+    def setTemperature(self, value, verbosity=3):
+        if verbosity>=3:
+            print('The temperature is set to {}.'.format(value))
+        return self.ChillerSetpoint.put(value)
+
+    def temperature(self,verbosity=3):
+        if verbosity>=3:
+            print('The current temperature is to {}.'.format(self.ChillerT.get()))
+        return self.ChillerT.get()
+
+    def temperature_setpoint(self,verbosity=3):
+        if verbosity>=3:
+            print('The set point of temperature is to {}.'.format(self.ChillerSetpoint.get()))
+        return self.ChillerSetpoint.get()
+
+prefix = 'XF:11BMB-ES{PS:1}'
+SPW = SorrensonPowerSupply(prefix, name='SPW')
+
+chiller = Chiller('XF:11BMB-ES{Chiller}', name='chiller')
+
 ioL = ioLogik()
 MFC = MassFlowControl()
 

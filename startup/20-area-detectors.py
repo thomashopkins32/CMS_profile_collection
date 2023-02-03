@@ -21,8 +21,9 @@ Pilatus2M_on = True
 Pilatus300_on = False
 #ONLY 1 Pilatus800 will be turned on at the same time. changed by RL, 20210831
 #
-beamline_stage = 'default'
-# beamline_stage = 'open_MAXS'
+print('The current stage is {}'.format(beamline_stage))
+# beamline_stage = 'default' #for using chamber
+# beamline_stage = 'open_MAXS' #for using the upstream stage
 if beamline_stage == 'open_MAXS' or beamline_stage == 'BigHuber':
     Pilatus800_on = False
     Pilatus800_2_on = True
@@ -32,7 +33,7 @@ elif beamline_stage == 'default':
 
 # Pilatus800_on = True
 # # Pilatus800_2_on = False
-Pilatus800_2_on = True
+# Pilatus800_2_on = True
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
@@ -347,7 +348,7 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
             # Raise the error captured above to produce a useful error message. 
             raise error
 
-
+#print( 'This is the 20-area-dec py.')
 #class StandardProsilicaWithTIFF(StandardProsilica):
 #    tiff = Cpt(TIFFPluginWithFileStore,
 #               suffix='TIFF1:',

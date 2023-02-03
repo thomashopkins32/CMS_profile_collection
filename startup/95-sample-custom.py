@@ -156,7 +156,7 @@ class SampleGISAXS_Generic(Sample_Generic):
                 SAXSy.move(SAXSy_o + 5.16)
             if pilatus800 in cms.detector:
                 WAXSy.move(WAXSy_o + 5.16)
-            if pilatus300 in cms.detector:
+            if pilatus8002 in cms.detector:
                 MAXSy.move(MAXSy_o + 5.16)
                 
             for angle in angles:
@@ -2449,7 +2449,7 @@ class WellPlateHolder(PositionalHolder):
     # Core methods
     ########################################
 
-    def __init__(self, name='CapillaryHolder', base=None, **kwargs):
+    def __init__(self, name='WellPlateHolder', base=None, **kwargs):
         
         super().__init__(name=name, base=base, **kwargs)
         
@@ -2578,14 +2578,14 @@ class WellPlateHolder(PositionalHolder):
         
         return sample_match            
         
-    def namingWellPlate(name,row_range=['A', 'G'], column_range=[1, 12]):
+    def namingWellPlate(self, name,row_range=['A', 'G'], column_range=[1, 12]):
         '''Name the samples in the well plate.  
         The format is 'NAME_A05_'
         '''
-        md = {
-            'owner' : 'J. Paloni (MIT) group' ,
-            'series' : 'various' ,
-            }
+        # md = {
+        #     'owner' : 'J. Paloni (MIT) group' ,
+        #     'series' : 'various' ,
+        #     }
             
         for row_number in range(ord(row_range[0]), ord(row_range[1])+1):
             row=chr(row_number)

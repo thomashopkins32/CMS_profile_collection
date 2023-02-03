@@ -6,6 +6,10 @@ trigger_new_pv = EpicsSignal('XF:11BM-ES{Shutter}')
 shutter_sts1_pv = EpicsSignal('XF:11BM-ES{Psh_blade1}Pos')
 shutter_sts2_pv = EpicsSignal('XF:11BM-ES{Psh_blade2}Pos')
 
+photonshutter_sts = EpicsSignal('XF:11BMA-PPS{PSh}Sts:FailOpn-Sts')
+photonshutter_open = EpicsSignal('XF:11BMA-PPS{PSh}Cmd:Opn-Cmd')
+photonshutter_cls = EpicsSignal('XF:11BMA-PPS{PSh}Cmd:Cls-Cmd')
+
 def shutter_on(verbosity=3):
     # ii = 0
     # yield from bps.mv(trigger_new_pv, 1)

@@ -607,7 +607,93 @@ class Axis(object):
         target_position = self.get_position(verbosity=0) + move_amount
         
         return self.move_absolute(target_position, verbosity=verbosity)
+
+    def _get_position(self, verbosity=3):
+        '''Return the current position of this axis (in its coordinate system).
+        By default, this also prints out the current position.'''
         
+        
+        if self.motor is not None:
+            base_position = self.motor.position
+            
+        else:
+            verbosity_c = verbosity if verbosity>=4 else 0
+            base_position = getattr(self.base_stage, self.name+'pos')(verbosity=verbosity_c)
+            
+        position = self.base_to_cur(base_position)
+        
+        
+        if verbosity>=2:
+            if self.stage:
+                stg = self.stage.name
+            else:
+                stg = '?'
+
+            if verbosity>=5 and self.motor is not None:
+                print( '{:s} = {:.3f} {:s}'.format(self.motor.name, base_position, self.get_units()) )
+            
+            print( '{:s}.{:s} = {:.3f} {:s} (origin = {:.3f})'.format(stg, self.name, position, self.get_units(), self.get_origin()) )
+            
+            
+        return position
+    
+
+    def _move_absolute(self, position=None, wait=True, verbosity=3):
+        '''Move axis to the specified absolute position. The position is given
+        in terms of this axis' current coordinate system. The "defer" argument
+        can be used to defer motions until "move" is called.'''
+        
+        
+        if position is None:
+            # If called without any argument, just print the current position
+            return self.get_position(verbosity=verbosity)
+        
+        # Account for coordinate transformation
+        base_position = self.cur_to_base(position)
+        
+        if self.is_enabled():
+            
+            if self.motor:
+                #mov( self.motor, base_position )
+                self.motor.user_setpoint.value = base_position
+                
+            else:
+                # Call self.base_stage.xabs(base_position)
+                getattr(self.base_stage, self.name+'abs')(base_position, verbosity=0)
+
+
+            if self.stage:
+                stg = self.stage.name
+            else:
+                stg = '?'
+
+            if verbosity>=2:
+                
+                # Show a realtime output of position
+                start_time = time.time()
+                current_position = self._get_position(verbosity=0)
+                # while abs(current_position-position)>self._move_settle_tolerance and (time.time()-start_time)<self._move_settle_max_time:
+                #     current_position = self.get_position(verbosity=0)
+                #     print( '{:s}.{:s} = {:5.3f} {:s}      \r'.format(stg, self.name, current_position, self.get_units()), end='')
+                #     time.sleep(self._move_settle_period)
+                    
+            #if verbosity>=1:
+                #current_position = self.get_position(verbosity=0)
+                #print( '{:s}.{:s} = {:5.3f} {:s}        '.format(stg, self.name, current_position, self.get_units()))
+                
+        elif verbosity>=1:
+            print( 'Axis %s disabled (stage %s).' % (self.name, self.stage.name) )
+
+    def _move_relative(self, move_amount=None, verbosity=3):
+        '''Move axis relative to the current position.'''
+        
+        if move_amount is None:
+            # If called without any argument, just print the current position
+            return self.get_position(verbosity=verbosity)
+        
+        target_position = self.get_position(verbosity=0) + move_amount
+        
+        return self._move_absolute(target_position, verbosity=verbosity)        
     
     def goto_origin(self):
         '''Move axis to the currently-defined origin (zero-point).'''
@@ -1185,7 +1271,7 @@ class Sample_Generic(CoordinateSystem):
         if attribute=='temperature_E':
             return self.temperature(temperature_probe='E',verbosity=0)
         if attribute=='humidity':
-            return self.humidity(verbosity=0)
+            return self.humidity(verbosity=0, AI_chan=8)
   
         if attribute=='WAXSy':
             return WAXSy.position
@@ -1196,7 +1282,9 @@ class Sample_Generic(CoordinateSystem):
             return SAXSy.position
         if attribute=='SAXSx':
             return SAXSx.position
-        
+        # if attribute=='temperature_Linkam':
+        #     # return caget('XF:11BM-ES:{LINKAM}:TEMP')        
+        #     return LThermal.temperature()        
         if attribute in self.md:
             return self.md[attribute]
         if attribute=='energy':
@@ -1374,7 +1462,8 @@ class Sample_Generic(CoordinateSystem):
            return 'SAXSy{}'.format(self.get_attribute(attribute))
         if attribute=='SAXSx':
            return 'SAXSx{}'.format(self.get_attribute(attribute))
-
+        # if attribute=='temperature_Linkam':
+        #     return 'Linkam{:.1f}C'.format(self.get_attribute(attribute))
         if attribute=='extra':
             # Note: Don't eliminate this check; it will not be properly handled
             # by the generic call below. When 'extra' is None, we should
@@ -1878,7 +1967,8 @@ class Sample_Generic(CoordinateSystem):
                     return        
         
         filename = detector.tiff.full_file_name.get() #RL, 20210831
-        
+        if os.path.isfile(filename) == False:
+            return print('File does not exist')
         # Alternate method to get the last filename
         #filename = '{:s}/{:s}.tiff'.format( detector.tiff.file_path.get(), detector.tiff.file_name.get()  )
 
@@ -2079,7 +2169,7 @@ class Sample_Generic(CoordinateSystem):
         '''Take a quick exposure (without saving data).'''
         
         self.expose(exposure_time=exposure_time, extra=extra, measure_type=measure_type, verbosity=verbosity, handlefile=False, **md)
-        # remove_last_Pilatus_series()
+        remove_last_Pilatus_series()
         
         
     def _measure(self, exposure_time=None, extra=None, measure_type='measure', verbosity=3, tiling=False, stitchback=False, **md):
@@ -2441,7 +2531,7 @@ class Sample_Generic(CoordinateSystem):
         # Wait for detectors to be ready
         max_exposure_time = 0
         for detector in get_beamline().detector:
-            if detector.name is 'pilatus300' or 'pilatus800' or 'pilatus2M':
+            if detector.name is 'pilatus300' or 'pilatus800' or 'pilatus2M' or 'pilatus8002':
                max_exposure_time = detector.cam.acquire_time.get()
 
             # if detector.name is 'pilatus300':
@@ -2992,34 +3082,6 @@ class Sample_Generic(CoordinateSystem):
             RE(detector.setExposurePeriod(exposure_period))
             RE(detector.setExposureNumber(num_frames))
 
-            # if detector.name is 'pilatus2M':
-
-            #     if exposure_time != caget('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime'):
-            #         caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquireTime', exposure_time)
-            #     caput('XF:11BMB-ES{Det:PIL2M}:cam1:AcquirePeriod', exposure_period)
-            #     caput('XF:11BMB-ES{Det:PIL2M}:cam1:NumImages', num_frames)
-                
-            # if detector.name is 'pilatus800':
-            #     if exposure_time != caget('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime'):
-            #         caput('XF:11BMB-ES{Det:PIL800K}:cam1:AcquireTime', exposure_time)
-            #     caput('XF:11BMB-ES{Det:PIL800K}:cam1:AcquirePeriod', exposure_period)
-            #     caput('XF:11BMB-ES{Det:PIL800K}:cam1:NumImages', num_frames)
-
-            # if detector.name is 'pilatus300' :
-            #     if exposure_time != caget('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime'):
-            #         caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', exposure_time)
-            #     caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', exposure_period)
-            #     caput('XF:11BMB-ES{Det:SAXS}:cam1:NumImages', num_frames)
-                #extra wait time when changing the exposure time.  
-                #time.sleep(2)
-            #elif detector.name is 'PhotonicSciences_CMS':
-                #detector.setExposureTime(exposure_time, verbosity=verbosity)
-        
-        #for detector in get_beamline().detector:
-            #detector.cam.acquire_time.value=exposure_time
-            #detector.cam.acquire_period.value=exposure_period
-            #detector.cam.num_images.value=num_frames
-
         #bec.disable_plots()
         #bec.disable_table()
         
@@ -3039,7 +3101,9 @@ class Sample_Generic(CoordinateSystem):
         #md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, md_current['detector_sequence_ID'])
         md_current['measure_series_num_frames'] = num_frames
         md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id'])
+        # md_current['filename'] = '{:s}_{:04d}.tiff'.format(savename, RE.md['scan_id']+1)
         md_current['exposure_time'] = exposure_time
+        md_current['exposure_period'] = exposure_period
         #md_current['measure_series_motor'] = motor.name
         #md_current['measure_series_positions'] = [start, stop]
 
@@ -3248,7 +3312,7 @@ class Sample_Generic(CoordinateSystem):
             if detector.name == 'pilatus300' or  detector.name == 'pilatus8002' :
                 subdir = '/maxs/raw/'
                 detname = 'maxs'
-                print('pilatus300k data handling')
+                print('{} data handling'.format(detector.name))
             elif detector.name ==  'pilatus2M':
                 subdir = '/saxs/raw/'
                 detname = 'saxs'
@@ -3282,10 +3346,10 @@ class Sample_Generic(CoordinateSystem):
             #savename = md['filename'][:-5]
             
             savename = self.get_savename(savename_extra=extra)
-            # link_name = '{}/{}{}_{:04d}_{}}.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1, detname)
-            # link_name_part1 = '{}/{}{}_{:04d}'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
-            link_name = '{}/{}{}_{:04d}_{}.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'], detname)
-            link_name_part1 = '{}/{}{}_{:04d}'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
+            link_name = '{}/{}{}_{:06d}_{}.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1, detname)
+            link_name_part1 = '{}/{}{}_{:06d}'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+            # link_name = '{}/{}{}_{:06d}_{}.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'], detname)
+            # link_name_part1 = '{}/{}{}_{:06d}'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id'])
             
             if os.path.isfile(link_name):
                 i = 1
@@ -3295,11 +3359,19 @@ class Sample_Generic(CoordinateSystem):
             
             for num_frame in range(num_frames):
                 filename_new = '{}_{:06d}.tiff'.format(filename_part1, num_frame)
+                if os.path.isfile(filename_new) == False:
+                    return print('File number {} does not exist.'.format(num_frame))
+
                 link_name_new= '{}_{:06d}_{}.tiff'.format(link_name_part1, num_frame, detname)
                 os.symlink(filename_new, link_name_new)                
                 if verbosity>=3:
                     if num_frame == 0 or num_frame == np.max(num_frames):
                         print('  Data {} linked as: {}'.format(filename_new, link_name_new))
+            savename = self.get_savename(savename_extra=extra)        
+            # savename = md['filename']
+            #link_name = '{}/{}{}_{:04d}_maxs.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, RE.md['scan_id']-1)
+            link_name = '{}/{}{}_{}.tiff'.format(RE.md['experiment_alias_directory'], subdir, savename, detname)
+
 
     # Control methods
     ########################################
@@ -3354,8 +3426,8 @@ class Sample_Generic(CoordinateSystem):
                 current_temperature = -273.15            
         return current_temperature
 
-    def humidity(self, AI_chan=8, temperature=25, verbosity=3):        
-        return ioL.readRH(AI_chan=8, temperature=temperature, verbosity=verbosity)
+    def humidity(self, AI_chan=4, temperature=25, verbosity=3):        
+        return ioL.readRH(AI_chan=AI_chan, temperature=temperature, verbosity=verbosity)
     
     def transmission_data_output(self, slot_pos):
         '''Output the tranmission of direct beam
@@ -3943,7 +4015,7 @@ class PositionalHolder(Holder):
         sample.setOrigin( [self._positional_axis], [self.get_slot_position(slot)] )
         sample.detector = detector_opt
         
-    def addSampleSlotPosition(self, sample, slot, position, detector_opt='BOTH', incident_angles=None, transmission=1, exposure_time_SAXS = None, exposure_time_WAXS = None, tiling=None):
+    def addSampleSlotPosition(self, sample, slot, position, detector_opt='BOTH', incident_angles=None, transmission=1, exposure_time = None, exposure_time_WAXS = None, tiling=None):
         '''Adds a sample to the specified "slot" (defined/numbered sample 
         holding spot on this holder).'''
         
@@ -3953,7 +4025,7 @@ class PositionalHolder(Holder):
         sample.incident_angles = incident_angles
         sample.transmission = transmission
         sample.position = position
-        #sample.exposure_time_SAXS = exposure_time_SAXS 
+        # sample.exposure_time = exposure_time
         #sample.exposure_time_WAXS = exposure_time_WAXS 
         #sample.exposure_time_MAXS = exposure_time_MAXS 
         #sample.tiling = tiling

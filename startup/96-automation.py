@@ -410,6 +410,9 @@ class SampleExchangeRobot(Stage):
         smx.move(x)
         smy.move(y)
         sth.move(0)
+
+        while smx.moving==True or smy.moving==True or sth.moving==True:
+            time.sleep(1)
         
         x, y, z, phi = self._position_sample_gripped
         
@@ -446,7 +449,125 @@ class SampleExchangeRobot(Stage):
         else:
             self._region = 'stage'
             
+    def sequenceGotoSampleStageSlotted(self, x_motion=True, verbosity=3):
         
+        if self._sample is not None:
+            print("ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name))
+            return
+        
+        if not self.checkSafe():
+            return
+        
+        if verbosity>=3:
+            print('TBD')
+        
+        
+        # Move sample stage
+        x, y = self._position_stg_exchange # smx, smy
+        #mov([smx, smy], [x,y])
+        smx.move(x)
+        smy.move(y)
+        
+        
+        x, y, z, phi = self._position_sample_gripped
+        
+        # Pre-align the arm in (y,z)
+        self.phiabs(phi, verbosity=verbosity)
+        self.zabs(z, verbosity=verbosity)
+        self.yabs(y-self._delta_y_slot, verbosity=verbosity)
+        
+        self._region = 'stage'
+        if x_motion:
+            # Move arm so that it is slotted over the sample
+            self.xabs(x, verbosity=verbosity)
+            #self.rabs(r, verbosity=verbosity)
+        
+    def _sequenceGotoSampleStageSlotted(self, x_motion=True, verbosity=3):
+        
+        if self._sample is not None:
+            print("ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name))
+            return
+        
+        if not self.checkSafe():
+            return
+        
+        if verbosity>=3:
+            print('TBD')
+        
+        
+        # Move sample stage
+        x, y = self._position_stg_exchange # smx, smy
+        #mov([smx, smy], [x,y])
+        # smx.move(x)
+        # smy.move(y)
+        yield from bps.mov(smx, x)
+        yield from bps.mov(smy, y)        
+        
+        x, y, z, phi = self._position_sample_gripped
+        
+        # Pre-align the arm in (y,z)
+        self.phiabs(phi, verbosity=verbosity)
+        self.zabs(z, verbosity=verbosity)
+        self.yabs(y-self._delta_y_slot, verbosity=verbosity)
+        
+        self._region = 'stage'
+        if x_motion:
+            # Move arm so that it is slotted over the sample
+            # self.xabs(x, verbosity=verbosity)        
+            yield from bps.mov(smx, x)
+
+    def _sequencePutSampleOntoStage(self, gotoSafe=True, verbosity=3):
+        
+        if self._sample is None:
+            print("ERROR: No sample currently being gripped by robot arm.")
+            return
+        
+        if not self.checkSafe(check_stage=False):
+            return
+        
+        if verbosity>=3:
+            print('Putting sample onto stage')
+        
+        
+        # Move sample stage
+        x, y = self._position_stg_exchange # smx, smy
+        #mov([smx, smy], [x,y])
+        yield from bps.mov(smx, x)
+        yield from bps.mov(smy, y)
+        yield from bps.mov(sth, 0)
+        
+        x, y, z, phi = self._position_sample_gripped
+        
+        # Pre-align the arm in (y,z)
+        self.phiabs(phi, verbosity=verbosity)
+        self.zabs(z, verbosity=verbosity)
+        self.yabs(y+self._delta_y_hover, verbosity=verbosity)
+        
+        self._region = 'stage'
+        # Push the sample out so that it is hovering above the stage
+        # r is removed without SmarAct motor
+        yield from bps.mov(armx, x)
+        # Move sample down (-y)
+        self.yr(-self._delta_y_hover, verbosity=verbosity) # Now in contact with stage
+        
+        # De-grip
+        self.yr(-self._delta_y_slot, verbosity=verbosity)
+
+        self._sample = None
+        self._status = 'onStage'
+        
+        # Move away from stage
+        x, y, z, phi = self._position_hold
+        #mov([armx, self._axes['r'].motor], [x, r])
+        # r is removed without SmarAct motor
+        #mov(armx, x)
+        # armx.move(x)
+        yield from bps.mov(armx, x)
+        
+        if gotoSafe==True:
+            self.sequenceGotoSafe(verbosity=verbosity)
+        else:
+            self._region = 'stage'        
         
 
     def sequenceGetSampleFromStage(self, gotoSafe=True, verbosity=3):
@@ -620,8 +741,8 @@ class SampleExchangeRobot(Stage):
         if self.zpos(verbosity=0)<-10:
             print("ERROR: z ({}) position unsafe.".format(self.zpos(verbosity=0)))
 
-        if abs(self.phipos(verbosity=0))>1:
-            print("ERROR: phi ({}) position unsafe.".format(self.phipos(verbosity=0)))
+        # if abs(self.phipos(verbosity=0))>1:
+        #     print("ERROR: phi ({}) position unsafe.".format(self.phipos(verbosity=0)))
         
         x, y, z, phi = self._position_garage
         
@@ -1442,6 +1563,10 @@ class Queue(CoordinateSystem):
             endHolder = self.getHolder(endHolder)
         else:
             endHolder = endHolder
+
+        if abs(gatex.position+95)>1:
+            print('The gate is not OPEN. Please double-check the setting. ')
+            input()
 
         for seq, holder in sorted(self._sequence.items()):
             #determine when the robot moves back to safe position. #TODO: test gotoSafe

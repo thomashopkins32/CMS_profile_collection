@@ -102,26 +102,62 @@ class CMS_SAXS_Detector(BeamlineDetector):
 
         md_return['distance_m'] = self.distance
     
-        md_return['ROI1_X_min'] = caget('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname))
-        md_return['ROI1_X_size'] = caget('XF:11BMB-ES{}:ROI1:SizeX'.format(pilatus_Epicsname))
-        md_return['ROI1_Y_min'] = caget('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname))
-        md_return['ROI1_Y_size'] = caget('XF:11BMB-ES{}:ROI1:SizeY'.format(pilatus_Epicsname))
+        # md_return['ROI1_X_min'] = caget('XF:11BMB-ES{}:ROI1:MinX'.format(pilatus_Epicsname))
+        # md_return['ROI1_X_size'] = caget('XF:11BMB-ES{}:ROI1:SizeX'.format(pilatus_Epicsname))
+        # md_return['ROI1_Y_min'] = caget('XF:11BMB-ES{}:ROI1:MinY'.format(pilatus_Epicsname))
+        # md_return['ROI1_Y_size'] = caget('XF:11BMB-ES{}:ROI1:SizeY'.format(pilatus_Epicsname))
 
-        md_return['ROI2_X_min'] = caget('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname))
-        md_return['ROI2_X_size'] = caget('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname))
-        md_return['ROI2_Y_min'] = caget('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname))
-        md_return['ROI2_Y_size'] = caget('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname))
+        # md_return['ROI2_X_min'] = caget('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname))
+        # md_return['ROI2_X_size'] = caget('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname))
+        # md_return['ROI2_Y_min'] = caget('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname))
+        # md_return['ROI2_Y_size'] = caget('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname))
 
-        md_return['ROI3_X_min'] = caget('XF:11BMB-ES{}:ROI3:MinX'.format(pilatus_Epicsname))
-        md_return['ROI3_X_size'] = caget('XF:11BMB-ES{}:ROI3:SizeX'.format(pilatus_Epicsname))
-        md_return['ROI3_Y_min'] = caget('XF:11BMB-ES{}:ROI3:MinY'.format(pilatus_Epicsname))
-        md_return['ROI3_Y_size'] = caget('XF:11BMB-ES{}:ROI3:SizeY'.format(pilatus_Epicsname))
+        # md_return['ROI3_X_min'] = caget('XF:11BMB-ES{}:ROI3:MinX'.format(pilatus_Epicsname))
+        # md_return['ROI3_X_size'] = caget('XF:11BMB-ES{}:ROI3:SizeX'.format(pilatus_Epicsname))
+        # md_return['ROI3_Y_min'] = caget('XF:11BMB-ES{}:ROI3:MinY'.format(pilatus_Epicsname))
+        # md_return['ROI3_Y_size'] = caget('XF:11BMB-ES{}:ROI3:SizeY'.format(pilatus_Epicsname))
 
-        md_return['ROI4_X_min'] = caget('XF:11BMB-ES{}:ROI4:MinX'.format(pilatus_Epicsname))
-        md_return['ROI4_X_size'] = caget('XF:11BMB-ES{}:ROI4:SizeX'.format(pilatus_Epicsname))
-        md_return['ROI4_Y_min'] = caget('XF:11BMB-ES{}:ROI4:MinY'.format(pilatus_Epicsname))
-        md_return['ROI4_Y_size'] = caget('XF:11BMB-ES{}:ROI4:SizeY'.format(pilatus_Epicsname))
-        
+        # md_return['ROI4_X_min'] = caget('XF:11BMB-ES{}:ROI4:MinX'.format(pilatus_Epicsname))
+        # md_return['ROI4_X_size'] = caget('XF:11BMB-ES{}:ROI4:SizeX'.format(pilatus_Epicsname))
+        # md_return['ROI4_Y_min'] = caget('XF:11BMB-ES{}:ROI4:MinY'.format(pilatus_Epicsname))
+        # md_return['ROI4_Y_size'] = caget('XF:11BMB-ES{}:ROI4:SizeY'.format(pilatus_Epicsname))
+
+        md_return['ROI1_X_min'] = pilatus_name.roi1.min_xyz.get().min_x
+        md_return['ROI1_X_size'] = pilatus_name.roi1.size.get().x
+        md_return['ROI1_Y_min'] = pilatus_name.roi1.min_xyz.get().min_y
+        md_return['ROI1_Y_size'] = pilatus_name.roi1.size.get().y
+
+        md_return['ROI2_X_min'] = pilatus_name.roi2.min_xyz.get().min_x
+        md_return['ROI2_X_size'] = pilatus_name.roi2.size.get().x
+        md_return['ROI2_Y_min'] = pilatus_name.roi2.min_xyz.get().min_y
+        md_return['ROI2_Y_size'] = pilatus_name.roi2.size.get().y
+
+        md_return['ROI3_X_min'] = pilatus_name.roi3.min_xyz.get().min_x
+        md_return['ROI3_X_size'] = pilatus_name.roi3.size.get().x
+        md_return['ROI3_Y_min'] = pilatus_name.roi3.min_xyz.get().min_y
+        md_return['ROI3_Y_size'] = pilatus_name.roi3.size.get().y
+
+        md_return['ROI4_X_min'] = pilatus_name.roi4.min_xyz.get().min_x
+        md_return['ROI4_X_size'] = pilatus_name.roi4.size.get().x
+        md_return['ROI4_Y_min'] = pilatus_name.roi4.min_xyz.get().min_y
+        md_return['ROI4_Y_size'] = pilatus_name.roi4.size.get().y
+
+        # md_return['ROI2_X_min'] = caget('XF:11BMB-ES{}:ROI2:MinX'.format(pilatus_Epicsname))
+        # md_return['ROI2_X_size'] = caget('XF:11BMB-ES{}:ROI2:SizeX'.format(pilatus_Epicsname))
+        # md_return['ROI2_Y_min'] = caget('XF:11BMB-ES{}:ROI2:MinY'.format(pilatus_Epicsname))
+        # md_return['ROI2_Y_size'] = caget('XF:11BMB-ES{}:ROI2:SizeY'.format(pilatus_Epicsname))
+
+        # md_return['ROI3_X_min'] = caget('XF:11BMB-ES{}:ROI3:MinX'.format(pilatus_Epicsname))
+        # md_return['ROI3_X_size'] = caget('XF:11BMB-ES{}:ROI3:SizeX'.format(pilatus_Epicsname))
+        # md_return['ROI3_Y_min'] = caget('XF:11BMB-ES{}:ROI3:MinY'.format(pilatus_Epicsname))
+        # md_return['ROI3_Y_size'] = caget('XF:11BMB-ES{}:ROI3:SizeY'.format(pilatus_Epicsname))
+
+        # md_return['ROI4_X_min'] = caget('XF:11BMB-ES{}:ROI4:MinX'.format(pilatus_Epicsname))
+        # md_return['ROI4_X_size'] = caget('XF:11BMB-ES{}:ROI4:SizeX'.format(pilatus_Epicsname))
+        # md_return['ROI4_Y_min'] = caget('XF:11BMB-ES{}:ROI4:MinY'.format(pilatus_Epicsname))
+        # md_return['ROI4_Y_size'] = caget('XF:11BMB-ES{}:ROI4:SizeY'.format(pilatus_Epicsname))
+
+
         # Include the user-specified metadata
         md_return.update(md)
 
@@ -2854,9 +2890,9 @@ class CMS_Beamline(Beamline):
         md_current['motor_smy'] = smy.user_readback.value
         md_current['motor_sth'] = sth.user_readback.value
 
-        md_current['motor_bsx'] = bsx.user_readback.value
-        md_current['motor_bsy'] = bsy.user_readback.value
-        md_current['motor_bsphi'] = bsphi.user_readback.value
+        # md_current['motor_bsx'] = bsx.user_readback.value
+        # md_current['motor_bsy'] = bsy.user_readback.value
+        # md_current['motor_bsphi'] = bsphi.user_readback.value
         
         # md_current.update(self.SAXS.get_md(prefix='detector_SAXS_'))
         
@@ -3085,7 +3121,9 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
 
         #self.setMonitor(monitor=['stats3', 'stats4'])        
         detselect(pilatus_name, suffix='_stats4_total')
-        caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), 0.1)
+        RE(pilatus_name.setExposureTime(0.5))
+
+        # caput('XF:11BMB-ES{}:cam1:AcquireTime'.format(pilatus_Epicsname), 0.1)
         # caput('XF:11BMB-ES{}:cam1:AcquirePeriod'.format(pilatus_Epicsname), 0.6)
 
 
@@ -4012,8 +4050,10 @@ class CMS_Beamline_XR(CMS_Beamline_GISAXS):
 
     
 #cms = CMS_Beamline()
-# cms = CMS_Beamline_XR()
-cms = CMS_Beamline_GISAXS()
+cms = CMS_Beamline_XR()
+# cms = CMS_Beamline_GISAXS()
+
+#cms_ventSample = cms.vent_sample()
 
 def get_beamline():
     return cms

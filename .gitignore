@@ -96,6 +96,7 @@ docs/_build/
 *.tif
 *.dat
 *.DAT
+*.npy
 
 #generated documntation files
 doc/resource/api/generated/
