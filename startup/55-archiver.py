@@ -24,7 +24,7 @@ class archiver(Device):
         self.PVs_name_default = []
         self.PV_dict_default = dict()
 
-    def setStage(self, stage):
+    def setStage(self, stage='LinkamTensile'):
         if stage == 'LinkamTensile':
             self.PVs_default = ['XF:11BM-ES:{LINKAM}:TEMP', 'XF:11BM-ES:{LINKAM}:TST_MOTOR_POS', 'XF:11BM-ES:{LINKAM}:TST_FORCE','XF:11BM-ES:{LINKAM}:TST_STRESS' ]
             self.PVs_name_default = ['TEMPERATURE', 'DISTANCE', 'FORCE', 'STRESS']

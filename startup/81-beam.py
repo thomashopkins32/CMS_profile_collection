@@ -2082,7 +2082,8 @@ class CMS_Beamline(Beamline):
             self.beam.setTransmission(1e-8)
             
         #mov(bsx, -10.95)
-        bsx.move(self.bsx_pos+5)
+        # bsx.move(self.bsx_pos+5)
+        bsx.move(self.bsx_pos+3)
             
         #detselect(pilatus300, suffix='_stats4_total')
         #caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)

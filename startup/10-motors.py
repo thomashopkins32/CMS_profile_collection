@@ -129,10 +129,13 @@ elif beamline_stage == 'BigHuber':
     sth = EpicsMotor('XF:11BMB-ES{Chm:Smpl3-Ax:theta}Mtr', name='sth')
     schi = EpicsMotor('XF:11BMB-ES{Chm:Smpl3-Ax:chi}Mtr', name='schi')
     
-    # Newports
-    smx = EpicsMotor('XF:11BMB-ES{PTA:Sample-Ax:X}Mtr', name='smx')
-    laserx = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:X}Mtr', name='laserx')
-    lasery = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:Y}Mtr', name='lasery')
+    # # Newports for PTA
+    # smx = EpicsMotor('XF:11BMB-ES{PTA:Sample-Ax:X}Mtr', name='smx')
+    # laserx = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:X}Mtr', name='laserx')
+    # lasery = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:Y}Mtr', name='lasery')
+
+    # # GDoerk's spray coater
+    # smx = EpicsMotor('XF:11BMB-ES{Chm:Smpl2-Ax:X}Mtr', name='smx')
     
     
 # goniometer    
