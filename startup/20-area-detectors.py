@@ -550,9 +550,7 @@ else:
 # if True:
 if Pilatus800_2_on == True:
     # TODO:
-    pilatus8002 = Pilatus8002V33(
-        "XF:11BMB-ES{Det:PIL800K2}:", name="pilatus8002"
-    )  # change PV
+    pilatus8002 = Pilatus8002V33("XF:11BMB-ES{Det:PIL800K2}:", name="pilatus8002")  # change PV
     pilatus8002.tiff.read_attrs = []
     pilatus8002.stats3.total.kind = "hinted"
     pilatus8002.stats4.total.kind = "hinted"

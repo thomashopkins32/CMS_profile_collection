@@ -56,9 +56,7 @@ class archiver(Device):
     def readPVs(self):
         print(self.PV_dict_default)
 
-    def saveArchiver(
-        self, scan_id=None, folder=None, PVs=None, PVs_name=None, plot=True
-    ):
+    def saveArchiver(self, scan_id=None, folder=None, PVs=None, PVs_name=None, plot=True):
         # create the PVs for saving
 
         PV_dict = self.getDict(PVs=PVs, PVs_name=PVs_name)
@@ -66,12 +64,7 @@ class archiver(Device):
         # idenfity the start and end points of the uid
         #
 
-        uid_list = [
-            [
-                h.start["uid"]
-                for h in db(scan_id=scan_id, experimental_directory=folder)
-            ][0]
-        ]
+        uid_list = [[h.start["uid"] for h in db(scan_id=scan_id, experimental_directory=folder)][0]]
 
         pre = 0
         post = 0
@@ -122,9 +115,7 @@ class archiver(Device):
                 plt.xlabel("t$_1$ [s]")  # plt.xlabel('epoch [s]')
 
         if plot:
-            plt.title(
-                "uid: %s  sample: %s" % (md["uid"][:8], md["sample"]), fontsize=14
-            )
+            plt.title("uid: %s  sample: %s" % (md["uid"][:8], md["sample"]), fontsize=14)
             plt.ylim(-2, 1)
             plt.legend(loc="upper left", bbox_to_anchor=(1.2, 0.98))
 

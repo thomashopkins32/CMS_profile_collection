@@ -302,9 +302,7 @@ class LinkamTensile(LinkamThermal):
             print("Mode:      stop.")
 
         else:
-            return print(
-                "Wrong mode. Please choose from 0-velocity, 1-step, 3-force, 4-relax and 5-stop"
-            )
+            return print("Wrong mode. Please choose from 0-velocity, 1-step, 3-force, 4-relax and 5-stop")
 
         return self.mode_setpoint.put(mode)
 
