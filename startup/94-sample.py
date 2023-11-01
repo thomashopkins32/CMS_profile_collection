@@ -3387,7 +3387,7 @@ class Sample_Generic(CoordinateSystem):
         if step <= 10:
             if verbosity >= 5:
                 print("    step 10: measuring")
-            self.measure(**md)
+            self.measure(self.SAXS_time)
 
     def scan_measure(
         self,
