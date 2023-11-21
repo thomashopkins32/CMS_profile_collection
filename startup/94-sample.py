@@ -1468,7 +1468,7 @@ class Sample_Generic(CoordinateSystem):
         if attribute == "temperature_E":
             return self.temperature(temperature_probe="E", verbosity=0)
         if attribute == "humidity":
-            return self.humidity(verbosity=0, AI_chan=8)
+            return self.humidity(verbosity=0, AI_chan=7)
 
         if attribute == "WAXSy":
             return WAXSy.position
@@ -2163,6 +2163,8 @@ class Sample_Generic(CoordinateSystem):
 
             if verbosity >= 3:
                 print("  Data linked as: {}".format(link_name))
+                if not os.path.isfile(os.readlink(link_name)): #added by RL, 20231109
+                    raise ValueError('NO IMAGE OUTPUT.')
 
     def _old_handle_file(self, detector, extra=None, verbosity=3, subdirs=True, linksave=True, **md):
         subdir = ""
@@ -3953,7 +3955,7 @@ class Sample_Generic(CoordinateSystem):
                 current_temperature = -273.15
         return current_temperature
 
-    def humidity(self, AI_chan=4, temperature=25, verbosity=3):
+    def humidity(self, AI_chan=7, temperature=25, verbosity=3):
         return ioL.readRH(AI_chan=AI_chan, temperature=temperature, verbosity=verbosity)
 
     def transmission_data_output(self, slot_pos):

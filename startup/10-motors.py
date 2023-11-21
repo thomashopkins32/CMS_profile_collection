@@ -7,8 +7,8 @@ from ophyd import EpicsMotor, Device, Component as Cpt
 #    top = Cpt(EpicsMotor, '-Ax:T}Mtr')
 #    bottom = Cpt(EpicsMotor, '-Ax:B}Mtr')
 
-beamline_stage = "default"
-# beamline_stage = 'open_MAXS'
+# beamline_stage = "default"
+beamline_stage = 'open_MAXS'
 # beamline_stage = 'BigHuber'
 
 
@@ -142,7 +142,8 @@ elif beamline_stage == "BigHuber":
     # lasery = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:Y}Mtr', name='lasery')
 
     # # GDoerk's spray coater
-    smx = EpicsMotor("XF:11BMB-ES{Chm:Smpl2-Ax:X}Mtr", name="smx")
+    #smx = EpicsMotor("XF:11BMB-ES{Chm:Smpl2-Ax:X}Mtr", name="smx")
+    smx = EpicsMotor('XF:11BMB-ES{ESP:3-Ax:C1}Mtr', name='smx')
 
 
 # goniometer
