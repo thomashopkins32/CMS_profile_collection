@@ -7,10 +7,11 @@ from ophyd import EpicsMotor, Device, Component as Cpt
 #    top = Cpt(EpicsMotor, '-Ax:T}Mtr')
 #    bottom = Cpt(EpicsMotor, '-Ax:B}Mtr')
 
-# beamline_stage = "default"
-beamline_stage = 'open_MAXS'
+beamline_stage = "default"
+# beamline_stage = 'open_MAXS'
 # beamline_stage = 'BigHuber'
 
+print('Beamline_stage = {}'.format(beamline_stage))
 
 # slits = Slits('XF:11BMA-OP{Slt:0', name='slits')
 
@@ -141,9 +142,10 @@ elif beamline_stage == "BigHuber":
     # laserx = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:X}Mtr', name='laserx')
     # lasery = EpicsMotor('XF:11BMB-ES{PTA:Laser-Ax:Y}Mtr', name='lasery')
 
-    # # GDoerk's spray coater
-    #smx = EpicsMotor("XF:11BMB-ES{Chm:Smpl2-Ax:X}Mtr", name="smx")
-    smx = EpicsMotor('XF:11BMB-ES{ESP:3-Ax:C1}Mtr', name='smx')
+    # # # GDoerk's spray coater
+    smx = EpicsMotor("XF:11BMB-ES{Chm:Smpl2-Ax:Y}Mtr", name="smx")
+    # # smx = EpicsMotor('XF:11BMB-ES{ESP:3-Ax:C1}Mtr', name='smx')
+    sprayy = EpicsMotor("XF:11BMB-ES{Chm:Smpl2-Ax:X}Mtr", name="sprayy")
 
 
 # goniometer
@@ -212,18 +214,25 @@ MAXSy = EpicsMotor("XF:11BMB-ES{Det:MAXS-Ax:Y}Mtr", name="MAXSy")
 # bsy = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:Y}Mtr', name='bsy')
 # bsphi = EpicsMotor('XF:11BMB-ES{BS:SAXS-Ax:phi}Mtr', name='bsphi')
 
-# temporary beamstop in spare SmarAct stage
-bsx = EpicsMotor("XF:11BMB-ES{Spare:L-Ax:S}Mtr", name="bsx")
-bsy = EpicsMotor("XF:11BMB-ES{Spare:L-Ax:L}Mtr", name="bsy")
-bsphi = EpicsMotor("XF:11BMB-ES{Spare:L-Ax:M}Mtr", name="bsphi")
+# beamstop in SmarAct MCS2 controller --- MCS11 --01/18/24
+bsx = EpicsMotor("XF:11BMB-ES{BS-Ax:X}Mtr", name="bsx")
+bsy = EpicsMotor("XF:11BMB-ES{BS-Ax:Y}Mtr", name="bsy")
+bsphi = EpicsMotor("XF:11BMB-ES{BS-Ax:Phi}Mtr", name="bsphi")
+
+# bsx = EpicsMotor("XF:11BMB-ES{Spare:L-Ax:S}Mtr", name="bsx")
+# bsy = EpicsMotor("XF:11BMB-ES{Spare:L-Ax:L}Mtr", name="bsy")
+# bsphi = EpicsMotor("XF:11BMB-ES{Spare:L-Ax:M}Mtr", name="bsphi")
 
 ##stage for vacuum gate
 gatex = EpicsMotor("XF:11BMB-ES{Chm:Gate-Ax:X}Mtr", name="gatex")
 
 
 # For MDrive (X, Y, edited by YZ, 20230920)
-mdx = EpicsMotor("XF:11BM-ES{Mdrive-Ax:X}Mtr", name="mdx")
-mdy = EpicsMotor("XF:11BM-ES{Mdrive-Ax:Y}Mtr", name="mdy")
+#mdx = EpicsMotor("XF:11BM-ES{Mdrive-Ax:X}Mtr", name="mdx")
+#mdy = EpicsMotor("XF:11BM-ES{Mdrive-Ax:Y}Mtr", name="mdy")
+
+# mdx = EpicsMotor("XF:11BM-ES{Mdrive-Ax:6}Mtr", name="mdx")
+# mdy = EpicsMotor("XF:11BM-ES{Mdrive-Ax:1}Mtr", name="mdy")
 
 
 ## easy access for stages

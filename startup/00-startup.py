@@ -9,6 +9,9 @@
 # caproto_log.addHandler(handler)
 # logging.getLogger('caproto.ch').setLevel('DEBUG')
 import nslsii
+import redis
+
+from redis_json_dict import RedisJSONDict
 
 nslsii.configure_base(get_ipython().user_ns, "cms", publish_documents_with_kafka=True)
 
@@ -198,7 +201,13 @@ except ImportError:
 runengine_metadata_dir = "/nsls2/data/cms/shared/config/runengine-metadata"
 
 # PersistentDict will create the directory if it does not exist
-RE.md = PersistentDict(runengine_metadata_dir)
+#metadata = PersistentDict(runengine_metadata_dir)
+RE.md = RedisJSONDict(redis.Redis("info.cms.nsls2.bnl.gov"), prefix="")
+#RE.md.update(metadata)
 
-print("a new version of bsui")
-print("sth is happening")
+# print("a new version of bsui")
+# print("sth is happening")
+
+#this replaces RE() <
+from bluesky.utils import register_transform
+register_transform('RE', prefix='<')

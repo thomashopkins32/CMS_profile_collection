@@ -44,10 +44,27 @@ class AOpv(object):
         # self.sp = 'XF:11BMB-ES{}AO:{}-SP'.format('{IO}', ii)
         # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
 
+class AO2pv(object):
+    def __init__(self, ii):
+        self.name = "AO_Chan{}".format(ii)
+        # self.sp = 'XF:11BM-ES{{Ecat:AO{}}}'.format(ii)
+        self.sp = "XF:11BM-ES{{Ecat:AO2}}{}".format(ii)
+        # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
+        self.sts = self.sp
+        self.PV = self.sp
+        self.signal = EpicsSignal(self.PV)
+        # self.name = 'AO_Chan{}'.format(ii)
+        # self.sp = 'XF:11BMB-ES{}AO:{}-SP'.format('{IO}', ii)
+        # self.sts = 'XF:11BMB-ES{}AO:{}-RB'.format('{IO}', ii)
+
 
 AO = [None]
 for ii in range(1, 5):
     AO.append(AOpv(ii))
+
+AO2 = [None]
+for ii in range(1, 5):
+    AO2.append(AO2pv(ii))
 
 
 # PV list of Moxa ioLogik:: AI, Analog Input
@@ -541,6 +558,58 @@ class Chiller(Device):
         return self.ChillerSetpoint.get()
 
 
+class Potentiostats(Device):
+    """An ophyd wrapper for Biologic Potentiostats
+    At CMS, there is only readout and trigger 
+    The control is via the PC directly.
+
+    Channels for 
+        trigger: x2,  in and out
+        voltage: x2,  AI
+        current: x2,  AI
+
+    """
+
+    trigger_in = EpicsSignal("XF:11BM-ES{Ecat:DO1_3}")
+    trigger_out = EpicsSignal("XF:11BM-ES{Ecat:DO1_4}")
+    # cmd = Cpt(EpicsSignal, "TempCtrl")
+    # ChillerSetpoint = Cpt(EpicsSignal, "T-SP")
+
+    # ChillerT = Cpt(EpicsSignalRO, "BathT_RBV")
+
+    def triggerOut(self, verbosity=3):
+        if verbosity>=3:
+            print('Trigger out.')
+        return self.trigger_out.set(1)
+
+    def triggerIn(self, verbosity=3): #may be best for beamline control
+        #wait for trigger coming in
+        if verbosity>=3:
+            print('Trigger in.')
+        return self.trigger_in.set(1)
+
+    def read(self, channel):
+
+        return AI[channel].signal.get()
+
+    def read_voltage(self, channel=1):
+        vol = self.read(channel)
+        if vol>10:
+            return vol - 20 
+        else:
+            return vol
+
+    def read_current(self, channel=2):
+        vol = self.read(channel)
+        if vol>10:
+            return vol - 20
+        else:
+            return vol
+
+    
+
+
+
 prefix = "XF:11BMB-ES{PS:1}"
 SPW = SorrensonPowerSupply(prefix, name="SPW")
 
@@ -548,3 +617,5 @@ chiller = Chiller("XF:11BMB-ES{Chiller}", name="chiller")
 
 ioL = ioLogik()
 MFC = MassFlowControl()
+
+BLP = Potentiostats(name="BLP") #BioLogic Potentiostats

@@ -889,7 +889,7 @@ def fit_scan(
     detector_suffix="",
     exposure_time=0.5,
     toggle_beam=True,
-    fit="HMi",
+    fit=None,
     background=None,
     per_step=None,
     wait_time=None,

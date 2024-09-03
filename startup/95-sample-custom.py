@@ -385,118 +385,421 @@ class SampleGISAXS_Generic(Sample_Generic):
 
             beam.off()
 
-    def align(self, step=0, reflection_angle=0.12, verbosity=3):
-        """Align the sample with respect to the beam. GISAXS alignment involves
+
+    def align(self, step=0, reflection_angle=0.15, verbosity=3):
+        '''Align the sample with respect to the beam. GISAXS alignment involves
         vertical translation to the beam center, and rocking theta to get the
         sample plane parralel to the beam. Finally, the angle is re-optimized
         in reflection mode.
-
+        
         The 'step' argument can optionally be given to jump to a particular
-        step in the sequence."""
+        step in the sequence.'''
+        start_time = time.time()
+        alignment = 'Success'
+        initial_y = smy.position
+        initial_th = sth.position
 
-        if verbosity >= 4:
-            print("  Aligning {}".format(self.name))
+        align_crazy = self.swing(reflection_angle=reflection_angle)
+        crazy_y = smy.position
+        crazy_th = sth.position
+        cms.setDirectBeamROI()
 
-        if step <= 0:
-            # Prepare for alignment
+        if  align_crazy[0] == False:
+            alignment = 'Failed'
+            if step<=4:
+                if verbosity>=4:
+                    print('    align: fitting')
+                
+                fit_scan(smy, 1.2, 21, fit='HMi')
+                ##time.sleep(2)
+                fit_scan(sth, 1.5, 21, fit='max')
+                ##time.sleep(2)            
+                
+            #if step<=5:
+            #    #fit_scan(smy, 0.6, 17, fit='sigmoid_r')
+            #    fit_edge(smy, 0.6, 17)
+            #    fit_scan(sth, 1.2, 21, fit='max')
 
-            if RE.state != "idle":
-                RE.abort()
 
-            if get_beamline().current_mode != "alignment":
-                # if verbosity>=2:
-                # print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
-                print("Switching to alignment mode (current mode is '{}')".format(get_beamline().current_mode))
-                get_beamline().modeAlignment()
+            if step<=8:
+                #fit_scan(smy, 0.3, 21, fit='sigmoid_r')
+                
+                fit_edge(smy, 0.6, 21)
+                #time.sleep(2)
+                #fit_edge(smy, 0.4, 21)
+                fit_scan(sth, 0.8, 21, fit='COM')
+                #time.sleep(2)            
+                self.setOrigin(['y', 'th'])
+        
+        
+            if step<=9 and reflection_angle is not None:
+                # Final alignment using reflected beam
+                if verbosity>=4:
+                    print('    align: reflected beam')
+                get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
+                #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
+                
+                self.thabs(reflection_angle)
+                
+                result = fit_scan(sth, 0.4, 41, fit='max') 
+                #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
+                sth_target = result.values['x_max']-reflection_angle
+                
+                if result.values['y_max']>50:
+                    th_target = self._axes['th'].motor_to_cur(sth_target)
+                    self.thsetOrigin(th_target)
 
+                #fit_scan(smy, 0.2, 21, fit='max')
+                #self.setOrigin(['y'])            
+
+            if step<=10:
+                self.thabs(0.0)
+                beam.off()
+
+        ### save the alignment information
+        align_time = time.time() - start_time
+
+        current_data = {'a_sample': self.name,
+                        'b_quick_alignment': alignment, 
+                        'c_align_time': align_time, 
+                        'd_offset_y': smy.position - initial_y,
+                        'e_offset_th': sth.position - initial_th, 
+                        'f_crazy_offset_y': smy.position - crazy_y,
+                        'g_crazy_offset_th': sth.position - crazy_th, 
+                        'h_search_no': align_crazy[1]}
+        
+        temp_data = pds.DataFrame([current_data])
+
+        INT_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , 'alignment_results.csv')            
+    
+        if os.path.isfile(INT_FILENAME):
+            output_data = pds.read_csv(INT_FILENAME, index_col=0)
+            output_data = pds.concat([output_data, temp_data])    
+            output_data.to_csv(INT_FILENAME)
+        else:
+            temp_data.to_csv(INT_FILENAME)
+
+    def swing(self, step=0, reflection_angle=0.12, ROI_size=[10, 180], th_range=0.3, int_threshold=10, verbosity=3):
+
+        #setting parameters
+        rel_th = 1
+        ct = 0
+        cycle = 0
+        intenisty_threshold = 10
+
+        #re-assure the 3 ROI positon
+        get_beamline().setDirectBeamROI()
+        get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2)
+
+        #set ROI2 as a fixed area
+        get_beamline().setROI2ReflectBeamROI(total_angle=reflection_angle*2, size=ROI_size)
+        pilatus2M.roi2.size.y.set(190)
+        pilatus2M.roi2.min_xyz.min_y.set(852)
+
+
+        #def ROI3 in 160pixels with the center located at reflection beam
+        # get_beamline().setReflectedBeamROI(total_angle = reflection_angle*2, size=ROI_size) #set ROI3
+
+        # self.thabs(reflection_angle)
+        if verbosity>=4:
+            print('  Aligning {}'.format(self.name))
+        
+        # if step<=0:
+        #     # Prepare for alignment
+            
+        #     if RE.state!='idle':
+        #         RE.abort()
+                
+        #     if get_beamline().current_mode!='alignment':
+        #         #if verbosity>=2:
+        #             #print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
+        #         print("Switching to alignment mode (current mode is '{}')".format(get_beamline().current_mode))
+        #         get_beamline().modeAlignment()
+                
+                
             get_beamline().setDirectBeamROI()
-
+            
             beam.on()
 
-        if step <= 2:
-            if verbosity >= 4:
-                print("    align: searching")
-
+        
+        if step<=2:
+            # if verbosity>=4:
+            #     print('    align: searching')
+                
             # Estimate full-beam intensity
             value = None
             if True:
                 # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
                 self.yr(-2)
-                # detector = gs.DETS[0]
+                #detector = gs.DETS[0]
                 detector = get_beamline().detector[0]
-                value_name = get_beamline().TABLE_COLS[0]
+                # value_name = get_beamline().TABLE_COLS[0]
+                beam.on()
                 RE(count([detector]))
-                value = detector.read()[value_name]["value"]
-                self.yr(+2)
+                value = detector.read()['pilatus2M_stats4_total']['value']
+                self.yr(2)
+            
+            # if 'beam_intensity_expected' in RE.md:
+            #     if value<RE.md['beam_intensity_expected']*0.75:
+            #         print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
+                
+            #check the last value:
+            # value=20000
+            ii = 0
+            while abs(pilatus2M.stats4.total.get() - value)/value < 0.1 and ii < 3: 
+                ii += 1
+                # Find the step-edge
+                RE(self.search_plan(motor=smy, step_size=.1, min_step=0.01, target=0.5, intensity=20000, polarity=-1,detector_suffix='_stats4_total'))                
+                # Find the peak
+                # self.thsearch(step_size=0.2, min_step=0.01, target='max', verbosity=verbosity)
+                RE(self.search_plan(motor=sth, step_size=.2, min_step=0.01, target='max',detector_suffix='_stats4_total'))
+            #last check for height
+            # self.ysearch(step_size=0.05, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
+            RE(self.search_plan(motor=smy, step_size=0.05, min_step=0.005, target=0.5, intensity=20000, polarity=-1,detector_suffix='_stats4_total'))
+                   
+        #check reflection beam
+        self.thr(reflection_angle)
+        RE(count([detector]))
+        
+        if abs(detector.stats2.max_xy.get().y - detector.stats2.centroid.get().y) < 20 and detector.stats2.max_value.get() > intenisty_threshold:
 
-            if "beam_intensity_expected" in RE.md:
-                if value < RE.md["beam_intensity_expected"] * 0.75:
-                    print(
-                        "WARNING: Direct beam intensity ({}) lower than it should be ({})".format(
-                            value, RE.md["beam_intensity_expected"]
-                        )
-                    )
+            #continue the fast alignment 
+            print('The reflective beam is found! Continue the fast alignment')
+            
+            while abs(rel_th) > 0.005 and ct < 5:
+            # while detector.roi3.max_value.get() > 50 and ct < 5:
+                
+                #absolute beam position 
+                refl_beam = detector.roi2.min_xyz.min_y.get() + detector.stats2.max_xy.y.get()
 
-            # Find the step-edge
-            self.ysearch(
-                step_size=0.5,
-                min_step=0.005,
-                intensity=value,
-                target=0.5,
-                verbosity=verbosity,
-                polarity=-1,
-            )
+                #roi3 position
+                roi3_beam = detector.roi3.min_xyz.min_y.get() + detector.roi3.size.y.get()/2
 
-            # Find the peak
-            self.thsearch(step_size=0.4, min_step=0.01, target="max", verbosity=verbosity)
+                #distance from current postion to the center of roi2 (the disired rel beam position)
+                # rel_ypos = detector.stats2.max_xy.get().y - detector.stats2.size.get().y
+                rel_ypos = refl_beam - roi3_beam
 
-        if step <= 4:
-            if verbosity >= 4:
-                print("    align: fitting")
+                rel_th = rel_ypos/get_beamline().SAXS.distance/1000*0.172/np.pi*180/2
+                
+                print('The th offset is {}'.format(rel_th))
+                self.thr(rel_th)
+                
+                ct += 1
+                RE(count([detector]))
 
-            fit_scan(smy, 1.2, 21, fit="HMi")
-            ##time.sleep(2)
-            fit_scan(sth, 1.5, 21, fit="max")
-            ##time.sleep(2)
+            if detector.stats3.total.get()>50:
 
-        # if step<=5:
-        #    #fit_scan(smy, 0.6, 17, fit='sigmoid_r')
-        #    fit_edge(smy, 0.6, 17)
-        #    fit_scan(sth, 1.2, 21, fit='max')
+                print('The fast alignment works!')
+                self.thr(-reflection_angle)
 
-        if step <= 8:
-            # fit_scan(smy, 0.3, 21, fit='sigmoid_r')
+    
+                self.setOrigin(['y', 'th'])
 
-            fit_edge(smy, 0.6, 21)
-            # time.sleep(2)
-            # fit_edge(smy, 0.4, 21)
-            fit_scan(sth, 0.8, 21, fit="COM")
-            # time.sleep(2)
-            self.setOrigin(["y", "th"])
+                beam.off()
 
-        if step <= 9 and reflection_angle is not None:
-            # Final alignment using reflected beam
-            if verbosity >= 4:
-                print("    align: reflected beam")
-            get_beamline().setReflectedBeamROI(total_angle=reflection_angle * 2.0)
-            # get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
+                return True, ii
 
-            self.thabs(reflection_angle)
+            else:
+                print('Alignment Error: Cannot Locate the reflection beam')
+                self.thr(-reflection_angle)
+                beam.off()
 
-            result = fit_scan(sth, 0.4, 41, fit="max")
-            # result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
-            sth_target = result.values["x_max"] - reflection_angle
+                return False, ii
 
-            if result.values["y_max"] > 50:
-                th_target = self._axes["th"].motor_to_cur(sth_target)
-                self.thsetOrigin(th_target)
 
-            # fit_scan(smy, 0.2, 21, fit='max')
-            # self.setOrigin(['y'])
+        elif abs(detector.stats2.max_xy.get().y - detector.stats2.centroid.get().y) > 5:
+            print('Max and Centroid dont Match!')
 
-        if step <= 10:
-            self.thabs(0.0)
+            #perform the full alignment
+            print('Alignment Error: No reflection beam is found!')
+            self.thr(-reflection_angle)
             beam.off()
+            return False, ii
+
+        else:
+            print('Intensiy < threshold!')
+
+            #perform the full alignment
+            print('Alignment Error: No reflection beam is found!')
+            self.thr(-reflection_angle)
+            beam.off()
+            return False, ii
+
+    def search_plan(self, motor=smy, step_size=1.0, min_step=0.05, intensity=None, target=0.5, detector=None, detector_suffix=None, polarity=+1, verbosity=3):
+        '''Moves this axis, searching for a target value.
+        
+        Parameters
+        ----------
+        step_size : float
+            The initial step size when moving the axis
+        min_step : float
+            The final (minimum) step size to try
+        intensity : float
+            The expected full-beam intensity readout
+        target : 0.0 to 1.0
+            The target ratio of full-beam intensity; 0.5 searches for half-max.
+            The target can also be 'max' to find a local maximum.
+        detector, detector_suffix
+            The beamline detector (and suffix, such as '_stats4_total') to trigger to measure intensity
+        polarity : +1 or -1
+            Positive motion assumes, e.g. a step-height 'up' (as the axis goes more positive)
+        '''
+        print("HERE!!")
+        
+        if detector is None:
+            #detector = gs.DETS[0]
+            detector = get_beamline().detector[0]
+        if detector_suffix is None:
+            #value_name = gs.TABLE_COLS[0]
+            value_name = get_beamline().TABLE_COLS[0]
+        else:
+            value_name = detector.name + detector_suffix
+
+        print(f"detector={detector}")
+
+        @bpp.stage_decorator([detector])
+        @bpp.run_decorator(md={})
+        def inner_search():
+            nonlocal intensity, target, step_size
+
+            if not get_beamline().beam.is_on():
+                print('WARNING: Experimental shutter is not open.')
+            
+            
+            if intensity is None:
+                intensity = RE.md['beam_intensity_expected']
+
+            # bec.disable_table()
+            
+            
+            # Check current value
+            vv = yield from bps.trigger_and_read([detector, motor])
+            value = vv[value_name]['value']
+            # RE(count([detector]))
+            # value = detector.read()[value_name]['value']
+
+
+            if target == 'max':
+                
+                if verbosity>=5:
+                    print("Performing search on axis '{}' target is 'max'".format(self.name))
+                
+                max_value = value
+                # max_position = self.get_position(verbosity=0)
+                
+                
+                direction = +1*polarity
+                
+                while step_size>=min_step:
+                    if verbosity>=4:
+                        print("        move {} by {} × {}".format(self.name, direction, step_size))
+
+                    #  pos = yield from bps.rd(motor)
+                    yield from bps.mvr(motor, direction*step_size)
+                    # self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
+
+                    prev_value = value
+                    yield from bps.trigger_and_read([detector, motor])
+                    # RE(count([detector]))
+                    
+                    value = detector.read()[value_name]['value']
+                    # if verbosity>=3:
+                    #     print("      {} = {:.3f} {}; value : {}".format(self.name, self.get_position(verbosity=0), self.units, value))
+                        
+                    if value>max_value:
+                        max_value = value
+                        # max_position = self.get_position(verbosity=0)
+                        
+                    if value>prev_value:
+                        # Keep going in this direction...
+                        pass
+                    else:
+                        # Switch directions!
+                        direction *= -1
+                        step_size *= 0.5
+                    
+                    
+            elif target == 'min':
+                
+                if verbosity>=5:
+                    print("Performing search on axis '{}' target is 'min'".format(self.name))
+                
+                direction = +1*polarity
+                
+                while step_size>=min_step:
+                    if verbosity>=4:
+                        print("        move {} by {} × {}".format(self.name, direction, step_size))
+
+                    # pos = yield from bps.rd(motor)
+                    yield from bps.mvr(motor, direction*step_size)
+                    # self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
+
+                    prev_value = value
+                    yield from bps.trigger_and_read([detector, motor])
+                    # RE(count([detector]))
+                    value = detector.read()[value_name]['value']
+                    if verbosity>=3:
+                        print("      {} = {:.3f} {}; value : {}".format(self.name, self.get_position(verbosity=0), self.units, value))
+                        
+                    if value<prev_value:
+                        # Keep going in this direction...
+                        pass
+                    else:
+                        # Switch directions!
+                        direction *= -1
+                        step_size *= 0.5
+                                    
+            else:
+
+                target_rel = target
+                target = target_rel*intensity
+
+                if verbosity>=5:
+                    print("Performing search on axis '{}' target {} × {} = {}".format(self.name, target_rel, intensity, target))
+                if verbosity>=4:
+                    print("      value : {} ({:.1f}%)".format(value, 100.0*value/intensity))
+                
+                
+                # Determine initial motion direction
+                if value>target:
+                    direction = -1*polarity
+                else:
+                    direction = +1*polarity
+                    
+                while step_size>=min_step:
+                    
+                    if verbosity>=4:
+                        print("        move {} by {} × {}".format(self.name, direction, step_size))
+                    
+                    # pos = yield from bps.rd(motor)
+                    yield from bps.mvr(motor, direction*step_size)
+                    # self.move_relative(move_amount=direction*step_size, verbosity=verbosity-2)
+                    
+                    yield from bps.trigger_and_read([detector, motor])
+                    # RE(count([detector]))
+                    value = detector.read()[value_name]['value']
+                    #if verbosity>=3:
+                    #    print("      {} = {:.3f} {}; value : {} ({:.1f}%)".format(self.name, self.get_position(verbosity=0), self.units, value, 100.0*value/intensity))
+                        
+                    # Determine direction
+                    if value>target:
+                        new_direction = -1.0*polarity
+                    else:
+                        new_direction = +1.0*polarity
+                        
+                    if abs(direction-new_direction)<1e-4:
+                        # Same direction as we've been going...
+                        # ...keep moving this way
+                        pass
+                    else:
+                        # Switch directions!
+                        direction *= -1
+                        step_size *= 0.5
+        
+            # bec.enable_table()
+
+        yield from inner_search()
+
 
     def _test_align(self, step=0, reflection_angle=0.12, verbosity=3):
         """Align the sample with respect to the beam. GISAXS alignment involves
@@ -973,7 +1276,7 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
             direct_beam_slot = 6
             slot_pos = 6
 
-        # Energy = 17kev
+        # Energy = 10kev
         if abs(beam.energy(verbosity=1) - 10) < 0.1:
             direct_beam_slot = 5
 
@@ -3048,10 +3351,6 @@ class InstecStage60(CapillaryHolder):
                     ignore_index=True,
                 )
 
-            # while self.IC_int() == False:
-            # print('The beam intensity is lower than it should be. Beam may be lost.')
-            # sleep(120)
-
             if exposure_time > 0:
                 self.measure(exposure_time)
 
@@ -3107,781 +3406,3 @@ class OffCenteredHoder(GIBar):
         """Return the motor position for the requested slot number."""
 
         return +1 * self.x_spacing * (slot - 8)
-
-
-"""#abandoned code
-class SampleXR(SampleGISAXS_Generic):
-
-    ################# Specular reflectivity (XR) measurement by SAXS detector ####################
-
-    def XR_scan(self, scan_type='theta_scan', theta_range=[0,1.6], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None):
-        ''' Run x-ray reflectivity measurement for thin film samples. 
-        Parameters
-        ----------
-        scan_type : list
-            theta_scan: in step of theta
-            q_scan: in step of q
-        theta_range: list 
-            The scanning range. It can be single section or multiple sections with various step_size.
-            Examples:  
-            [0, 1.6] or 
-            [[0, .3],[0.3, 1], [1, 1.6]]                    
-        theta_delta: float or list
-            The scaning step. Examples:
-            0.02    or
-            [0.005, 0.1, 0.2]
-        roi_size: float
-            The szie of ROI1.
-        exposure_time: float
-            The mininum exposure time
-        min_step : float
-            The final (minimum) step size to try
-        intensity : float
-            The expected full-beam intensity readout
-        threshold : float
-            The threshold of minimum intensity. Exposure time increases automatically if < max_exposure_time 
-        max_exposure_time : float
-            The maximum of exposure time to limit the total time.
- 
-        '''
-        #TODO:
-        #if theta_end < theta_start:
-        #    print("The theta_end is larger than theta_start!!!")
-        
-        #disable the besteffortcallback and plot all ROIs
-        #bec.disable_table()
-        cms.modeMeasurement()
-        
-        bec.disable_plots()
-
-        pilatus_name.stats1.total.kind = 'hinted'
-        pilatus_name.stats2.total.kind = 'hinted'
-
-        self.naming_scheme_hold = self.naming_scheme
-        self.naming_scheme = ['name', 'extra', 'x', 'th', 'exposure_time']
-        default_SAXSy = SAXSy.position
-        #initial exposure period
-        #N = 1
-        
-        #move in absorber and move out the beamstop
-        slot_pos = 6
-        beam.setAbsorber(slot_pos)
-        if beam.absorber()[0]>=4:
-            bsx.move(bsx.position+6)
-            beam.setTransmission(1)
-        
-        #create a clean dataframe and a direct beam images
-        self.yr(-2)
-        self.tho()
-        #Energy = 13.5kev
-        if abs(beam.energy(verbosity=1)-13.5) < 0.1:
-            direct_beam_slot = 4
-        #Energy = 17kev
-        if abs(beam.energy(verbosity=1)-17) < 0.1:
-            direct_beam_slot = 5
-            slot_pos = 5
-        beam.setAbsorber(direct_beam_slot)
-        get_beamline().setSpecularReflectivityROI(total_angle=0,size=roi_size,default_SAXSy=-73)
-        self.measure(exposure_time, extra='direct_beam')
-        self.yo()
-        
-        output_data = self.XR_data_output(direct_beam_slot, exposure_time)
-        #output_data = output_data.iloc[0:0]
-
-        #create a data file to save the XRR data
-        if output_file is None:
-            header = db[-1]
-            #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
-            #XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
-            XR_FILENAME='{}/data/{}_{}.csv'.format(header.start['experiment_alias_directory'],header.start['sample_name'], header.get('start').get('scan_id')+1)
-        else:
-            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
-
-        #load theta positions in scan
-        if scan_type == 'theta_scan':
-            #list the sth positions in scan
-            theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
-            
-            #
-            '''
-            if np.size(theta_range) == 2:
-                theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
-            #multiple sections for measurement
-            else: 
-                theta_list=[]
-                if np.shape(theta_range)[0] != np.size(theta_delta):
-                    print("The theta_range does not match theta_delta")
-                    return
-                if np.shape(theta_range)[-1] != 2:
-                    print("The input of theta_range is incorrect.")
-                    return                
-                for number, item in enumerate(theta_range):
-                    theta_list_temp = np.arange(item[0], item[1], theta_delta[number])
-                    theta_list.append(theta_list_temp)
-                theta_list = np.hstack(theta_list)
-            
-            '''
-        elif scan_type == 'qz_scan':
-            if qz_list is not None:
-                qz_list = qz_list
-            else:
-               qz_list = self.qz_list_default
-            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A']/4/np.pi))
-
-       
-        for theta in theta_list:
-
-            self.thabs(theta)
-            #get_beamline().setSpecularReflectivityROI(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
-
-            get_beamline().setSpecularReflectivityROI_update(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
-
-
-            if cms.out_of_beamstop(total_angle=theta*2, size=roi_size):
-                cms.modeMeasurement()       
-                print('=========The beamstop is inserted to block the direct beam.=============')
-            
-            self.measure(exposure_time, extra=extra)
-            temp_data = self.XR_data_output(slot_pos, exposure_time)
-            
-            #initial exposure period
-            N = 1
-            N_last = 1
-            if threshold is not None and type(threshold) == int :
-                    
-                    
-                while temp_data['e_I1'][temp_data.index[-1]] < threshold and N < max_exposure_time:   
-                    if slot_pos > 0:
-                        if temp_data['e_I1'][temp_data.index[-1]] < 10: #The count is too small to evaluate the next slot_pos.
-                            slot_pos = slot_pos - 1
-                        else:
-                           slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
-                           for slot_no in np.arange(5, 0, -1):
-                               if slot_current > beam.absorber_transmission_list[slot_no]:
-                                   slot_pos = slot_no - 1 
-                              
-                        beam.setAbsorber(slot_pos)
-                        print('The absorber is slot {}\n'.format(slot_pos))
-                        print('The theta is {}\n'.format(theta))
-                        self.measure(exposure_time, extra=extra)
-                        temp_data = self.XR_data_output(slot_pos, exposure_time)
-                    else:
-                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time and N_last < max_exposure_time:
-                            N = np.ceil(N_last*threshold/float(temp_data['e_I1'][temp_data.index[-1]]))
-                            print('e_I1={}'.format(float(temp_data['e_I1'][temp_data.index[-1]])))
-                            print('N={}'.format(N))
-                            print('exposure time  = {}'.format(N*exposure_time))
-                        else:  
-                            N = max_exposure_time
-                            print('exposure time is MAX')
-                        print('The absorber is slot {}\n'.format(slot_pos))
-                        print('The theta is {}\n'.format(theta))
-
-
-                        self.measure(N*exposure_time, extra=extra)                        
-                        temp_data = self.XR_data_output(slot_pos, N*exposure_time)
-                        N_last = N
-                        
-            elif len(threshold)>1 and temp_data['e_I1'][temp_data.index[-1]] > threshold[-1]:
-                slot_pos = slot_pos+1
-                print('The absorber is slot {}\n'.format(slot_pos))
-                print('The theta is {}\n'.format(theta))
-                beam.setAbsorber(slot_pos)
-                self.measure(exposure_time, extra=extra)
-                temp_data = self.XR_data_output(slot_pos, exposure_time)
-
-
-            output_data = output_data.append(temp_data, ignore_index=True)    
-            #save to file 
-            output_data.to_csv(XR_FILENAME)
-        
-        #reset the changed items
-        bec.enable_plots()
-        #bec.enable_table()
-        self.naming_scheme = self.naming_scheme_hold
-        #remove the absorber completely out of the beam
-        beam.absorber_out()
-
-        pilatus_name.stats3.total.kind = 'hinted'
-        pilatus_name.stats4.total.kind = 'hinted'
-        
-        SAXSy.move(default_SAXSy)
-
-    def XR_abort(self):        
-        '''Reset the beamline status back to origin before XRR measurement.
-        '''        
-        beam.off()        
-        cms.modeMeasurement()
-        beam.setAbsorber(0)
-        #remove the absorber completely out of the beam
-        beam.absorber_out()
-        
-        self.xo()
-        self.yo()
-        self.tho()
-
-        bec.enable_plots()
-        bec.enable_table()
-        pilatus_name.hints = {'fields': ['pilatus2M_stats3_total', 'pilatus2M_stats4_total']}
-
-        
-    def XR_data_output(self, slot_pos, exposure_time):
-        '''XRR data output in DataFrame format, including: 
-                        'a_qz': qz,                  #qz
-                        'b_th':sth_pos,              #incident angle 
-                        'c_scanID': scan_id,         #scan ID
-                        'd_I0': I0,                  #bim5 flux
-                        'e_I1': I1,                  #ROI1
-                        'f_I2': I2,                  #ROI2
-                        'g_I3': I3,                  #2*ROI1-ROI2
-                        'h_In': In,                  #reflectivity
-                        'i_absorber_slot': slot_pos, #absorption slot No.
-                        'j_exposure_seconds': exposure_time}   #exposure time
-        '''
-        
-        h = db[-1]
-        dtable = h.table()
-        
-        #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
-
-        #Energy = 13.5kev
-        if abs(beam.energy(verbosity=1)-13.5) < 0.1:        
-            beam.absorber_transmission_list = beam.absorber_transmission_list_13p5kev
-
-        #Energy = 17kev
-        elif abs(beam.energy(verbosity=1)-17) < 0.1:        
-            beam.absorber_transmission_list = beam.absorber_transmission_list_17kev
-        
-        else: 
-            print("The absorber has not been calibrated under current Energy!!!")
-            
-            
-        sth_pos = h.start['sample_th']
-        qz = 4*np.pi*np.sin(np.deg2rad(sth_pos))/h.start['calibration_wavelength_A']
-        scan_id = h.start['scan_id']     
-        I0 = h.start['beam_int_bim5']  #beam intensity from bim5
-        I1 = dtable.pilatus2M_stats1_total
-        I2 = dtable.pilatus2M_stats2_total
-        I3 = 2*dtable.pilatus2M_stats1_total - dtable.pilatus2M_stats2_total
-        In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
-
-        current_data = {'a_qz': qz,                  #qz
-                        'b_th':sth_pos,              #incident angle 
-                        'c_scanID': scan_id,         #scan ID
-                        'd_I0': I0,                  #bim5 flux
-                        'e_I1': I1,                  #ROI1
-                        'f_I2': I2,                  #ROI2
-                        'g_I3': I3,                  #2*ROI1-ROI2
-                        'h_In': In,                  #reflectivity
-                        'i_absorber_slot': slot_pos, #absorption slot No.
-                        'j_exposure_seconds': exposure_time}   #exposure time
-
-        return pds.DataFrame(data=current_data)
-        
-    def XR_align(self, step=0, reflection_angle=0.15, verbosity=3):
-        '''Specific alignment for XRR
-        
-        Align the sample with respect to the beam. XR alignment involves
-        vertical translation to the beam center, and rocking theta to get the
-        sample plane parralel to the beam. Finally, the angle is re-optimized
-        in reflection mode.
-        
-        The 'step' argument can optionally be given to jump to a particular
-        step in the sequence.'''
-
-        cms.modeAlignment()
-
-        if verbosity>=4:
-            print('  Aligning {}'.format(self.name))
-        
-        if step<=0:
-            # Prepare for alignment
-            cms.modeAlignment()
-            if RE.state!='idle':
-                RE.abort()
-            if get_beamline().current_mode!='alignment':
-                if verbosity>=2:
-                    print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
-                #get_beamline().modeAlignment()
-            get_beamline().setDirectBeamROI()
-            beam.on()
-        
-        if step<=2:
-            if verbosity>=4:
-                print('    align: searching')
-                
-            # Estimate full-beam intensity
-            value = None
-            if True:
-                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
-                self.yr(-2)
-                #detector = gs.DETS[0]
-                detector = get_beamline().detector[0]
-                value_name = get_beamline().TABLE_COLS[0]
-                RE(count([detector]))
-                value = detector.read()[value_name]['value']
-                self.yr(+2)
-            
-            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
-                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
-                
-            # Find the step-edge
-            self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
-            
-            # Find the peak
-            self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
-        
-        
-        if step<=4:
-            if verbosity>=4:
-                print('    align: fitting')
-            
-            fit_scan(smy, 1.2, 21, fit='HMi')
-            #time.sleep(2)
-            fit_scan(sth, 1.5, 21, fit='max')
-            #time.sleep(2)            
-            
-        if step<=8:
-            
-            #fit_scan(smy, 0.6, 21, fit='sigmoid_r')
-            
-            fit_edge(smy, 0.6, 21)
-            #time.sleep(2)
-            #fit_edge(smy, 0.4, 21)
-            fit_scan(sth, 0.8, 21, fit='COM')
-            #time.sleep(2)            
-            self.setOrigin(['y', 'th'])
-        
-        
-        if step<=9 and reflection_angle is not None:
-            # Final alignment using reflected beam
-            if verbosity>=4:
-                print('    align: reflected beam')
-                
-            if abs(beam.energy(verbosity)-17)<0.1:
-                reflection_angle = 0.15
-
-            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
-            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
-            
-            self.thabs(reflection_angle)
-            
-            result = fit_scan(sth, 0.1, 41, fit='max') 
-            #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
-            sth_target = result.values['x_max']-reflection_angle
-            
-            if result.values['y_max']>50:
-                th_target = self._axes['th'].motor_to_cur(sth_target)
-                self.thsetOrigin(th_target)
-
-            #fit_scan(smy, 0.2, 21, fit='max')
-            #self.setOrigin(['y'])            
-
-        if step<=10:
-            self.thabs(0.0)
-            beam.off()
-
-    def XR_check_alignment(self, int_angle=1, exposure_time=1, roi_size=[12, 30]):
-        ''' Check the alignment of the XR.
-        The total_angle is the incident angle. 
-        The reflection spot should be located in the center of ROI2'''
-        cms.modeMeasurement()
-        cms.setSpecularReflectivityROI(total_angle=int_angle*2, size=roi_size,  default_SAXSy=-73)                    
-        #sam.xo()
-        sam.yo()
-        sam.thabs(int_angle)
-        sam.measure(exposure_time)
-        print('===========sam.th moves to {}deg and ROI1 is set at {}deg. ============'.format(int_angle, int_angle*2))
-        print('======Please check the ROI whether at the reflected position. =======')
-        print('========If not, modify sam.th or schi to meet the reflected beam. ===========')
-
-#test code for pilatus800 
-class SampleXR_test(SampleGISAXS_Generic):
-
-    ################# Specular reflectivity (XR) measurement ####################
-
-    def XR_scan(self, scan_type='theta_scan', theta_range=[0,1.6], theta_delta=0.1, qz_list=None, roi_size=[12,30], exposure_time=1, threshold=20000, max_exposure_time=10, extra='XR_scan', output_file=None):
-        ''' Run x-ray reflectivity measurement for thin film samples. 
-        Parameters
-        ----------
-        scan_type : list
-            theta_scan: in step of theta
-            q_scan: in step of q
-        theta_range: list 
-            The scanning range. It can be single section or multiple sections with various step_size.
-            Examples:  
-            [0, 1.6] or 
-            [[0, .3],[0.3, 1], [1, 1.6]]                    
-        theta_delta: float or list
-            The scaning step. Examples:
-            0.02    or
-            [0.005, 0.1, 0.2]
-        roi_size: float
-            The szie of ROI1.
-        exposure_time: float
-            The mininum exposure time
-        min_step : float
-            The final (minimum) step size to try
-        intensity : float
-            The expected full-beam intensity readout
-        threshold : float
-            The threshold of minimum intensity. Exposure time increases automatically if < max_exposure_time 
-        max_exposure_time : float
-            The maximum of exposure time to limit the total time.
- 
-        '''
-        #TODO:
-        #if theta_end < theta_start:
-        #    print("The theta_end is larger than theta_start!!!")
-        
-        #disable the besteffortcallback and plot all ROIs
-        #bec.disable_table()
-        cms.modeXRMeasurement()
-        
-        bec.disable_plots()
-
-        pilatus_name.stats1.total.kind = 'hinted'
-        pilatus_name.stats2.total.kind = 'hinted'
-
-        self.naming_scheme_hold = self.naming_scheme
-        self.naming_scheme = ['name', 'extra', 'th', 'exposure_time']
-        default_SAXSy = SAXSy.position
-        #initial exposure period
-        #N = 1
-        
-        #move in absorber and move out the beamstop
-        slot_pos = 6
-        beam.setAbsorber(slot_pos)
-        if beam.absorber()[0]>=4:
-            bsx.move(bsx.position+6)
-            beam.setTransmission(1)
-        
-        #create a clean dataframe and a direct beam images
-        self.yr(-2)
-        self.tho()
-        #Energy = 13.5kev
-        if abs(beam.energy(verbosity=1)-13.5) < 0.1:
-            direct_beam_slot = 4
-        #Energy = 17kev
-        if abs(beam.energy(verbosity=1)-17) < 0.1:
-            direct_beam_slot = 5
-            slot_pos = 5
-        beam.setAbsorber(direct_beam_slot)
-        get_beamline().setSpecularReflectivityROI(total_angle=0,size=roi_size,default_SAXSy=-73)
-        self.measure(exposure_time, extra='direct_beam')
-        self.yo()
-        
-        output_data = self.XR_data_output(direct_beam_slot, exposure_time)
-        #output_data = output_data.iloc[0:0]
-
-        #create a data file to save the XRR data
-        if output_file is None:
-            header = db[-1]
-            #XR_FILENAME='{}/data/{}.csv'.format(os.path.dirname(__file__) , header.get('start').get('scan_id')+1)
-            #XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], header.get('start').get('scan_id')+1)
-            #XR_FILENAME='{}/data/{}_{}.csv'.format(header.start['experiment_alias_directory'],header.start['sample_name'], header.get('start').get('scan_id')+1)
-            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'],md['filename'])
-            
-        else:
-            XR_FILENAME='{}/data/{}.csv'.format(header.start['experiment_alias_directory'], output_file)            
-
-        #load theta positions in scan
-        if scan_type == 'theta_scan':
-            #list the sth positions in scan
-            theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
-            
-            #
-            '''
-            if np.size(theta_range) == 2:
-                theta_list=np.arange(theta_range[0], theta_range[1], theta_delta)
-            #multiple sections for measurement
-            else: 
-                theta_list=[]
-                if np.shape(theta_range)[0] != np.size(theta_delta):
-                    print("The theta_range does not match theta_delta")
-                    return
-                if np.shape(theta_range)[-1] != 2:
-                    print("The input of theta_range is incorrect.")
-                    return                
-                for number, item in enumerate(theta_range):
-                    theta_list_temp = np.arange(item[0], item[1], theta_delta[number])
-                    theta_list.append(theta_list_temp)
-                theta_list = np.hstack(theta_list)
-            
-            '''
-        elif scan_type == 'qz_scan':
-            if qz_list is not None:
-                qz_list = qz_list
-            else:
-               qz_list = self.qz_list_default
-            theta_list = np.rad2deg(np.arcsin(qz_list * header.start['calibration_wavelength_A']/4/np.pi))
-
-       
-        for theta in theta_list:
-
-            self.thabs(theta)
-            #get_beamline().setSpecularReflectivityROI(total_angle=theta*2,size=roi_size,default_SAXSy=-73)
-
-            get_beamline().setSpecularReflectivityROI_update(total_angle=theta*2,size=roi_size,default_WAXSy=-73)
-
-
-            if cms.beamOutXR(total_angle=theta*2, size=roi_size):
-                
-                
-                
-                cms.modeXRMeasurement()       
-                print('=========The beamstop is inserted to block the direct beam.=============')
-            
-            self.measure(exposure_time, extra=extra)
-            temp_data = self.XR_data_output(slot_pos, exposure_time)
-            
-            #initial exposure period
-            N = 1
-            N_last = 1
-            if threshold is not None and type(threshold) == int :
-                    
-                    
-                while temp_data['e_I1'][temp_data.index[-1]] < threshold and N < max_exposure_time:   
-                    if slot_pos > 0:
-                        if temp_data['e_I1'][temp_data.index[-1]] < 10: #The count is too small to evaluate the next slot_pos.
-                            slot_pos = slot_pos - 1
-                        else:
-                           slot_current = beam.absorber_transmission_list[slot_pos]*threshold/temp_data['e_I1'][temp_data.index[-1]]
-                           for slot_no in np.arange(5, 0, -1):
-                               if slot_current > beam.absorber_transmission_list[slot_no]:
-                                   slot_pos = slot_no - 1 
-                              
-                        beam.setAbsorber(slot_pos)
-                        print('The absorber is slot {}\n'.format(slot_pos))
-                        print('The theta is {}\n'.format(theta))
-                        self.measure(exposure_time, extra=extra)
-                        temp_data = self.XR_data_output(slot_pos, exposure_time)
-                    else:
-                        if threshold/float(temp_data['e_I1'][temp_data.index[-1]]) < max_exposure_time and N_last < max_exposure_time:
-                            N = np.ceil(N_last*threshold/float(temp_data['e_I1'][temp_data.index[-1]]))
-                            print('e_I1={}'.format(float(temp_data['e_I1'][temp_data.index[-1]])))
-                            print('N={}'.format(N))
-                            print('exposure time  = {}'.format(N*exposure_time))
-                        else:  
-                            N = max_exposure_time
-                            print('exposure time is MAX')
-                        print('The absorber is slot {}\n'.format(slot_pos))
-                        print('The theta is {}\n'.format(theta))
-
-
-                        self.measure(N*exposure_time, extra=extra)                        
-                        temp_data = self.XR_data_output(slot_pos, N*exposure_time)
-                        N_last = N
-                        
-            elif len(threshold)>1 and temp_data['e_I1'][temp_data.index[-1]] > threshold[-1]:
-                slot_pos = slot_pos+1
-                print('The absorber is slot {}\n'.format(slot_pos))
-                print('The theta is {}\n'.format(theta))
-                beam.setAbsorber(slot_pos)
-                self.measure(exposure_time, extra=extra)
-                temp_data = self.XR_data_output(slot_pos, exposure_time)
-
-
-            output_data = output_data.append(temp_data, ignore_index=True)    
-            #save to file 
-            output_data.to_csv(XR_FILENAME)
-        
-        #reset the changed items
-        bec.enable_plots()
-        #bec.enable_table()
-        self.naming_scheme = self.naming_scheme_hold
-        #remove the absorber completely out of the beam
-        beam.absorber_out()
-
-        pilatus_name.stats3.total.kind = 'hinted'
-        pilatus_name.stats4.total.kind = 'hinted'
-        
-        SAXSy.move(default_SAXSy)
-
-    def XR_abort(self):        
-        '''Reset the beamline status back to origin before XRR measurement.
-        '''        
-        beam.off()        
-        cms.modeXRMeasurement()
-        beam.setAbsorber(0)
-        #remove the absorber completely out of the beam
-        beam.absorber_out()
-        
-        self.xo()
-        self.yo()
-        self.tho()
-
-        bec.enable_plots()
-        bec.enable_table()
-        pilatus_name.hints = {'fields': ['pilatus800_stats3_total', 'pilatus800_stats4_total']}
-
-        
-    def XR_data_output(self, slot_pos, exposure_time):
-        '''XRR data output in DataFrame format, including: 
-                        'a_qz': qz,                  #qz
-                        'b_th':sth_pos,              #incident angle 
-                        'c_scanID': scan_id,         #scan ID
-                        'd_I0': I0,                  #bim5 flux
-                        'e_I1': I1,                  #ROI1
-                        'f_I2': I2,                  #ROI2
-                        'g_I3': I3,                  #2*ROI1-ROI2
-                        'h_In': In,                  #reflectivity
-                        'i_absorber_slot': slot_pos, #absorption slot No.
-                        'j_exposure_seconds': exposure_time}   #exposure time
-        '''
-        
-        h = db[-1]
-        dtable = h.table()
-        
-        #beam.absorber_transmission_list = [1, 0.041, 0.0017425, 0.00007301075, 0.00000287662355, 0.000000122831826, 0.00000000513437]
-
-        #Energy = 13.5kev
-        if abs(beam.energy(verbosity=1)-13.5) < 0.1:        
-            beam.absorber_transmission_list = beam.absorber_transmission_list_13p5kev
-
-        #Energy = 17kev
-        elif abs(beam.energy(verbosity=1)-17) < 0.1:        
-            beam.absorber_transmission_list = beam.absorber_transmission_list_17kev
-        
-        else: 
-            print("The absorber has not been calibrated under current Energy!!!")
-            
-            
-        sth_pos = h.start['sample_th']
-        qz = 4*np.pi*np.sin(np.deg2rad(sth_pos))/h.start['calibration_wavelength_A']
-        scan_id = h.start['scan_id']     
-        I0 = h.start['beam_int_bim5']  #beam intensity from bim5
-        I1 = dtable.pilatus800_stats1_total
-        I2 = dtable.pilatus800_stats2_total
-        I3 = 2*dtable.pilatus800_stats1_total - dtable.pilatus800_stats2_total
-        In = I3 / beam.absorber_transmission_list[slot_pos] / exposure_time
-
-        current_data = {'a_qz': qz,                  #qz
-                        'b_th':sth_pos,              #incident angle 
-                        'c_scanID': scan_id,         #scan ID
-                        'd_I0': I0,                  #bim5 flux
-                        'e_I1': I1,                  #ROI1
-                        'f_I2': I2,                  #ROI2
-                        'g_I3': I3,                  #2*ROI1-ROI2
-                        'h_In': In,                  #reflectivity
-                        'i_absorber_slot': slot_pos, #absorption slot No.
-                        'j_exposure_seconds': exposure_time}   #exposure time
-
-        return pds.DataFrame(data=current_data)
-        
-    def XR_align(self, step=0, reflection_angle=0.15, verbosity=3):
-        '''Specific alignment for XRR
-        
-        Align the sample with respect to the beam. XR alignment involves
-        vertical translation to the beam center, and rocking theta to get the
-        sample plane parralel to the beam. Finally, the angle is re-optimized
-        in reflection mode.
-        
-        The 'step' argument can optionally be given to jump to a particular
-        step in the sequence.'''
-
-        cms.modeAlignment()
-
-        if verbosity>=4:
-            print('  Aligning {}'.format(self.name))
-        
-        if step<=0:
-            # Prepare for alignment
-            cms.modeAlignment()
-            if RE.state!='idle':
-                RE.abort()
-            if get_beamline().current_mode!='alignment':
-                if verbosity>=2:
-                    print("WARNING: Beamline is not in alignment mode (mode is '{}')".format(get_beamline().current_mode))
-                #get_beamline().modeAlignment()
-            get_beamline().setDirectBeamROI()
-            beam.on()
-        
-        if step<=2:
-            if verbosity>=4:
-                print('    align: searching')
-                
-            # Estimate full-beam intensity
-            value = None
-            if True:
-                # You can eliminate this, in which case RE.md['beam_intensity_expected'] is used by default
-                self.yr(-2)
-                #detector = gs.DETS[0]
-                detector = get_beamline().detector[0]
-                value_name = get_beamline().TABLE_COLS[0]
-                RE(count([detector]))
-                value = detector.read()[value_name]['value']
-                self.yr(+2)
-            
-            if 'beam_intensity_expected' in RE.md and value<RE.md['beam_intensity_expected']*0.75:
-                print('WARNING: Direct beam intensity ({}) lower than it should be ({})'.format(value, RE.md['beam_intensity_expected']))
-                
-            # Find the step-edge
-            self.ysearch(step_size=0.5, min_step=0.005, intensity=value, target=0.5, verbosity=verbosity, polarity=-1)
-            
-            # Find the peak
-            self.thsearch(step_size=0.4, min_step=0.01, target='max', verbosity=verbosity)
-        
-        
-        if step<=4:
-            if verbosity>=4:
-                print('    align: fitting')
-            
-            fit_scan(smy, 1.2, 21, fit='HMi')
-            #time.sleep(2)
-            fit_scan(sth, 1.5, 21, fit='max')
-            #time.sleep(2)            
-            
-        if step<=8:
-            
-            #fit_scan(smy, 0.6, 21, fit='sigmoid_r')
-            
-            fit_edge(smy, 0.6, 21)
-            #time.sleep(2)
-            #fit_edge(smy, 0.4, 21)
-            fit_scan(sth, 0.8, 21, fit='COM')
-            #time.sleep(2)            
-            self.setOrigin(['y', 'th'])
-        
-        
-        if step<=9 and reflection_angle is not None:
-            # Final alignment using reflected beam
-            if verbosity>=4:
-                print('    align: reflected beam')
-                
-            if abs(beam.energy(verbosity)-17)<0.1:
-                reflection_angle = 0.15
-
-            get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0)
-            #get_beamline().setReflectedBeamROI(total_angle=reflection_angle*2.0, size=[12,2])
-            
-            self.thabs(reflection_angle)
-            
-            result = fit_scan(sth, 0.1, 41, fit='max') 
-            #result = fit_scan(sth, 0.2, 81, fit='max') #it's useful for alignment of SmarAct stage
-            sth_target = result.values['x_max']-reflection_angle
-            
-            if result.values['y_max']>50:
-                th_target = self._axes['th'].motor_to_cur(sth_target)
-                self.thsetOrigin(th_target)
-
-            #fit_scan(smy, 0.2, 21, fit='max')
-            #self.setOrigin(['y'])            
-
-        if step<=10:
-            self.thabs(0.0)
-            beam.off()
-
-    def XR_check_alignment(self, int_angle=1, exposure_time=1, roi_size=[12, 30]):
-        ''' Check the alignment of the XR.
-        The total_angle is the incident angle. 
-        The reflection spot should be located in the center of ROI2'''
-        cms.modeXRMeasurement()
-        #cms.setXRROI(total_angle=int_angle*2, size=roi_size, default_WAXSy=-73)                    
-        self.yo()
-        self.thabs(int_angle)
-        self.measure(exposure_time)
-        print('===========sam.th moves to {}deg and ROI1 is set at {}deg. ============'.format(int_angle, int_angle*2))
-        print('======Please check the ROI whether at the reflected position. =======')
-        print('========If not, modify sam.th or schi to meet the reflected beam. ===========')
-"""  # abandoned code

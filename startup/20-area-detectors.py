@@ -25,6 +25,9 @@ from ophyd import Component as Cpt, Signal
 from ophyd.utils import set_and_wait
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 
+from ophyd.areadetector.filestore_mixins import FileStoreHDF5IterativeWrite
+from ophyd.areadetector.plugins import HDF5Plugin #,register_plugin,PluginBase
+
 # import filestore.api as fs
 
 
@@ -46,13 +49,18 @@ elif beamline_stage == "default":
     Pilatus800_2_on = False
 
 # Pilatus800_on = True
-# Pilatus800_2_on = False
 Pilatus800_2_on = True
+# Pilatus800_2_on = False
+
+''' H5Plugin = HDF5Plugin  ''' 
+
 
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     pass
 
+class HDF5PluginWithFileStore(HDF5Plugin, FileStoreHDF5IterativeWrite):
+    pass
 
 class ProsilicaDetectorCamV33(ProsilicaDetectorCam):
     """This is used to update the standard prosilica to AD33."""
@@ -359,6 +367,55 @@ class Pilatus2MV33(SingleTriggerV33, PilatusDetector):
         root="/nsls2/data/cms/legacy/xf11bm",
     )
     # root='/')
+    def setExposureTime(self, exposure_time, verbosity=3):
+        yield from mv(
+            self.cam.acquire_time,
+            exposure_time,
+            # self.cam.acquire_period,
+            # exposure_time + 0.1,
+        )    
+
+    def setExposurePeriod(self, exposure_period, verbosity=3):
+        yield from mv(self.cam.acquire_period, exposure_period)
+
+    def setExposureNumber(self, exposure_number, verbosity=3):
+        yield from mv(self.cam.num_images, exposure_number)
+
+class Pilatus2MV33_h5(SingleTriggerV33, PilatusDetector):
+    cam = Cpt(PilatusDetectorCamV33, "cam1:")
+    image = Cpt(ImagePlugin, "image1:")
+    stats1 = Cpt(StatsPluginV33, "Stats1:")
+    stats2 = Cpt(StatsPluginV33, "Stats2:")
+    stats3 = Cpt(StatsPluginV33, "Stats3:")
+    stats4 = Cpt(StatsPluginV33, "Stats4:")
+    stats5 = Cpt(StatsPluginV33, "Stats5:")
+    roi1 = Cpt(ROIPlugin, "ROI1:")
+    roi2 = Cpt(ROIPlugin, "ROI2:")
+    roi3 = Cpt(ROIPlugin, "ROI3:")
+    roi4 = Cpt(ROIPlugin, "ROI4:")
+    proc1 = Cpt(ProcessPlugin, "Proc1:")
+    trans1 = Cpt(TransformPlugin, "Trans1:")
+
+    # tiff = Cpt(
+    #     TIFFPluginWithFileStore,
+    #     suffix="TIFF1:",
+    #     #    write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',     # GPFS client
+    #     # write_path_template='/Pilatus2M/%Y/%m/%d/',                 # NSF-mount of GPFS directory
+    #     #    root='/nsls2/xf11bm'
+    #     write_path_template="/nsls2/data/cms/legacy/xf11bm/Pilatus2M/%Y/%m/%d/",  # Lustre client
+    #     root="/nsls2/data/cms/legacy/xf11bm",
+    # )
+
+    h5 = Cpt(
+        HDF5PluginWithFileStore,
+        suffix="HDF1:",
+        #    write_path_template='/nsls2/xf11bm/Pilatus2M/%Y/%m/%d/',     # GPFS client
+        # write_path_template='/Pilatus2M/%Y/%m/%d/',                 # NSF-mount of GPFS directory
+        #    root='/nsls2/xf11bm'
+        write_path_template="/nsls2/data/cms/legacy/xf11bm/Pilatus2M/%Y/%m/%d/",  # Lustre client
+        root="/nsls2/data/cms/legacy/xf11bm",
+    )
+
 
     def setExposureTime(self, exposure_time, verbosity=3):
         yield from mv(
@@ -596,6 +653,7 @@ else:
 if Pilatus2M_on == True:
     pilatus2M = Pilatus2MV33("XF:11BMB-ES{Det:PIL2M}:", name="pilatus2M")
     pilatus2M.tiff.read_attrs = []
+
     STATS_NAMES2M = ["stats1", "stats2", "stats3", "stats4"]
     pilatus2M.read_attrs = ["tiff"] + STATS_NAMES2M
     for stats_name in STATS_NAMES2M:
@@ -629,6 +687,48 @@ if Pilatus2M_on == True:
     for item in pilatus2M.tiff.configuration_attrs:
         item_check = getattr(pilatus2M.tiff, item)
         item_check.kind = "omitted"
+
+    for item in pilatus2M.cam.configuration_attrs:
+        item_check = getattr(pilatus2M.cam, item)
+        item_check.kind = "omitted"
+elif True: 
+
+    pilatus2M = Pilatus2MV33_h5("XF:11BMB-ES{Det:PIL2M}:", name="pilatus2M")
+    pilatus2M.h5.read_attrs = []
+
+    STATS_NAMES2M = ["stats1", "stats2", "stats3", "stats4"]
+    pilatus2M.read_attrs = ["h5"] + STATS_NAMES2M
+    for stats_name in STATS_NAMES2M:
+        stats_plugin = getattr(pilatus2M, stats_name)
+        stats_plugin.read_attrs = ["total"]
+    pilatus2M.cam.ensure_nonblocking()
+    pilatus2M.h5.ensure_blocking()
+    pilatus2M.stats3.total.kind = "hinted"
+    pilatus2M.stats4.total.kind = "hinted"
+
+    for item in pilatus2M.stats1.configuration_attrs:
+        item_check = getattr(pilatus2M.stats1, item)
+        item_check.kind = "omitted"
+
+    for item in pilatus2M.stats2.configuration_attrs:
+        item_check = getattr(pilatus2M.stats2, item)
+        item_check.kind = "omitted"
+
+    for item in pilatus2M.stats3.configuration_attrs:
+        item_check = getattr(pilatus2M.stats3, item)
+        item_check.kind = "omitted"
+
+    for item in pilatus2M.stats4.configuration_attrs:
+        item_check = getattr(pilatus2M.stats4, item)
+        item_check.kind = "omitted"
+
+    for item in pilatus2M.stats5.configuration_attrs:
+        item_check = getattr(pilatus2M.stats5, item)
+        item_check.kind = "omitted"
+
+    # for item in pilatus2M.tiff.configuration_attrs:
+    #     item_check = getattr(pilatus2M.tiff, item)
+    #     item_check.kind = "omitted"
 
     for item in pilatus2M.cam.configuration_attrs:
         item_check = getattr(pilatus2M.cam, item)

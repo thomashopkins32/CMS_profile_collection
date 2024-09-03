@@ -940,7 +940,7 @@ class CMSBeam(object):
         # define the original position of aborber (6 Nb foils for XRR)
         # the position is defined in 'config_update'. This position is a good reference.
         # armr_absorber_o = the center of the first edge
-        self.armr_absorber_o = 1.3 - 3
+        self.armr_absorber_o = 1.3 - 3   #it's on the edge of the attenuator slot 1
         self.armr_absorber_out = -55.1
         self.absorber_transmission_list_13p5kev = [
             1,
@@ -998,7 +998,10 @@ class CMSBeam(object):
 
         self.bim3 = IonChamber_CMS(beam=self)
         self.bim4 = Scintillator_CMS()
-        self.beam_defining_slit = s4
+        if beamline_stage == "default":
+            self.beam_defining_slit = s4
+        else:
+            self.beam_defining_slit = s2
         self.bim5 = DiamondDiode_CMS()
         self.bim6 = PointDiode_CMS()
 
@@ -1051,6 +1054,7 @@ class CMSBeam(object):
 
     # Monochromator
     ########################################
+
 
     def energy(self, verbosity=3):
         """
@@ -1151,6 +1155,7 @@ class CMSBeam(object):
     # Slits
     ########################################
 
+
     def size(self, verbosity=3):
         """
         Returns the current beam size (rough estimate).
@@ -1242,6 +1247,69 @@ class CMSBeam(object):
             if verbosity >= 3:
                 print("Changing vertical divergence from {:.3f} mrad to {:.3f} mrad.".format(v, vertical))
             caput("FE:C11B-OP{Slt:12-Ax:Y}size", vertical_mm)
+
+    def S2size(self, verbosity=3):
+        """
+        Returns the current beam size (rough estimate).
+        The return is (size_horizontal, size_vertical) (in mm).
+        """
+        size_h = s2.xg.user_readback.value
+        size_v = s2.yg.user_readback.value
+
+        if verbosity >= 3:
+            print("Beam size:")
+            print(" S2 horizontal = {:.3f} mm".format(size_h))
+            print(" S2 vertical   = {:.3f} mm".format(size_v))
+
+        return size_h, size_v
+
+    def setS2Size(self, horizontal, vertical, verbosity=3):
+        """
+        Sets the beam size.
+        """
+
+        h, v = self.size(verbosity=0)
+
+        if verbosity >= 3:
+            print("Changing horizontal beam size from {:.3f} mm to {:.3f} mm".format(h, horizontal))
+        s2.xg.user_setpoint.value = horizontal
+
+        if verbosity >= 3:
+            print("Changing vertical beam size from {:.3f} mm to {:.3f} mm".format(v, vertical))
+
+        s2.yg.user_setpoint.value = vertical
+
+    def S4size(self, verbosity=3):
+        """
+        Returns the current beam size (rough estimate).
+        The return is (size_horizontal, size_vertical) (in mm).
+        """
+        size_h = s4.xg.user_readback.value
+        size_v = s4.yg.user_readback.value
+
+        if verbosity >= 3:
+            print("Beam size:")
+            print(" S4 horizontal = {:.3f} mm".format(size_h))
+            print(" S4 vertical   = {:.3f} mm".format(size_v))
+
+        return size_h, size_v
+
+    def setS4Size(self, horizontal, vertical, verbosity=3):
+        """
+        Sets the beam size.
+        """
+
+        h, v = self.size(verbosity=0)
+
+        if verbosity >= 3:
+            print("Changing horizontal beam size from {:.3f} mm to {:.3f} mm".format(h, horizontal))
+        s4.xg.user_setpoint.value = horizontal
+
+        if verbosity >= 3:
+            print("Changing vertical beam size from {:.3f} mm to {:.3f} mm".format(v, vertical))
+
+        s4.yg.user_setpoint.value = vertical
+
 
     # Experimental Shutter
     ########################################
@@ -1671,10 +1739,12 @@ class CMSBeam(object):
 
         else:
             # The foil layers
-            slot = np.floor((armr.position - self.armr_absorber_o + 3 - 0.1) / 6)
+            slot = np.floor((armr.position - self.armr_absorber_o - 0.1 + 6) / 6) # rmr_absorber_o is atten 0
+            # slot = np.floor((armr.position - self.armr_absorber_o + 3 - 0.1) / 6)
+            # slot = np.floor((self.armr_absorber_o - armr.position + 3 - 0.1) / 6)
             # slot = np.floor((armr.position - self.armr_absorber_o+.1)/10)
-            if slot > 6 or slot < 0:
-                return print("Absorber slot should in the range of [0, 6]")
+            if slot > 9 or slot < 0:
+                return print("Absorber slot should in the range of [0, 8]")
 
             return self.absorberCalcTransmission(slot, verbosity=verbosity)
 
@@ -1760,12 +1830,13 @@ class CMSBeam(object):
         # elif slot < 0 or slot > 6:
         #     print('Absorber cannot move beyond [0, 6]')
         elif slot < 0 or slot > 7:  # changed by RL, 202307
-            print("Absorber cannot move beyond [0, 7]")
+            print("Absorber cannot move beyond [0, 6]")
 
         else:
             # move to slot # for correct attenuation.
             # armr_pos = self.armr_absorber_o+slot*10 # 10 mm wide per slot for OPLS absorber 10mm wide, changed by RL, 202307
             armr_pos = self.armr_absorber_o + slot * 6  # 6 mm wide per slot, changed back by RL, 202309
+            # armr_pos = self.armr_absorber_o - slot * 6  # changed back by RL, 202403, motor controller changed to strans
             # armr.move(self.armr_absorber_o+slot*6)
             armr.move(armr_pos)
 
@@ -2117,6 +2188,35 @@ class CMS_Beamline(Beamline):
 
         # self.beam.bim6.reading()
 
+    def modeAlignment_plan(self, verbosity=3):
+
+        self.current_mode = "undefined"
+
+        # TODO: Check what mode (TSAXS, GISAXS) and respond accordingly
+        # TODO: Check if gate valves are open and flux is okay (warn user)
+        # TODO: Check list: change attenuator for different energy, change the bsx position with beamcenter accordingly
+
+        # self.beam.off()
+        yield from shutter_off()
+        self.beam.setTransmission(1e-8)  # 1e-6 for 13.5kev, 1e-8 for 17kev
+        while beam.transmission() > 3e-8:
+            yield from bps.sleep(0.5)
+            self.beam.setTransmission(1e-8)
+
+        # mov(bsx, -10.95)
+        yield from bps.mv(bsx, self.bsx_pos + 5)
+        # bsx.move(self.bsx_pos+5)
+
+        # detselect(pilatus300, suffix='_stats4_total')
+        # caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquireTime', 0.5)
+        # caput('XF:11BMB-ES{Det:SAXS}:cam1:AcquirePeriod', 0.6)
+
+        detselect(pilatus_name, suffix="_stats4_total")
+        yield from pilatus_name.setExposureTime(0.5)
+
+        self.current_mode = "alignment"
+
+
     def modeMeasurement(self, verbosity=3):
         self.current_mode = "undefined"
 
@@ -2144,6 +2244,25 @@ class CMS_Beamline(Beamline):
         # Check if gate valves are open
         if self.beam.GVdsbig.state() != "out" and verbosity >= 1:
             print("Warning: Sample chamber gate valve (large, downstream) is not open.")
+
+    def modeMeasurement_plan(self, verbosity=3):
+            self.current_mode = "undefined"
+
+            yield from shutter_off()
+
+            yield from bps.mv(bsx, self.bsx_pos)
+
+            # if abs(bsx.user_readback.value - -16.74)>0.1:
+            if abs(bsx.user_readback.value - self.bsx_pos) > 0.1:
+                print("WARNING: Beamstop did not return to correct position!")
+                return
+
+            self.beam.setTransmission(1)
+
+            detselect(pilatus_name)
+
+            self.current_mode = "measurement"
+
 
     def modeBeamstopAlignment(self, verbosity=3):
         """Places bim6 (dsmon) as a temporary beamstop."""
@@ -2335,7 +2454,7 @@ class CMS_Beamline(Beamline):
         start_p = self._PV_Det_pressure.get()
         # close 2s pump valve
         yield from bps.mov(self._pump_Smpl, "Close")
-        yield from bps.sleep(5)
+        yield from bps.sleep(3)
         # open 2s vent valve
         yield from bps.mov(self._vent_Smpl, "Soft")
         # yield from bps.sleep(1)
@@ -2353,7 +2472,7 @@ class CMS_Beamline(Beamline):
         # yield from bps.mov(self._vent_Smpl, 'Soft')
         while self._PV_Smpl_pressure.get() < 100:
             yield from bps.sleep(3)
-        yield from bps.mov(self._vent_Smpl, "Open")
+        yield from bps.mov(self._vent_Smpl, "Open")  
         while self._PV_Smpl_pressure.get() < 950:
             print("waiting to complete venting.")
             yield from bps.sleep(3)
@@ -3110,7 +3229,11 @@ class CMS_Beamline_GISAXS(CMS_Beamline):
         # TODO: Check if gate valves are open and flux is okay (warn user)
 
         self.beam.off()
-        self.beam.setTransmission(1e-6)
+
+        if abs(self.beam.energy() -17) <0.1:
+            self.beam.setTransmission(1e-7)
+        else:
+            self.beam.setTransmission(1e-6)
         while beam.transmission() > 2e-6:
             time.sleep(0.5)
             self.beam.setTransmission(1e-6)

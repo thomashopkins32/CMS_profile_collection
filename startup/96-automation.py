@@ -359,6 +359,25 @@ class SampleExchangeRobot(Stage):
 
         self._region = "safe"
 
+    def _sequenceGotoSafe(self, verbosity=3):
+        x, y, z, phi = self._position_safe
+
+        # if abs( self.phipos(verbosity=verbosity) - 90 ) < 0.1:
+        ## phi = 90deg, prongs pointed at stage
+        # pass
+        # elif abs( self.phipos(verbosity=verbosity) - 0 ) < 0.1:
+        ## phi = 0deg, prongs pointed at stage
+        # pass
+        # else:
+        # pass
+
+        yield from  self.phiabs(phi)
+        yield from  self.yabs(y)
+        yield from  self.xabs(x)
+        yield from  self.zabs(z)
+
+        self._region = "safe"
+
     def sequenceGotoSampleStageSlotted(self, x_motion=True, verbosity=3):
         if self._sample is not None:
             print(
@@ -389,6 +408,39 @@ class SampleExchangeRobot(Stage):
         if x_motion:
             # Move arm so that it is slotted over the sample
             self.xabs(x, verbosity=verbosity)
+            # self.rabs(r, verbosity=verbosity)
+
+    def _sequenceGotoSampleStageSlotted(self, x_motion=True, verbosity=3):
+        if self._sample is not None:
+            print(
+                "ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name)
+            )
+            return
+
+        if not self.checkSafe():
+            return
+
+        if verbosity >= 3:
+            print("TBD")
+
+        # Move sample stage
+        x, y = self._position_stg_exchange  # smx, smy
+        # mov([smx, smy], [x,y])
+        yield from bps(mv(smx, x, smy, y, sth, 0))
+        # smx.move(x)
+        # smy.move(y)
+
+        x, y, z, phi = self._position_sample_gripped
+
+        # Pre-align the arm in (y,z)
+        yield from self.phiabs(phi, verbosity=verbosity)
+        yield from self.zabs(z, verbosity=verbosity)
+        yield from self.yabs(y - self._delta_y_slot, verbosity=verbosity)
+
+        self._region = "stage"
+        if x_motion:
+            # Move arm so that it is slotted over the sample
+            yield from self.xabs(x, verbosity=verbosity)
             # self.rabs(r, verbosity=verbosity)
 
     def sequencePutSampleOntoStage(self, gotoSafe=True, verbosity=3):
@@ -447,6 +499,67 @@ class SampleExchangeRobot(Stage):
         else:
             self._region = "stage"
 
+
+    def _sequencePutSampleOntoStage(self, gotoSafe=True, verbosity=3):
+        if self._sample is None:
+            print("ERROR: No sample currently being gripped by robot arm.")
+            return
+
+        if not self.checkSafe(check_stage=False):
+            return
+
+        if verbosity >= 3:
+            print("Putting sample onto stage")
+
+        # Move sample stage
+        x, y = self._position_stg_exchange  # smx, smy
+        # mov([smx, smy], [x,y])
+        
+        yield from bps(mv(smx, x, smy, y, sth, 0))
+        # yield from bps(mv(smy, y))
+        # yield from bps(mv(sth, 0))
+
+        # while smx.moving == True or smy.moving == True or sth.moving == True:
+        #     time.sleep(1)
+
+        x, y, z, phi = self._position_sample_gripped
+
+        # Pre-align the arm in (y,z)
+        yield from self.phiabs(phi, verbosity=verbosity)
+        yield from self.zabs(z, verbosity=verbosity)
+        yield from self.yabs(y + self._delta_y_hover, verbosity=verbosity)
+
+        self._region = "stage"
+        # Push the sample out so that it is hovering above the stage
+        # r is removed without SmarAct motor
+        # mov([armx, self._axes['r'].motor], [x, r])
+        # mov(armx,x)
+        yield from bps(mv(armx, x))
+
+        # Move sample down (-y)
+        yield from self.yr(-self._delta_y_hover, verbosity=verbosity)  # Now in contact with stage
+
+        # De-grip
+        yield from self.yr(-self._delta_y_slot, verbosity=verbosity)
+
+        self._sample = None
+        self._status = "onStage"
+
+        # Move away from stage
+        x, y, z, phi = self._position_hold
+        # mov([armx, self._axes['r'].motor], [x, r])
+        # r is removed without SmarAct motor
+        # mov(armx, x)
+        # armx.move(x)
+        yield from bps(mv(armx, x))
+
+
+        if gotoSafe == True:
+            yield from self._sequenceGotoSafe(verbosity=verbosity)
+        else:
+            self._region = "stage"
+
+
     def sequenceGotoSampleStageSlotted(self, x_motion=True, verbosity=3):
         if self._sample is not None:
             print(
@@ -497,72 +610,21 @@ class SampleExchangeRobot(Stage):
         # mov([smx, smy], [x,y])
         # smx.move(x)
         # smy.move(y)
-        yield from bps.mov(smx, x)
-        yield from bps.mov(smy, y)
+        yield from bps(mv(smx, x, smy, y, sth, 0))
+        # yield from bps.mov(smy, y)
 
         x, y, z, phi = self._position_sample_gripped
 
         # Pre-align the arm in (y,z)
-        self.phiabs(phi, verbosity=verbosity)
-        self.zabs(z, verbosity=verbosity)
-        self.yabs(y - self._delta_y_slot, verbosity=verbosity)
+        yield from self.phiabs(phi, verbosity=verbosity)
+        yield from self.zabs(z, verbosity=verbosity)
+        yield from self.yabs(y - self._delta_y_slot, verbosity=verbosity)
 
         self._region = "stage"
         if x_motion:
             # Move arm so that it is slotted over the sample
             # self.xabs(x, verbosity=verbosity)
             yield from bps.mov(smx, x)
-
-    def _sequencePutSampleOntoStage(self, gotoSafe=True, verbosity=3):
-        if self._sample is None:
-            print("ERROR: No sample currently being gripped by robot arm.")
-            return
-
-        if not self.checkSafe(check_stage=False):
-            return
-
-        if verbosity >= 3:
-            print("Putting sample onto stage")
-
-        # Move sample stage
-        x, y = self._position_stg_exchange  # smx, smy
-        # mov([smx, smy], [x,y])
-        yield from bps.mov(smx, x)
-        yield from bps.mov(smy, y)
-        yield from bps.mov(sth, 0)
-
-        x, y, z, phi = self._position_sample_gripped
-
-        # Pre-align the arm in (y,z)
-        self.phiabs(phi, verbosity=verbosity)
-        self.zabs(z, verbosity=verbosity)
-        self.yabs(y + self._delta_y_hover, verbosity=verbosity)
-
-        self._region = "stage"
-        # Push the sample out so that it is hovering above the stage
-        # r is removed without SmarAct motor
-        yield from bps.mov(armx, x)
-        # Move sample down (-y)
-        self.yr(-self._delta_y_hover, verbosity=verbosity)  # Now in contact with stage
-
-        # De-grip
-        self.yr(-self._delta_y_slot, verbosity=verbosity)
-
-        self._sample = None
-        self._status = "onStage"
-
-        # Move away from stage
-        x, y, z, phi = self._position_hold
-        # mov([armx, self._axes['r'].motor], [x, r])
-        # r is removed without SmarAct motor
-        # mov(armx, x)
-        # armx.move(x)
-        yield from bps.mov(armx, x)
-
-        if gotoSafe == True:
-            self.sequenceGotoSafe(verbosity=verbosity)
-        else:
-            self._region = "stage"
 
     def sequenceGetSampleFromStage(self, gotoSafe=True, verbosity=3):
         if self._sample is not None:
@@ -615,6 +677,59 @@ class SampleExchangeRobot(Stage):
         if gotoSafe == True:
             self.sequenceGotoSafe(verbosity=verbosity)
 
+    def _sequenceGetSampleFromStage(self, gotoSafe=True, verbosity=3):
+        if self._sample is not None:
+            print(
+                "ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name)
+            )
+            return
+
+        if not self.checkSafe():
+            return
+
+        if verbosity >= 3:
+            print("Getting sample from stage")
+
+        # Move sample stage
+        x, y = self._position_stg_exchange  # smx, smy
+        # mov([smx, smy], [x,y])
+        yield from bps(mv(smx, x, smy, y, sth, 0))
+        # smx.move(x)
+        # smy.move(y)
+        # sth.move(0)
+
+        x, y, z, phi = self._position_sample_gripped
+
+        # Pre-align the arm in (y,z)
+        yield from self.phiabs(phi, verbosity=verbosity)
+        yield from self.zabs(z, verbosity=verbosity)
+        yield from self.yabs(y - self._delta_y_slot, verbosity=verbosity)
+
+        self._region = "stage"
+        # Move arm so that it is slotted over the sample
+        yield from self.xabs(x, verbosity=verbosity)
+        # self.rabs(r, verbosity=verbosity)
+
+        # Grip sample
+        yield from self.yr(+self._delta_y_slot, verbosity=verbosity)
+
+        self._sample = "exists"  # TODO: Fix
+        self._status = "onRobot"
+
+        # Pick sample up (+y)
+        yield from self.yr(+self._delta_y_hover, verbosity=verbosity)
+
+        # Move away from stage
+        x, y, z, phi = self._position_hold
+        # mov([armx, self._axes['r'].motor], [x, r])
+        # r is removed without SmarAct motor
+        # mov(armx, x)
+        # armx.move(x)
+        yield from bps(mv(armx, x))
+
+        if gotoSafe == True:
+            yield from self.sequenceGotoSafe(verbosity=verbosity)
+
     def sequenceGetSampleFromGarage(self, shelf_num, spot_num, gotoSafe=True, verbosity=3):
         if shelf_num < 1 or shelf_num > 4:
             print("ERROR: Invalid shelf {}".format(shelf_num))
@@ -666,6 +781,57 @@ class SampleExchangeRobot(Stage):
         if gotoSafe == True:
             self.sequenceGotoSafe(verbosity=verbosity)
 
+    def _sequenceGetSampleFromGarage(self, shelf_num, spot_num, gotoSafe=True, verbosity=3):
+        if shelf_num < 1 or shelf_num > 4:
+            print("ERROR: Invalid shelf {}".format(shelf_num))
+            return
+        if spot_num < 1 or spot_num > 3:
+            print("ERROR: Invalid spot {}".format(spot_num))
+            return
+
+        if self._sample is not None:
+            print(
+                "ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name)
+            )
+            return
+
+        if verbosity >= 3:
+            print("Getting sample from garage ({}, {})".format(shelf_num, spot_num))
+
+        x, y, z, phi = self._position_garage
+
+        yield from self.phiabs(phi)
+
+        # Align ourselves with this parking spot
+        success = self.sequencePrepGarageXY(shelf_num, spot_num, verbosity=verbosity)
+        if not success:
+            return
+        x = self.xpos(verbosity=0)
+        y = self.ypos(verbosity=0)
+
+        # Lower so that the slot is aligned
+        yield from  self.yr(-self._delta_y_slot, verbosity=verbosity)
+
+        # Move towards parking lot
+        self._region = "parking"
+        yield from  self.zabs(z, verbosity=verbosity)
+
+        # Grip sample
+        yield from  self.yr(+self._delta_y_slot, verbosity=verbosity)
+
+        self._sample = "exists"  # TODO: Fix
+        self._status = "onRobot"
+
+        # Pick sample up (+y)
+        yield from  self.yr(+self._delta_y_hover, verbosity=verbosity)
+
+        # Move away from parking
+        yield from  self.zabs(0, verbosity=verbosity)
+        yield from  self.xabs(0, verbosity=verbosity)
+        yield from  self.yabs(self._position_safe[1], verbosity=verbosity)
+        if gotoSafe == True:
+            yield from self.sequenceGotoSafe(verbosity=verbosity)
+
     def sequencePutSampleInGarage(self, shelf_num, spot_num, gotoSafe=True, verbosity=3):
         if shelf_num < 1 or shelf_num > 4:
             print("ERROR: Invalid shelf {}".format(shelf_num))
@@ -710,6 +876,51 @@ class SampleExchangeRobot(Stage):
         self.xabs(0, verbosity=verbosity)
         if gotoSafe == True:
             self.sequenceGotoSafe(verbosity=verbosity)
+
+    def _sequencePutSampleInGarage(self, shelf_num, spot_num, gotoSafe=True, verbosity=3):
+        if shelf_num < 1 or shelf_num > 4:
+            print("ERROR: Invalid shelf {}".format(shelf_num))
+            return
+        if spot_num < 1 or spot_num > 3:
+            print("ERROR: Invalid spot {}".format(spot_num))
+            return
+
+        if self._sample is None:
+            print("WARNING: There is no sample being gripped by robot arm.")
+
+        if verbosity >= 3:
+            print("Putting sample into garage ({}, {})".format(shelf_num, spot_num))
+
+        x, y, z, phi = self._position_garage
+
+        yield from self.phiabs(phi)
+
+        # Align ourselves with this parking spot
+        success = self.sequencePrepGarageXY(shelf_num, spot_num, verbosity=verbosity)
+        if not success:
+            return
+        x = self.xpos(verbosity=0)
+        y = self.ypos(verbosity=0)
+
+        # Hover
+        yield from self.yr(+self._delta_y_hover, verbosity=verbosity)
+
+        # Move towards parking lot
+        self._region = "parking"
+        yield from self.zabs(z, verbosity=verbosity)
+
+        # Deposit sample
+        yield from self.yr(-self._delta_y_hover, verbosity=verbosity)
+        yield from self.yr(-self._delta_y_slot, verbosity=verbosity)
+
+        self._sample = None
+        self._status = "inGarage"
+
+        # Move away from parking
+        yield from self.zabs(0, verbosity=verbosity)
+        yield from self.xabs(0, verbosity=verbosity)
+        if gotoSafe == True:
+            yield from self.sequenceGotoSafe(verbosity=verbosity)
 
     def sequencePrepGarageXY(self, shelf_num, spot_num, verbosity=3):
         if shelf_num < 1 or shelf_num > 4:
@@ -756,6 +967,51 @@ class SampleExchangeRobot(Stage):
 
         return True
 
+    def _sequencePrepGarageXY(self, shelf_num, spot_num, verbosity=3):
+        if shelf_num < 1 or shelf_num > 4:
+            print("ERROR: Invalid shelf {}".format(shelf_num))
+            return
+        if spot_num < 1 or spot_num > 3:
+            print("ERROR: Invalid spot {}".format(spot_num))
+            return
+
+        if not self.checkSafe():
+            return
+
+        if verbosity >= 3:
+            print("  Going to garage ({}, {})".format(shelf_num, spot_num))
+
+        if self.zpos(verbosity=0) < -10:
+            print("ERROR: z ({}) position unsafe.".format(self.zpos(verbosity=0)))
+
+        # if abs(self.phipos(verbosity=0))>1:
+        #     print("ERROR: phi ({}) position unsafe.".format(self.phipos(verbosity=0)))
+
+        x, y, z, phi = self._position_garage
+
+        x += (spot_num - 1) * self._delta_garage_x
+        y += (shelf_num - 1) * self._delta_garage_y
+
+        if verbosity >= 4:
+            print("    Going to (x,y) = ({}, {})".format(x, y))
+
+        # Do y first to avoid catching cables
+        yield from self.yabs(y)
+        yield from self.xabs(x)
+
+        xactual = self.xpos(verbosity=0)
+        yactual = self.ypos(verbosity=0)
+
+        if abs(x - xactual) > 0.2:
+            print("ERROR: x did not reach requested position (request = {}, actual = {})".format(x, xactual))
+            return False
+
+        if abs(y - yactual) > 0.2:
+            print("ERROR: y did not reach requested position (request = {}, actual = {})".format(y, yactual))
+            return False
+
+        return True
+    
     def loadSample(self, shelf_num, spot_num, verbosity=3):
         # Check if a sample is on stage
         # Unload sample if necessary
@@ -763,7 +1019,14 @@ class SampleExchangeRobot(Stage):
         self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
         self.sequencePutSampleOntoStage()
 
-    def calibrationStage(self, verbosity=3):
+    def _loadSample(self, shelf_num, spot_num, verbosity=3):
+        # Check if a sample is on stage
+        # Unload sample if necessary
+
+        yield from self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
+        yield from self.sequencePutSampleOntoStage()
+
+    def calibrateStage(self, verbosity=3):
         if self._sample is not None:
             print("ERROR: Calibration cannot be done with sample on robot arm.")
             return
@@ -791,7 +1054,7 @@ class SampleExchangeRobot(Stage):
         self.xabs(-40, verbosity=verbosity)
         # self.rabs(0, verbosity=verbosity)
 
-    def calibrationGarage(self, verbosity=3):
+    def calibrateGarage(self, verbosity=3):
         # use Garage(1,1) to calibration the gripper position
         shelf_num = 1
         spot_num = 1
@@ -818,25 +1081,6 @@ class SampleExchangeRobot(Stage):
         self.yr(-self._delta_y_slot, verbosity=verbosity)
         self.zabs(-60)
 
-    # def pickandStage(self, shelf_num, spot_num,verbosity=3):
-    #'''pick up bar from sample stage and leave in 'safe' position
-    #'''
-    # if verbosity>=2:
-    # print('picking up from garage ({}, {})'.format(shelf_num, spot_num))
-    # self.sequenceGetSampleFromGarage(shelf_num, spot_num, verbosity=verbosity)
-    # time.sleep(2)
-    # self.sequencePutSampleOntoStage(verbosity=verbosity)
-    # time.sleep(2)
-
-    # def pickandGarage(self, shelf_num, spot_num, verbosity=3):
-    #'''pick up bar from sample stage and leave in 'safe' position
-    #'''
-    # if verbosity>=2:
-    # print('return to garage ({}, {})'.format(shelf_num, spot_num))
-    # self.sequenceGetSampleFromStage(verbosity=verbosity)
-    # time.sleep(2)
-    # self.sequencePutSampleInGarage(shelf_num, spot_num, verbosity=verbosity)
-    # time.sleep(2)
 
     def pickupHolder(self, slot, gotoSafe=True, verbosity=3):
         # picking up the holer from Garage
@@ -856,6 +1100,24 @@ class SampleExchangeRobot(Stage):
         # always go back to safe position from or to the stage
         self.sequencePutSampleOntoStage(verbosity=verbosity)
 
+    def _pickupHolder(self, slot, gotoSafe=True, verbosity=3):
+        # picking up the holer from Garage
+        # shelf_num, spot_num: slot number of the holder
+        [shelf_num, spot_num] = slot
+        if verbosity >= 3:
+            print("picking up from garage ({}, {})".format(shelf_num, spot_num))
+
+        if self._sample is not None:
+            print(
+                "ERROR: There is already a sample being gripped by robot arm (sample {}.".format(self._sample.name)
+            )
+            return
+
+        yield from self.sequenceGetSampleFromGarage(shelf_num, spot_num, gotoSafe=gotoSafe, verbosity=verbosity)
+        time.sleep(1)
+        # always go back to safe position from or to the stage
+        yield from self.sequencePutSampleOntoStage(verbosity=verbosity)
+
     def returnHolder(self, slot, gotoSafe=True, verbosity=3):
         # returning the holer back to Garage
         # shelf_num, spot_num: slot number of the holder
@@ -868,6 +1130,20 @@ class SampleExchangeRobot(Stage):
         time.sleep(1)
         # only this one need options NOT to return robot to the default position
         self.sequencePutSampleInGarage(shelf_num, spot_num, gotoSafe=gotoSafe, verbosity=verbosity)
+
+
+    def _returnHolder(self, slot, gotoSafe=True, verbosity=3):
+        # returning the holer back to Garage
+        # shelf_num, spot_num: slot number of the holder
+        [shelf_num, spot_num] = slot
+        if verbosity >= 3:
+            print("returning back to garage ({}, {})".format(shelf_num, spot_num))
+
+        # always go back to safe position from or to the stage
+        yield from self.sequenceGetSampleFromStage(verbosity=verbosity)
+        time.sleep(1)
+        # only this one need options NOT to return robot to the default position
+        yield from self.sequencePutSampleInGarage(shelf_num, spot_num, gotoSafe=gotoSafe, verbosity=verbosity)
 
     def _stress_test(self, cycles=2, verbosity=5):
         if not self.checkSafe():
@@ -1564,7 +1840,8 @@ class Queue(CoordinateSystem):
         else:
             endHolder = endHolder
 
-        if abs(gatex.position + 95) > 1:
+        if abs(gatex.position + 95) > 100:
+        #100 to 1
             print("The gate is not OPEN. Please double-check the setting. ")
             input()
 
