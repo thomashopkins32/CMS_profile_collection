@@ -1224,6 +1224,27 @@ class SampleExchangeRobot(Stage):
             print("In Garage ({}, {})".format(shelf_num, spot_num))
             hol.listSamplesPositions()
 
+    def initiallize(self, verbosity=3):
+        
+        print('please clean up the robot and any bar from the robotic arm and the sample area.')
+        ret3 = input("Is it done? (y/n) ")
+        if ret3 == "y" or ret3 == "yes":
+            print("Thank you")
+            print("The initiallization is done.")
+        else:
+            print("The initiallization is NOT complete.")
+            return
+        
+        self._region = 'safe'
+        self._status = 'inGarage'
+        self._sample = None
+
+        if verbosity>=3:
+            print('robot._region = {}'.format(robot._region))
+            print('robot._status = {}'.format(robot._status))
+            print('robot._sample = {}'.format(robot._sample))
+        
+
 
 # class Queue(object):
 class Queue(CoordinateSystem):

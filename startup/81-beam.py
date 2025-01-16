@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # vi: ts=4 sw=4
-
+print(f'Loading {__file__}')
 
 ################################################################################
 #  Code for querying and controlling beamline components that 'affect' the
@@ -92,8 +92,8 @@ class CMS_SAXS_Detector(BeamlineDetector):
         md_return["name"] = self.detector.name
         md_return["epics_name"] = "{Det:PIL2M}"
 
-        md_return["x0_pix"] = round(x0 + (position_current_x - position_defined_x) / self.pixel_size, 2)
-        md_return["y0_pix"] = round(y0 + (position_current_y - position_defined_y) / self.pixel_size, 2)
+        md_return["x0_pix"] = float(round(x0 + (position_current_x - position_defined_x) / self.pixel_size, 2))
+        md_return["y0_pix"] = float(round(y0 + (position_current_y - position_defined_y) / self.pixel_size, 2))
 
         md_return["distance_m"] = self.distance
 
@@ -197,8 +197,8 @@ class CMS_WAXS_Detector(BeamlineDetector):
         # md_return['x0_pix'] = round( x0 + (position_current_x-position_defined_x)/self.pixel_size , 2 )
         # md_return['y0_pix'] = round( y0 + (position_current_y-position_defined_y)/self.pixel_size , 2 )
         # if pilatus_name==pilatus800:
-        md_return["x0_pix"] = round(x0 + (position_current_x - position_defined_x) / self.pixel_size, 2)
-        md_return["y0_pix"] = round(y0 + (position_current_y - position_defined_y) / self.pixel_size, 2)
+        md_return["x0_pix"] = float(round(x0 + (position_current_x - position_defined_x) / self.pixel_size, 2))
+        md_return["y0_pix"] = float(round(y0 + (position_current_y - position_defined_y) / self.pixel_size, 2))
 
         # TODO:WAXS PV
 
@@ -478,98 +478,98 @@ class DiagnosticScreen(Monitor):
             return 0
 
 
-class PointDiode_CMS(Monitor):
-    def __init__(
-        self,
-        name="bim6 point diode",
-        zposition=59.1,
-        description="Bar holding a point-diode, downstream of sample.",
-        pv="XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV",
-        epics_signal=None,
-        **args,
-    ):
-        super().__init__(name=name, zposition=zposition, description=description, pv=pv, **args)
-        self.has_flux = True
+# class PointDiode_CMS(Monitor):
+#     def __init__(
+#         self,
+#         name="bim6 point diode",
+#         zposition=59.1,
+#         description="Bar holding a point-diode, downstream of sample.",
+#         pv="XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV",
+#         epics_signal=None,
+#         **args,
+#     ):
+#         super().__init__(name=name, zposition=zposition, description=description, pv=pv, **args)
+#         self.has_flux = True
 
-        if epics_signal == None:
-            # bim6 = EpicsSignalROWait("XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV", wait_time=1, name='bim6')
-            # bim6_integrating = EpicsSignalROIntegrate("XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV", wait_time=0.5, integrate_num=8, integrate_delay=0.1, name='bim6')
+#         if epics_signal == None:
+#             # bim6 = EpicsSignalROWait("XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV", wait_time=1, name='bim6')
+#             # bim6_integrating = EpicsSignalROIntegrate("XF:11BMB-BI{IM:2}EM180:Current1:MeanValue_RBV", wait_time=0.5, integrate_num=8, integrate_delay=0.1, name='bim6')
 
-            self.epics_signal = bim6_integrating
+#             self.epics_signal = bim6_integrating
 
-        else:
-            self.epics_signal = epics_signal
+#         else:
+#             self.epics_signal = epics_signal
 
-        # The beam (at the ion chamber) is roughly 0.50x0.50 mm.
-        # If we slit down to 0.20x0.05 mm, we are capturing 0.4*0.25 = 0.1 of the beam.
-        # bim6 reads 70000 cts (of course this depends on settings) when ion chamber reads 1.3e11 ph/s.
-        # (settings: trans = 5e-4)
-        # So conversion_factor is roughly:
-        self.conversion_factor = 1.3e11 * 0.1 / 70000.0  # (ph/s)/cts
+#         # The beam (at the ion chamber) is roughly 0.50x0.50 mm.
+#         # If we slit down to 0.20x0.05 mm, we are capturing 0.4*0.25 = 0.1 of the beam.
+#         # bim6 reads 70000 cts (of course this depends on settings) when ion chamber reads 1.3e11 ph/s.
+#         # (settings: trans = 5e-4)
+#         # So conversion_factor is roughly:
+#         self.conversion_factor = 1.3e11 * 0.1 / 70000.0  # (ph/s)/cts
 
-        self.in_position_x = 0.0
-        self.in_position_y = 0.0
+#         self.in_position_x = 0.0
+#         self.in_position_y = 0.0
 
-        self.out_position_x = 0.0
-        self.out_position_y = -16.0
+#         self.out_position_x = 0.0
+#         self.out_position_y = -16.0
 
-        self.position_tolerance = 0.1
+#         self.position_tolerance = 0.1
 
-    def state(self):
-        """
-        Returns the current state of the beamline element. Common states:
-        out - Element is out of the way of the beam (and should not be blocking).
-        in - Element is in the beam (but should not be blocking).
-        block - Element is in the beam, and should be blocking the beam.
-        undefined - Element is in an unexpected state.
-        """
+#     def state(self):
+#         """
+#         Returns the current state of the beamline element. Common states:
+#         out - Element is out of the way of the beam (and should not be blocking).
+#         in - Element is in the beam (but should not be blocking).
+#         block - Element is in the beam, and should be blocking the beam.
+#         undefined - Element is in an unexpected state.
+#         """
 
-        position_x = DETx.user_readback.value
-        position_y = DETy.user_readback.value
+#         position_x = DETx.user_readback.value
+#         position_y = DETy.user_readback.value
 
-        if (
-            abs(position_x - self.out_position_x) < self.position_tolerance
-            and abs(position_y - self.out_position_y) < self.position_tolerance
-        ):
-            return "out"
-        if (
-            abs(position_x - self.in_position_x) < self.position_tolerance
-            and abs(position_y - self.in_position_y) < self.position_tolerance
-        ):
-            return "block"
-        else:
-            return "undefined"
+#         if (
+#             abs(position_x - self.out_position_x) < self.position_tolerance
+#             and abs(position_y - self.out_position_y) < self.position_tolerance
+#         ):
+#             return "out"
+#         if (
+#             abs(position_x - self.in_position_x) < self.position_tolerance
+#             and abs(position_y - self.in_position_y) < self.position_tolerance
+#         ):
+#             return "block"
+#         else:
+#             return "undefined"
 
-    def insert(self, verbosity=3):
-        if verbosity >= 3:
-            print("Inserting {:s}...".format(self.name))
+#     def insert(self, verbosity=3):
+#         if verbosity >= 3:
+#             print("Inserting {:s}...".format(self.name))
 
-        # mov( [DETx, DETy], [self.in_position_x, self.in_position_y] )
-        DETx.move = self.in_position_x
-        DETy.move = self.in_position_y
+#         # mov( [DETx, DETy], [self.in_position_x, self.in_position_y] )
+#         DETx.move = self.in_position_x
+#         DETy.move = self.in_position_y
 
-    def retract(self, verbosity=3):
-        if verbosity >= 3:
-            print("Retracting {:s}...".format(self.name))
+#     def retract(self, verbosity=3):
+#         if verbosity >= 3:
+#             print("Retracting {:s}...".format(self.name))
 
-        # mov( [DETx, DETy], [self.out_position_x, self.out_position_y] )
-        DETx.move = self.out_position_x
-        DETy.move = self.out_position_y
+#         # mov( [DETx, DETy], [self.out_position_x, self.out_position_y] )
+#         DETx.move = self.out_position_x
+#         DETy.move = self.out_position_y
 
-    def reading(self, verbosity=3):
-        value = self.epics_signal.read()[self.epics_signal.name]["value"]
+#     def reading(self, verbosity=3):
+#         value = self.epics_signal.read()[self.epics_signal.name]["value"]
 
-        if self.state() == "block":
-            if verbosity >= 2:
-                print("{:s} is inserted; reading = {:.4g}".format(self.name, value))
+#         if self.state() == "block":
+#             if verbosity >= 2:
+#                 print("{:s} is inserted; reading = {:.4g}".format(self.name, value))
 
-            return value
+#             return value
 
-        else:
-            if verbosity >= 2:
-                print("{:s} is not inserted.".format(self.name))
+#         else:
+#             if verbosity >= 2:
+#                 print("{:s} is not inserted.".format(self.name))
 
-            return value
+#             return value
 
 
 class IonChamber_CMS(Monitor):
@@ -1003,7 +1003,7 @@ class CMSBeam(object):
         else:
             self.beam_defining_slit = s2
         self.bim5 = DiamondDiode_CMS()
-        self.bim6 = PointDiode_CMS()
+        # self.bim6 = PointDiode_CMS()
 
         self.GVdsbig = GateValve("GV ds big", 60.0, pv="XF:11BMB-VA{Chm:Det-GV:1}")
 
@@ -1044,7 +1044,7 @@ class CMSBeam(object):
         self.elements.append(self.attenuator2)
 
         self.elements.append(BeamlineElement("sample", 58.8))
-        self.elements.append(self.bim6)  # dsmon
+        # self.elements.append(self.bim6)  # dsmon
         self.elements.append(BeamlineElement("WAXS detector", 59.0))
         self.elements.append(self.GVdsbig)
         self.elements.append(BeamlineElement("SAXS detector", 58.8 + 5))
@@ -2112,47 +2112,47 @@ class CMS_Beamline(Beamline):
         self._WAXS_outlet_sts = EpicsSignal("XF:11BMB-VA{Chm:Det}UserCmd-Sts", name="WAXS_outlet_sts")
         self._WAXS_outlet_toggle = EpicsSignal("XF:11BMB-VA{Chm:Det}UserButton", name="WAXS_outlet_toggle")
 
-    def modeAlignment_bim6(self, verbosity=3):
-        self.current_mode = "undefined"
+    # def modeAlignment_bim6(self, verbosity=3):
+    #     self.current_mode = "undefined"
 
-        # TODO: Check what mode (TSAXS, GISAXS) and respond accordingly
-        # TODO: Check if gate valves are open and flux is okay (warn user)
+    #     # TODO: Check what mode (TSAXS, GISAXS) and respond accordingly
+    #     # TODO: Check if gate valves are open and flux is okay (warn user)
 
-        self.beam.off()
-        # self.beam.setTransmission(1e-4)
-        self.beam.setTransmission(5e-4)
+    #     self.beam.off()
+    #     # self.beam.setTransmission(1e-4)
+    #     self.beam.setTransmission(5e-4)
 
-        # mov( [DETx, DETy], [0, 0] )
-        self.beam.bim6.insert()
+    #     # mov( [DETx, DETy], [0, 0] )
+    #     self.beam.bim6.insert()
 
-        caput("XF:11BMB-BI{IM:2}EM180:Acquire", 1)  # Turn on bim6
-        detselect(bim6, suffix="")
+    #     caput("XF:11BMB-BI{IM:2}EM180:Acquire", 1)  # Turn on bim6
+    #     detselect(bim6, suffix="")
 
-        self.current_mode = "alignment"
+    #     self.current_mode = "alignment"
 
-        self.beam.bim6.reading()
+    #     self.beam.bim6.reading()
 
-    def modeMeasurement_bim6(self, verbosity=3):
-        self.current_mode = "undefined"
+    # def modeMeasurement_bim6(self, verbosity=3):
+    #     self.current_mode = "undefined"
 
-        self.beam.off()
-        self.beam.setTransmission(1)
+    #     self.beam.off()
+    #     self.beam.setTransmission(1)
 
-        # mov(DETy, -16)
-        self.beam.bim6.retract()
+    #     # mov(DETy, -16)
+    #     self.beam.bim6.retract()
 
-        caput("XF:11BMB-BI{IM:2}EM180:Acquire", 0)  # Turn off bim6
-        # detselect(pilatus300)
-        detselect(pilatus_name)
+    #     caput("XF:11BMB-BI{IM:2}EM180:Acquire", 0)  # Turn off bim6
+    #     # detselect(pilatus300)
+    #     detselect(pilatus_name)
 
-        # if RE.state is not 'idle':
-        #    RE.abort()
+    #     # if RE.state is not 'idle':
+    #     #    RE.abort()
 
-        self.current_mode = "measurement"
+    #     self.current_mode = "measurement"
 
-        # Check if gate valves are open
-        if self.beam.GVdsbig.state() != "out" and verbosity >= 1:
-            print("Warning: Sample chamber gate valve (large, downstream) is not open.")
+    #     # Check if gate valves are open
+    #     if self.beam.GVdsbig.state() != "out" and verbosity >= 1:
+    #         print("Warning: Sample chamber gate valve (large, downstream) is not open.")
 
     def modeAlignment(self, verbosity=3):
         self.current_mode = "undefined"
@@ -2415,7 +2415,8 @@ class CMS_Beamline(Beamline):
         # close 2d pump valve -- protect WAXS detector
         yield from bps.mov(self._pump_Det, "Close")
         # open 2s pump
-        yield from bps.mov(self._pump_Smpl, "Soft")
+        # yield from bps.mov(self._pump_Smpl, "Soft")
+        yield from bps.mov(self._pump_Smpl, "Open")  #changed by RL as soft doesnot work on Sep16, 2024
         # start pump2
         # yield from bps.mov(self._pump2_toggle, 1)
         ## Check pump again
@@ -2470,7 +2471,7 @@ class CMS_Beamline(Beamline):
         # while self._PV_Det_pressure.get()>0.35:
         # yield from bps.sleep(10)
         # yield from bps.mov(self._vent_Smpl, 'Soft')
-        while self._PV_Smpl_pressure.get() < 100:
+        while self._PV_Smpl_pressure.get() < 800:
             yield from bps.sleep(3)
         yield from bps.mov(self._vent_Smpl, "Open")  
         while self._PV_Smpl_pressure.get() < 950:
@@ -2986,8 +2987,8 @@ class CMS_Beamline(Beamline):
 
     def get_md(self, prefix=None, **md):
         md_current = self.md.copy()
-        md_current["calibration_energy_keV"] = round(self.beam.energy(verbosity=0), 3)
-        md_current["calibration_wavelength_A"] = round(self.beam.wavelength(verbosity=0), 5)
+        md_current["calibration_energy_keV"] = float(round(self.beam.energy(verbosity=0), 3))
+        md_current["calibration_wavelength_A"] = float(round(self.beam.wavelength(verbosity=0), 5))
 
         h, v = self.beam.size(verbosity=0)
         md_current["beam_size_x_mm"] = h
@@ -3046,8 +3047,8 @@ class CMS_Beamline(Beamline):
             cycle = 3
         RE.md["experiment_cycle"] = "{:s}_{:d}".format(time.strftime("%Y"), cycle)
 
-        RE.md["calibration_energy_keV"] = round(self.beam.energy(verbosity=0), 3)
-        RE.md["calibration_wavelength_A"] = round(self.beam.wavelength(verbosity=0), 5)
+        RE.md["calibration_energy_keV"] = float(round(self.beam.energy(verbosity=0), 3))
+        RE.md["calibration_wavelength_A"] = float(round(self.beam.wavelength(verbosity=0), 5))
 
         # TODO:
         # RE.md['calibration_detector_distance_m'] =

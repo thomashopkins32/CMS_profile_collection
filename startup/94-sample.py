@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # vi: ts=4 sw=4
 
+print(f'Loading {__file__}')
+
 ################################################################################
 #  Code for defining a 'Sample' object, which keeps track of its state, and
 # simplifies the task of aligning, measuring, etc.
@@ -22,6 +24,7 @@ import time
 import re
 import os
 import shutil
+import json
 
 import pandas as pds
 from datetime import datetime
@@ -126,6 +129,38 @@ class CoordinateSystem(object):
             setattr(self, axis["name"] + "search", axis_object.search)
             setattr(self, axis["name"] + "scan", axis_object.scan)
             setattr(self, axis["name"] + "c", axis_object.center)
+
+    def _movr(self, axes, positions):
+        
+        if len(axes)!= len(positions):
+           return print('Error: The two lists must have the same length.')
+        
+        axpos_list = []
+
+        for axis, pos in zip(axes, positions):
+            # print(axis)
+            # getattr(self, axis + "r")(pos)
+
+            axpos_list += [self._axes[axis].motor, pos]
+            # print(self._axes[axis].motor)
+        # print(axpos_list)
+        # posMotor()
+        # yield from bps.movr( self._axes[axes[0]].motor, positions[0],  getattr(self, axes[0] + "r"),  positions[1] )
+        yield from bps.movr(*axpos_list)
+
+
+    def _mov(self, axes, positions):
+        # position on axes
+
+        if len(axes)!= len(positions):
+           return print('Error: The two lists must have the same length.')
+        
+        rel_positions = []
+
+        for axis, pos in zip(axes, positions):
+            rel_positions.append(pos- self._axes[axis].get_position(verbosity=0))
+
+        yield from self._movr(axes=axes, positions=rel_positions)
 
     def comment(self, text, logbooks=None, tags=None, append_md=True, **md):
         """Add a comment related to this CoordinateSystem."""
@@ -1374,7 +1409,7 @@ class Sample_Generic(CoordinateSystem):
                 "motor": None,
                 "enabled": True,
                 "scaling": +1.0,
-                "units": None,
+                "units": 'mm',
                 "hint": None,
             },
             {
@@ -1394,7 +1429,7 @@ class Sample_Generic(CoordinateSystem):
             # },
             {
                 "name": "th",
-                "motor": None,
+                "motor": sth,
                 "enabled": True,
                 "scaling": +1.0,
                 "units": "deg",
@@ -2165,10 +2200,10 @@ class Sample_Generic(CoordinateSystem):
 
 
             #debug the losing data issue on pil2m. suggested by T. Caswell
-            with open(link_name, 'rb') as fin:
-                h = hashlib.md5(fin.read(1024)).hexdigest()
-            with open(link_name + '.md5', 'w') as fout:
-                fout.write(h)
+            # with open(link_name, 'rb') as fin:
+            #     h = hashlib.md5(fin.read(1024)).hexdigest()
+            # with open(link_name + '.md5', 'w') as fout:
+            #     fout.write(h)
 
 
             if verbosity >= 3:

@@ -1,5 +1,6 @@
 #TODO: integrate PV to turn on the power supply. ##'XF:11BMB-VA{Chm:Det}UserButton'
 
+print(f'Loading {__file__}')
 
 import telnetlib
 import paramiko

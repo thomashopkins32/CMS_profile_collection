@@ -1,6 +1,8 @@
 # Classes and functions to make it easy to do a dscan with realtime fitting to
 # a custom function.
 
+print(f'Loading {__file__}')
+
 import glob
 from bluesky.callbacks import CallbackBase
 

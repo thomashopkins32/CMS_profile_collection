@@ -150,13 +150,13 @@ class ioLogik(Device):
         )
 
     def read(self, port):
-        if port is not None and port in AO + AI + RTD + TC + Relay + DI:
+        if port is not None and port in AO + AO2 + AI + RTD + TC + Relay + DI:
             return caget(port.sts)
         else:
             print("The port is not valid")
 
     def set(self, port, val, verbosity=3):
-        if port is not None and port in AO:
+        if port is not None and port in AO + AO2:
             if val > 10 or val < 0:
                 print("Out of input range. It must be in range of (0, 10).")
                 return caput(port.sp, 0)

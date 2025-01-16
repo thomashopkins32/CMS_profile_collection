@@ -1,3 +1,5 @@
+print(f'Loading {__file__}')
+
 from math import sin, cos, tan, asin, acos, atan, pi
 
 ##### mono utilities #####
@@ -110,3 +112,15 @@ def ave_mir_y():
     ave_y = 0.5 * (usy + 0.5 * (dsyi + dsyo))
     print("Average mirror support height = %.4f mm relative to nominal zero height (1400 mm)" % ave_y)
     return ave_y
+
+
+def get_mir_angle():
+    '''calculate the incident angle of the toroidal mirror in [mrad]'''
+    usy = mir_usy.user_readback.value 
+    dsyi = mir_dsyi.user_readback.value
+    dsyo = mir_dsyo.user_readback.value
+    dsy = (dsyi + dsyo)/2
+    alpha_rad = np.arctan((dsy-usy)/mir_us_to_ds/1000)
+    alpah_deg = np.rad2deg(alpha_rad)
+    print(f"The incident angle of the toroidal mirror is {alpha_rad*1e3: .4f} mrad, equal to {alpah_deg: .4f} deg.")
+    return alpha_rad*1e3

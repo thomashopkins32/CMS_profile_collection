@@ -28,13 +28,18 @@ from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from ophyd.areadetector.filestore_mixins import FileStoreHDF5IterativeWrite
 from ophyd.areadetector.plugins import HDF5Plugin #,register_plugin,PluginBase
 
+
+print(f'Loading {__file__}')
+
 # import filestore.api as fs
 
 
 # class Elm(SingleTrigger, DetectorBase):
 #   pass
 
+
 Pilatus2M_on = True
+Camera_on=True
 Pilatus300_on = False
 # ONLY 1 Pilatus800 will be turned on at the same time. changed by RL, 20210831
 #
@@ -48,9 +53,10 @@ elif beamline_stage == "default":
     Pilatus800_on = True
     Pilatus800_2_on = False
 
-# Pilatus800_on = True
+# Pilatus800_on = False
 Pilatus800_2_on = True
 # Pilatus800_2_on = False
+# Pilatus2M_on = False
 
 ''' H5Plugin = HDF5Plugin  ''' 
 
@@ -279,6 +285,7 @@ class Pilatus800V33(SingleTriggerV33, PilatusDetector):
 
 
 class Pilatus8002V33(PilatusV33):
+    cam = Cpt(PilatusDetectorCamV33, "cam1:")
     tiff = Cpt(
         TIFFPluginWithFileStore,
         suffix="TIFF1:",
@@ -286,22 +293,23 @@ class Pilatus8002V33(PilatusV33):
         #    read_path_template='/nsls2/xf11bm/Pilatus800K/%Y/%m/%d/',
         #    root='/nsls2/xf11bm')
         write_path_template="/nsls2/data/cms/legacy/xf11bm/Pilatus800_2/%Y/%m/%d/",
-        #    read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus800/%Y/%m/%d/',
         root="/nsls2/data/cms/legacy/xf11bm",
+        # write_path_template="/ramdisk/",
+        # root="/ramdisk/",
     )
 
 
-class Pilatus300V33(PilatusV33):
-    tiff = Cpt(
-        TIFFPluginWithFileStore,
-        suffix="TIFF1:",
-        write_path_template="/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/",
-        #    read_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
-        #    root='/nsls2/xf11bm')
-        #    read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/',
-        read_path_template="/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/",
-        root="/nsls2/data/cms/legacy/xf11bm",
-    )
+# class Pilatus300V33(PilatusV33):
+#     tiff = Cpt(
+#         TIFFPluginWithFileStore,
+#         suffix="TIFF1:",
+#         write_path_template="/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/",
+#         #    read_path_template='/nsls2/xf11bm/Pilatus300/%Y/%m/%d/',
+#         #    root='/nsls2/xf11bm')
+#         #    read_path_template='/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/',
+#         read_path_template="/nsls2/data/cms/legacy/xf11bm/Pilatus300/%Y/%m/%d/",
+#         root="/nsls2/data/cms/legacy/xf11bm",
+#     )
 
 
 class Pilatus2M(SingleTrigger, PilatusDetector):
@@ -477,18 +485,41 @@ class Pilatus2MV33_h5(SingleTriggerV33, PilatusDetector):
 # fs_pbs = StandardProsilica('XF:11IDA-BI{BS:PB-Cam:1}', name='fs_pbs')
 # elm = Elm('XF:11IDA-BI{AH401B}AH401B:',)
 
+
 import time
 
-time.sleep(1)
-# fs1 = StandardProsilicaV33('XF:11BMA-BI{FS:1-Cam:1}', name='fs1')
-time.sleep(1)
-fs2 = StandardProsilicaV33("XF:11BMA-BI{FS:2-Cam:1}", name="fs2")
-time.sleep(1)
-fs3 = StandardProsilicaV33("XF:11BMB-BI{FS:3-Cam:1}", name="fs3")
-time.sleep(1)
-fs4 = StandardProsilicaV33("XF:11BMB-BI{FS:4-Cam:1}", name="fs4")
-time.sleep(1)
-fs5 = StandardProsilicaV33("XF:11BMB-BI{FS:Test-Cam:1}", name="fs5")
+
+if Camera_on==True:
+
+    # time.sleep(1)
+    # fs1 = StandardProsilicaV33('XF:11BMA-BI{FS:1-Cam:1}', name='fs1')
+    time.sleep(1)
+    fs2 = StandardProsilicaV33("XF:11BMA-BI{FS:2-Cam:1}", name="fs2")
+    time.sleep(2)
+    fs3 = StandardProsilicaV33("XF:11BMB-BI{FS:3-Cam:1}", name="fs3")
+    time.sleep(2)
+    fs4 = StandardProsilicaV33("XF:11BMB-BI{FS:4-Cam:1}", name="fs4")
+    time.sleep(2)
+    fs5 = StandardProsilicaV33("XF:11BMB-BI{FS:Test-Cam:1}", name="fs5")
+
+    all_standard_pros = [fs2, fs3, fs4]
+
+
+    # for cam_number, fs in zip([1,2,3,4], [fs1, fs2, fs3, fs4]):
+    for cam_number, fs in zip([2, 3, 4], [fs2, fs3, fs4]):
+        G, port_dict = fs.get_asyn_digraph()
+        cam = port_dict["cam{:02}".format(cam_number)]
+        for v in port_dict.values():
+            try:
+                if v.nd_array_port.get() == "CAM":
+                    v.nd_array_port.set("cam{:02}".format(cam_number))
+            except AttributeError:
+                pass
+        fs.validate_asyn_ports()
+
+
+
+
 
 
 # class StandardsimDetectorV33(SingleTriggerV33, ProsilicaDetector):
@@ -514,7 +545,7 @@ fs5 = StandardProsilicaV33("XF:11BMB-BI{FS:Test-Cam:1}", name="fs5")
 
 # all_standard_pros = [fs1, fs2, fs3, fs4, fs5, simDetector]
 # all_standard_pros = [fs1, fs2, fs3, fs4]
-all_standard_pros = [fs2, fs3, fs4]
+# all_standard_pros = [fs2, fs3, fs4]
 # all_standard_pros = [fs2, fs4]
 
 
@@ -540,6 +571,9 @@ all_standard_pros = [fs2, fs3, fs4]
 # pilatus300 section is marked out as the detector sever cannot be reached after AC power outrage. 121417-RL
 # pilatus300 section is unmarked.  032018-MF
 # pilatus300 section is marked out for bluesky upgrade.  010819-RL
+
+
+
 
 # pilatus300 section
 # if True:
@@ -691,7 +725,8 @@ if Pilatus2M_on == True:
     for item in pilatus2M.cam.configuration_attrs:
         item_check = getattr(pilatus2M.cam, item)
         item_check.kind = "omitted"
-elif True: 
+
+elif Pilatus2M_on == 'h5': 
 
     pilatus2M = Pilatus2MV33_h5("XF:11BMB-ES{Det:PIL2M}:", name="pilatus2M")
     pilatus2M.h5.read_attrs = []
@@ -815,3 +850,7 @@ def count_no_save_plan(det):
 
 # pilatus_name = pilatus300
 # pilatus_Epicsname = '{Det:SAXS}'
+
+
+
+print(f'Loading {__file__}DONEEEEEEEEEEEEEEEEEEEEEEEEEEEE')

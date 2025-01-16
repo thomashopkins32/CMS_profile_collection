@@ -1,3 +1,5 @@
+print(f'Loading {__file__}')
+
 from ophyd.areadetector.base import (
     ADComponent as C,
     ad_group,

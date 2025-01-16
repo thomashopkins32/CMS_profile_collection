@@ -1,25 +1,0 @@
-
-
-Transient Scan ID: 1318710     Time: 2023-12-08 16:59:09
-Persistent Unique Scan ID: '68f71ed4-7d96-475a-b5e2-1e92efc9aa4a'
-
-
-[A[A
-pilatus8002: 100%|███████████████████████| 1.0/1.0 [00:01<00:00,  1.14s/images]
-[A[Apilatus2M: 100%|█████████████████████████| 1.0/1.0 [00:01<00:00,  1.18s/images]
-pilatus8002: 100%|███████████████████████| 1.0/1.0 [00:01<00:00,  1.14s/images]
-[A[Apilatus2M: 100%|█████████████████████████| 1.0/1.0 [00:01<00:00,  1.18s/images]
-pilatus8002 [In progress. No progress bar available.]                          
-[A[Apilatus2M [In progress. No progress bar available.]                            
-pilatus8002 [In progress. No progress bar available.]                          
-[A[A                                                                               
-                                                                               
-[A[A
-
-
-Exposing   2.03 s  (203%)        Data saved to: /nsls2/data/cms/legacy/xf11bm/Pilatus800_2/2023/12/08/5899669b-8296-45e9-961b_000000.tiff
-  Data linked as: /nsls2/data/cms/legacy/xf11bm/data/2023_3/ETsai///maxs/raw/test3_th0.300_x-0.001_1.00s_1318710_maxs.tiff
-  Data saved to: /nsls2/data/cms/legacy/xf11bm/Pilatus2M/2023/12/08/cb1cce58-9945-4553-89b5_000000.tiff
-  Data linked as: /nsls2/data/cms/legacy/xf11bm/data/2023_3/ETsai///saxs/raw/test3_th0.300_x-0.001_1.00s_1318710_saxs.tiff
-[0;31mNameError[0m[0;31m:[0m name 'capture_output' is not defined
-

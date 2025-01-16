@@ -1203,6 +1203,7 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
         max_exposure_time=10,
         extra="XR_scan",
         output_file=None,
+        verbosity=5, 
         **md,
     ):
         """Run x-ray reflectivity measurement for thin film samples on WAXS pilatus800k.
@@ -1302,6 +1303,10 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
             print("FILENAME= {}".format(XR_FILENAME))
         else:
             XR_FILENAME = "{}/data/{}.csv".format(header.start["experiment_alias_directory"], output_file)
+        
+        if verbosity>=5:
+            theta_output_data = None
+
 
         # load theta positions in scan
         if scan_type == "theta_scan":
@@ -1383,6 +1388,21 @@ class SampleXR_WAXS(SampleGISAXS_Generic):
                         beam.setAbsorber(slot_pos)
                         print("The absorber is slot {}\n".format(slot_pos))
                         print("The theta is {}\n".format(theta))
+                        if verbosity>=5:
+                            THETA_FILENAME = "{}/data/Theta_profile_{}.csv".format(
+                                header.start["experiment_alias_directory"], header.start["filename"]
+                            )
+
+                            theta_temp_output = {'a_scanID':db[-1].start["scan_id"]+1, "b_theta": theta }
+                            theta_temp_output_data = pds.DataFrame(data=theta_temp_output)
+
+                            if theta_output_data == None: 
+                                theta_output_data = theta_temp_output_data
+
+                            theta_output_data = pds.concat([theta_output_data, theta_temp_output_data], ignore_index=True)
+                            # save to file
+                            theta_output_data.to_csv(THETA_FILENAME)
+
                         self.measure(exposure_time, extra=extra)
                         temp_data = self.XR_data_output(slot_pos, exposure_time)
                     else:
@@ -1888,9 +1908,15 @@ class GIBar(PositionalHolder):
 
         self._positional_axis = "x"
 
-        self.xsetOrigin(-71.89405)
-        # self.ysetOrigin(10.37925)
-        self.ysetOrigin(5.38)
+        #before 2024-2
+        # self.xsetOrigin(-71.89405)
+        # # self.ysetOrigin(10.37925)
+        # self.ysetOrigin(5.38)
+        
+        #changed in 2024-3
+        self._axes['x'].origin = -76.1
+        self._axes['y'].origin = 7   
+        
 
         self.mark("right edge", x=+108.2)
         self.mark("left edge", x=0)
@@ -2364,8 +2390,13 @@ class CapillaryHolder(PositionalHolder):
         # self.ysetOrigin(-2.36985)
         # self.ysetOrigin(-2.36985)
         # self.xsetOrigin(-16.7+-0.3)
-        self.ysetOrigin(-1.8)
-        self.xsetOrigin(-17.2)
+        # self.ysetOrigin(-1.8)
+        # self.xsetOrigin(-17.2)
+
+
+        self.ysetOrigin(-4.8)
+        self.xsetOrigin(-20)
+
 
         self.mark("right edge", x=+54.4)
         self.mark("left edge", x=-54.4)

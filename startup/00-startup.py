@@ -1,3 +1,5 @@
+print(f'Loading {__file__}')
+
 # import logging
 # import caproto
 # handler = logging.FileHandler('pilatus-trigger-log.txt')
@@ -106,7 +108,7 @@ from ophyd.areadetector import EpicsSignalWithRBV
 # This beamline was occasionally getting ReadTimeoutErrors
 # EpicsSignal.set_defaults(timeout=10)
 # EpicsSignalRO.set_defaults(timeout=10)
-ophyd.signal.EpicsSignalBase.set_defaults(timeout=15)
+ophyd.signal.EpicsSignalBase.set_defaults(timeout=120)
 
 
 # We have commented this because we would like to identify the PVs that are causing problems.
@@ -197,13 +199,15 @@ except ImportError:
             self._cache = dict(super().items())
 
 
-# runengine_metadata_dir = appdirs.user_data_dir(appname="bluesky") / Path("runengine-metadata")
-runengine_metadata_dir = "/nsls2/data/cms/shared/config/runengine-metadata"
+# runengine_metadata_dir = "/nsls2/data/cms/shared/config/runengine-metadata"
+# RE.md = PersistentDict(runengine_metadata_dir)
 
-# PersistentDict will create the directory if it does not exist
-#metadata = PersistentDict(runengine_metadata_dir)
+# proposed changes by Juan
+# runengine_metadata_dir = appdirs.user_data_dir(appname="bluesky") / Path("runengine-metadata")
+# # PersistentDict will create the directory if it does not exist
+# metadata = PersistentDict(runengine_metadata_dir)
 RE.md = RedisJSONDict(redis.Redis("info.cms.nsls2.bnl.gov"), prefix="")
-#RE.md.update(metadata)
+# RE.md.update(metadata)
 
 # print("a new version of bsui")
 # print("sth is happening")
@@ -211,3 +215,22 @@ RE.md = RedisJSONDict(redis.Redis("info.cms.nsls2.bnl.gov"), prefix="")
 #this replaces RE() <
 from bluesky.utils import register_transform
 register_transform('RE', prefix='<')
+
+#reload start-up files, modified by Siyu 2024/10/22
+
+
+# import subprocess
+
+# def run_ipython_script(script_path):
+#     subprocess.run([f"{script_path}"])
+
+# def load_py():
+#     import glob
+#     pyf = sorted( glob.glob ("*.py")  )
+#     for py in pyf:
+#         %run -i {py}
+#         print ( py )  
+
+#     config_load() 
+
+# load_py()

@@ -1,3 +1,5 @@
+print(f'Loading {__file__}')
+
 from ophyd import EpicsMotor, Device, Component as Cpt
 
 # slity = EpicsMotor('XF:11BMA-OP{Slt:0-Ax:T}Mtr', name='slity')
@@ -7,7 +9,7 @@ from ophyd import EpicsMotor, Device, Component as Cpt
 #    top = Cpt(EpicsMotor, '-Ax:T}Mtr')
 #    bottom = Cpt(EpicsMotor, '-Ax:B}Mtr')
 
-beamline_stage = "default"
+beamline_stage = "default"  #for AB, please also change Smpl2-Y from 3... to -5 
 # beamline_stage = 'open_MAXS'
 # beamline_stage = 'BigHuber'
 
@@ -226,6 +228,12 @@ bsphi = EpicsMotor("XF:11BMB-ES{BS-Ax:Phi}Mtr", name="bsphi")
 ##stage for vacuum gate
 gatex = EpicsMotor("XF:11BMB-ES{Chm:Gate-Ax:X}Mtr", name="gatex")
 
+
+# Modular Table --- MC07 --10/01/24
+
+TABLEr = EpicsMotor("XF:11BMB-ES{Tbl:Rear-Ax:Z}Mtr", name="TABLEr")
+TABLEn = EpicsMotor("XF:11BMB-ES{Tbl:Near-Ax:Z}Mtr", name="TABLEn")
+TABLEd = EpicsMotor("XF:11BMB-ES{Tbl:End-Ax:Z}Mtr", name="TABLEd")
 
 # For MDrive (X, Y, edited by YZ, 20230920)
 #mdx = EpicsMotor("XF:11BM-ES{Mdrive-Ax:X}Mtr", name="mdx")
