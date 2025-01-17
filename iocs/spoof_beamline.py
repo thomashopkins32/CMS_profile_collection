@@ -52,10 +52,11 @@ class Shutter(PVGroup):
     psh_blade1_pos = pvproperty(value=0, name="{{Psh_blade1}}Pos", dtype=ChannelType.INT)
 
     def __init__(self, *args, **kwargs):
+        # Initialize the explicit pv properties
         super().__init__(prefix="XF:11BM-ES", *args, **kwargs)
-        # FIXME: Find a way to get pvdb updated with shutter, psh_blade2_pos, psh_blade1_pos
-        self.pvdb = ReallyDefaultDict(fabricate_channel)
-        self._create_pvdb()
+        # Overwrite the pvdb with the blackhole, while keeping the explicit pv properties
+        self.old_pvdb = self.pvdb.copy()
+        self.pvdb = ReallyDefaultDict(self.fabricate_channel)
 
     @shutter.putter # type: ignore
     async def shutter(self, instance, value):
@@ -64,48 +65,52 @@ class Shutter(PVGroup):
         await self.psh_blade1_pos.write(value)
         return value
 
-def fabricate_channel(key):
-    if 'PluginType' in key:
-        for pattern, val in PLUGIN_TYPE_PVS:
-            if pattern.search(key):
-                return ChannelString(value=val)
-    elif 'ArrayPort' in key:
-        return ChannelString(value="PIL")
-    elif 'PortName' in key:
-        port_name = key.split(':')[-2]
-        if port_name == "cam1":
-            port_name = "PIL"
-        return ChannelString(value=port_name)
-    elif 'name' in key.lower():
-        return ChannelString(value=key)
-    elif 'EnableCallbacks' in key:
-        return ChannelEnum(value=0, enum_strings=['Disabled', 'Enabled'])
-    elif 'BlockingCallbacks' in key:
-        return ChannelEnum(value=0, enum_strings=['No', 'Yes'])
-    elif 'Auto' in key:
-        return ChannelEnum(value=0, enum_strings=['No', 'Yes'])
-    elif 'ImageMode' in key:
-        return ChannelEnum(value=0, enum_strings=['Single', 'Multiple', 'Continuous'])
-    elif 'WriteMode' in key:
-        return ChannelEnum(value=0, enum_strings=['Single', 'Capture', 'Stream'])
-    elif 'ArraySize' in key:
-        return ChannelData(value=10)
-    elif 'TriggerMode' in key:
-        return ChannelEnum(value=0, enum_strings=['Internal', 'External'])
-    elif 'FileWriteMode' in key:
-        return ChannelEnum(value=0, enum_strings=['Single'])
-    elif 'FilePathExists' in key:
-        return ChannelData(value=1)
-    elif 'WaitForPlugins' in key:
-        return ChannelEnum(value=0, enum_strings=['No', 'Yes'])
-    elif ('file' in key.lower() and 'number' not in key.lower() and
-          'mode' not in key.lower()):
-        return ChannelChar(value='a' * 250)
-    elif ('filenumber' in key.lower()):
-        return ChannelInteger(value=0)
-    elif 'Compression' in key:
-        return ChannelEnum(value=0, enum_strings=['None', 'N-bit', 'szip', 'zlib', 'blosc'])
-    return ChannelDouble(value=0.0)
+    def fabricate_channel(self, key):
+        # If the channel already exists from initialization, return it
+        if key in self.old_pvdb:
+            return self.old_pvdb[key]
+        # Otherwise, fabricate new channels
+        if 'PluginType' in key:
+            for pattern, val in PLUGIN_TYPE_PVS:
+                if pattern.search(key):
+                    return ChannelString(value=val)
+        elif 'ArrayPort' in key:
+            return ChannelString(value="PIL")
+        elif 'PortName' in key:
+            port_name = key.split(':')[-2]
+            if port_name == "cam1":
+                port_name = "PIL"
+            return ChannelString(value=port_name)
+        elif 'name' in key.lower():
+            return ChannelString(value=key)
+        elif 'EnableCallbacks' in key:
+            return ChannelEnum(value=0, enum_strings=['Disabled', 'Enabled'])
+        elif 'BlockingCallbacks' in key:
+            return ChannelEnum(value=0, enum_strings=['No', 'Yes'])
+        elif 'Auto' in key:
+            return ChannelEnum(value=0, enum_strings=['No', 'Yes'])
+        elif 'ImageMode' in key:
+            return ChannelEnum(value=0, enum_strings=['Single', 'Multiple', 'Continuous'])
+        elif 'WriteMode' in key:
+            return ChannelEnum(value=0, enum_strings=['Single', 'Capture', 'Stream'])
+        elif 'ArraySize' in key:
+            return ChannelData(value=10)
+        elif 'TriggerMode' in key:
+            return ChannelEnum(value=0, enum_strings=['Internal', 'External'])
+        elif 'FileWriteMode' in key:
+            return ChannelEnum(value=0, enum_strings=['Single'])
+        elif 'FilePathExists' in key:
+            return ChannelData(value=1)
+        elif 'WaitForPlugins' in key:
+            return ChannelEnum(value=0, enum_strings=['No', 'Yes'])
+        elif ('file' in key.lower() and 'number' not in key.lower() and
+            'mode' not in key.lower()):
+            return ChannelChar(value='a' * 250)
+        elif ('filenumber' in key.lower()):
+            return ChannelInteger(value=0)
+        elif 'Compression' in key:
+            return ChannelEnum(value=0, enum_strings=['None', 'N-bit', 'szip', 'zlib', 'blosc'])
+        return ChannelDouble(value=0.0)
 
 
 def main():
