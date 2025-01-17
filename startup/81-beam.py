@@ -1068,7 +1068,7 @@ class CMSBeam(object):
         wavelength_A = 2.0 * self.dmm_dsp * np.sin(Bragg_rad)
         wavelength_m = wavelength_A * 1e-10
 
-        energy_eV = self.hc_over_e / (wavelength_m + 1e-8)
+        energy_eV = self.hc_over_e / wavelength_m
         energy_keV = energy_eV / 1000.0
 
         if verbosity >= 3:
@@ -1508,7 +1508,7 @@ class CMSBeam(object):
         energy_keV = self.energy(verbosity=0)
 
         if energy_keV < 6.0 or energy_keV > 18.0:
-            print("Transmission data not available at the current X-ray energy ({.2f} keV).".format(energy_keV))
+            print("Transmission data not available at the current X-ray energy ({:.2f} keV).".format(energy_keV))
 
         else:
             # The states of the foils in the filter box
@@ -1651,7 +1651,7 @@ class CMSBeam(object):
         energy_keV = self.energy(verbosity=0)
 
         if energy_keV < 6.0 or energy_keV > 18.0:
-            print("Transmission data not available at the current X-ray energy ({.2f} keV).".format(energy_keV))
+            print("Transmission data not available at the current X-ray energy ({:.2f} keV).".format(energy_keV))
 
         elif transmission > 1.0:
             print("A transmission above 1.0 is not possible.")
@@ -1735,7 +1735,7 @@ class CMSBeam(object):
         energy_keV = self.energy(verbosity=0)
 
         if energy_keV < 6.0 or energy_keV > 18.0:
-            print("Transmission data not available at the current X-ray energy ({.2f} keV).".format(energy_keV))
+            print("Transmission data not available at the current X-ray energy ({:.2f} keV).".format(energy_keV))
 
         else:
             # The foil layers
@@ -1826,7 +1826,7 @@ class CMSBeam(object):
         energy_keV = self.energy(verbosity=0)
 
         if energy_keV < 6.0 or energy_keV > 18.0:
-            print("Transmission data not available at the current X-ray energy ({.2f} keV).".format(energy_keV))
+            print("Transmission data not available at the current X-ray energy ({:.2f} keV).".format(energy_keV))
         # elif slot < 0 or slot > 6:
         #     print('Absorber cannot move beyond [0, 6]')
         elif slot < 0 or slot > 7:  # changed by RL, 202307

@@ -5,7 +5,8 @@ from collections import defaultdict
 
 from caproto import (ChannelChar, ChannelData, ChannelDouble, ChannelEnum,
                      ChannelInteger, ChannelString, ChannelType)
-from caproto.server import ioc_arg_parser, run, pvproperty, PVGroup
+from caproto.server import ioc_arg_parser, run, pvproperty, PVGroup, SubGroup
+from caproto.ioc_examples.fake_motor_record import FakeMotor
 
 PLUGIN_TYPE_PVS = [
     (re.compile('image\\d:'), 'NDPluginStdArrays'),
@@ -32,11 +33,19 @@ class ReallyDefaultDict(defaultdict):
     def __contains__(self, key):
         #if "{Shutter}" in key or "{Psh_blade2}Pos" in key or "{Psh_blade1}Pos" in key:
         #    return False
+        if "XF:11BMB-ES{Chm:Smpl-Ax:" in key:
+            return False
+        if "XF:11BMB-ES{BS-Ax:" in key:
+            return False
         return True
 
     def __missing__(self, key):
         #if "{Shutter}" in key or "{Psh_blade2}Pos" in key or "{Psh_blade1}Pos" in key:
         #    return None
+        if "XF:11BMB-ES{Chm:Smpl-Ax:" in key:
+            return None
+        if "XF:11BMB-ES{BS-Ax:" in key:
+            return None
         if (key.endswith('-SP') or key.endswith('-I') or
                 key.endswith('-RB') or key.endswith('-Cmd')):
             key, *_ = key.rpartition('-')
@@ -51,12 +60,9 @@ class Shutter(PVGroup):
     psh_blade2_pos = pvproperty(value=0, name="{{Psh_blade2}}Pos", dtype=ChannelType.INT)
     psh_blade1_pos = pvproperty(value=0, name="{{Psh_blade1}}Pos", dtype=ChannelType.INT)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, prefix: str, *args, **kwargs):
         # Initialize the explicit pv properties
-        super().__init__(prefix="XF:11BM-ES", *args, **kwargs)
-        # Overwrite the pvdb with the blackhole, while keeping the explicit pv properties
-        self.old_pvdb = self.pvdb.copy()
-        self.pvdb = ReallyDefaultDict(self.fabricate_channel)
+        super().__init__(prefix=prefix, *args, **kwargs)
 
     @shutter.putter # type: ignore
     async def shutter(self, instance, value):
@@ -64,6 +70,20 @@ class Shutter(PVGroup):
         await self.psh_blade2_pos.write(value)
         await self.psh_blade1_pos.write(value)
         return value
+
+
+class CMS_IOC(PVGroup):
+    shutter = SubGroup(Shutter, prefix="XF:11BM-ES")
+    #motor = SubGroup(FakeMotor, prefix="XF:11BMB-ES{{Chm:Smpl-Ax:X}}Mtr")
+
+    def __init__(self, *args, **kwargs):
+        # Initialize the explicit pv properties
+        super().__init__(prefix="", *args, **kwargs)
+        # Overwrite the pvdb with the blackhole, while keeping the explicit pv properties
+        self.old_pvdb = self.pvdb.copy()
+        print(self.old_pvdb)
+        self.pvdb = ReallyDefaultDict(self.fabricate_channel)
+
 
     def fabricate_channel(self, key):
         # If the channel already exists from initialization, return it
@@ -141,7 +161,7 @@ Press return if you have acknowledged the above, or Ctrl-C to quit.''')
         default_prefix='',
         desc="PV black hole")
     run_options['interfaces'] = ['127.0.0.1']
-    run(Shutter().pvdb,
+    run(CMS_IOC().pvdb,
         **run_options)
 
 
