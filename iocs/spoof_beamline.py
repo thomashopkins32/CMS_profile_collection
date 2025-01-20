@@ -46,6 +46,8 @@ class ReallyDefaultDict(defaultdict):
             return None
         if "XF:11BMB-ES{BS-Ax:" in key:
             return None
+        if "XF:11BMB-ES{Det:PIL2M}" in key:
+            return None
         if (key.endswith('-SP') or key.endswith('-I') or
                 key.endswith('-RB') or key.endswith('-Cmd')):
             key, *_ = key.rpartition('-')
