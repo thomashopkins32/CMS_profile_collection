@@ -3,7 +3,6 @@
 from ophyd import (
     ProsilicaDetector,
     SingleTrigger,
-    TIFFPlugin,
     ImagePlugin,
     DetectorBase,
     HDF5Plugin,
@@ -19,6 +18,7 @@ from ophyd import (
     StatsPlugin,
 )
 from ophyd.areadetector.cam import AreaDetectorCam
+from ophyd.areadetector.plugins import TIFFPlugin_V33
 from ophyd.areadetector.base import ADComponent, EpicsSignalWithRBV
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from ophyd import Component as Cpt, Signal
@@ -62,7 +62,7 @@ Pilatus800_2_on = True
 
 
 
-class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
+class TIFFPluginWithFileStore(TIFFPlugin_V33, FileStoreTIFFIterativeWrite):
     pass
 
 class HDF5PluginWithFileStore(HDF5Plugin, FileStoreHDF5IterativeWrite):
