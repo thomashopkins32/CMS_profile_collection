@@ -37,6 +37,8 @@ class ReallyDefaultDict(defaultdict):
             return False
         if "XF:11BMB-ES{BS-Ax:" in key:
             return False
+        if "XF:11BMB-ES{Det:PIL2M}" in key:
+            return False
         return True
 
     def __missing__(self, key):
