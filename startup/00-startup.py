@@ -15,7 +15,7 @@ import redis
 
 from redis_json_dict import RedisJSONDict
 
-nslsii.configure_base(get_ipython().user_ns, "temp", publish_documents_with_kafka=True)
+nslsii.configure_base(get_ipython().user_ns, "cms", publish_documents_with_kafka=True)
 
 from bluesky.magics import BlueskyMagics
 from bluesky.preprocessors import pchain
