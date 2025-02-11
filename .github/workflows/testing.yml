@@ -56,6 +56,10 @@ jobs:
           docker-compose up -d
           sleep 20
 
+      - name: Run beamline-specific setup
+        run: |
+          .ci/bl-specific.sh
+
       - name: Prepare Tiled and Kafka configs
         run: |
           .ci/tiled-config.sh

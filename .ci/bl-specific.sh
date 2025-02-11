@@ -1,3 +1,4 @@
 #!/bin/bash
 
-# cp -v <...> ~/.ipython/profile_${TEST_PROFILE}/
+mkdir -v -p ~/.ipython/profile_test/startup/
+cp -v startup/.cms_config ~/.ipython/profile_test/startup/cms_config.py
