@@ -122,4 +122,6 @@ jobs:
               ip.parent._exec_file(f)"
 
           conda activate $HOME/${CONDA_ENV_NAME}
+
+          source ~/cms-epics-containers/environment.sh
           ipython --profile=test -c "$command"
