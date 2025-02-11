@@ -41,6 +41,14 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v4
 
+      - name: Prepare Tiled and Kafka configs
+        run: |
+          .ci/tiled-config.sh
+          .ci/kafka-config.sh
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.6.0
+
       - uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: ${{ env.REPOSITORY_NAME }}
@@ -66,14 +74,6 @@ jobs:
           tar -xf ${CONDA_ENV_NAME}.tar.gz -C $HOME/${CONDA_ENV_NAME}
           conda activate $HOME/${CONDA_ENV_NAME}
           conda-unpack
-
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.6.0
-
-      - name: Prepare databroker config
-        run: |
-          mkdir -v -p $HOME/.config/databroker/
-          cp -v configs/databroker/local.yml $HOME/.config/databroker/
 
       - name: Start epics-containers
         run: |
