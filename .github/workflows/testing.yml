@@ -41,6 +41,20 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v4
 
+      - name: Install docker-compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install docker-compose-plugin
+
+      - name: Start epics-containers
+        run: |
+          # git clone --depth 1 --branch CMS-IOCs https://github.com/NSLS2/cms-epics-containers.git ~/cms-epics-containers
+          git clone --depth 1 --branch ci-gha-profile https://github.com/mrakitin/epics-containers-example-services.git ~/cms-epics-containers
+          source ~/cms-epics-containers/environment.sh
+          cd ~/cms-epics-containers
+          docker-compose up -d
+          sleep 20
+
       - name: Prepare Tiled and Kafka configs
         run: |
           .ci/tiled-config.sh
@@ -71,18 +85,10 @@ jobs:
           echo "${{ matrix.md5-checksum }} ${CONDA_ENV_NAME}.tar.gz" > checksum.txt
           md5sum --check checksum.txt
           mkdir -p $HOME/${CONDA_ENV_NAME}
+          echo "Unarchiving the tarball..."
           tar -xf ${CONDA_ENV_NAME}.tar.gz -C $HOME/${CONDA_ENV_NAME}
           conda activate $HOME/${CONDA_ENV_NAME}
           conda-unpack
-
-      - name: Start epics-containers
-        run: |
-          # git clone --depth 1 --branch CMS-IOCs https://github.com/NSLS2/cms-epics-containers.git ~/cms-epics-containers
-          git clone --depth 1 --branch ci-gha-profile https://github.com/mrakitin/epics-containers-example-services.git ~/cms-epics-containers
-          source ~/cms-epics-containers/environment.sh
-          cd ~/cms-epics-containers
-          docker-compose up -d
-          sleep 20
 
       - name: Start caproto IOC
         run: |
