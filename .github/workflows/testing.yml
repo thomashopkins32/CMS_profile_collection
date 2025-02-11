@@ -24,7 +24,7 @@ jobs:
 
     defaults:
       run:
-        shell: bash -l {0}
+        shell: bash -leo pipefail {0}
 
     steps:
       - name: Set env vars
@@ -41,12 +41,18 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v4
 
-      - name: Setup umamba
-        uses: mamba-org/setup-micromamba@v1
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: ${{ env.REPOSITORY_NAME }}
+          auto-update-conda: true
+          miniconda-version: "latest"
+          python-version: ${{ matrix.python-version }}
+
+      # - name: Setup umamba
+      #   uses: mamba-org/setup-micromamba@v1
 
       - name: Create a conda env from Zenodo
         run: |
-          set -vxeo pipefail
           url="https://zenodo.org/record/${{ matrix.zenodo-id }}/files/${CONDA_ENV_NAME}.tar.gz?download=1"
           wget --progress=dot:giga ${url} -O ${CONDA_ENV_NAME}.tar.gz
           status=$?
@@ -58,7 +64,7 @@ jobs:
           md5sum --check checksum.txt
           mkdir -p $HOME/${CONDA_ENV_NAME}
           tar -xf ${CONDA_ENV_NAME}.tar.gz -C $HOME/${CONDA_ENV_NAME}
-          ${MAMBA_EXE} activate $HOME/${CONDA_ENV_NAME}
+          conda activate $HOME/${CONDA_ENV_NAME}
           conda-unpack
 
       - name: Start MongoDB
@@ -66,13 +72,11 @@ jobs:
 
       - name: Prepare databroker config
         run: |
-          set -vxeuo pipefail
           mkdir -v -p $HOME/.config/databroker/
           cp -v configs/databroker/local.yml $HOME/.config/databroker/
 
       - name: Start epics-containers
         run: |
-          set -vxeuo pipefail
           git clone --depth 1 --branch CMS-IOCs https://github.com/NSLS2/cms-epics-containers.git ~/cms-epics-containers
           source ~/cms-epics-containers/environment.sh
           cd ~/cms-epics-containers
@@ -81,9 +85,8 @@ jobs:
 
       - name: Start caproto IOC
         run: |
-          set -vxeuo pipefail
           source ~/cms-epics-containers/environment.sh
-          ${MAMBA_EXE} activate $HOME/${CONDA_ENV_NAME}
+          conda activate $HOME/${CONDA_ENV_NAME}
           echo "\n" | python iocs/spoof_beamline.py --list-pvs
           sleep 20
 
@@ -106,5 +109,5 @@ jobs:
               print(f'Executing {f} in CI')
               ip.parent._exec_file(f)"
 
-          ${MAMBA_EXE} activate $HOME/${CONDA_ENV_NAME}
+          conda activate $HOME/${CONDA_ENV_NAME}
           ipython --profile=test -c "$command"
