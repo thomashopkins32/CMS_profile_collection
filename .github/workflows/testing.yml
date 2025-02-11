@@ -1,0 +1,108 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  run_tests:
+    # pull requests are a duplicate of a branch push if within the same repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+
+    name: Test IPython startup files
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        conda-env-version: ["2024-3.0"]
+        zenodo-id: ["14019710"]
+        md5-checksum: ["0ec1899a4f5989292e07380f96b97498"]
+        python-version: ["3.10"]  # , "3.11", "3.12"]
+      fail-fast: false
+    env:
+      TZ: America/New_York
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: Set env vars
+        run: |
+          export REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}  # just the repo, as opposed to org/repo
+          echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
+
+          export PYTHONVER=$(echo ${{ matrix.python-version }} | sed 's/\.//g')
+          echo "PYTHONVER=${PYTHONVER}" >> $GITHUB_ENV
+
+          export CONDA_ENV_NAME="${{ matrix.conda-env-version }}-py${PYTHONVER}-tiled"
+          echo "CONDA_ENV_NAME=${CONDA_ENV_NAME}" >> $GITHUB_ENV
+
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: Setup umamba
+        uses: mamba-org/setup-micromamba@v1
+
+      - name: Setup umamba
+        run: |
+          set -vxeo pipefail
+          url="https://zenodo.org/record/${{ matrix.zenodo-id }}/files/${CONDA_ENV_NAME}.tar.gz?download=1"
+          wget --progress=dot:giga ${url} -O ${CONDA_ENV_NAME}.tar.gz
+          status=$?
+          if [ $status -gt 0 ]; then
+              echo "Cannot download from ${url}. Exit code: ${status}"
+              exit $status
+          fi
+          echo "${{ matrix.md5-checksum }} ${CONDA_ENV_NAME}.tar.gz" > checksum.txt
+          md5sum --check checksum.txt
+          mkdir -p $HOME/${CONDA_ENV_NAME}
+          tar -xf ${CONDA_ENV_NAME}.tar.gz -C $HOME/${CONDA_ENV_NAME}
+          conda activate $HOME/${CONDA_ENV_NAME}
+          conda unpack
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.6.0
+
+      - name: Prepare databroker config
+        run: |
+          set -vxeuo pipefail
+          mkdir -v -p $HOME/.config/databroker/
+          cp -v configs/databroker/local.yml $HOME/.config/databroker/
+
+      - name: Start epics-containers
+        run: |
+          set -vxeuo pipefail
+          git clone --depth 1 --branch CMS-IOCs https://github.com/NSLS2/cms-epics-containers.git ~/cms-epics-containers
+          source ~/cms-epics-containers/environment.sh
+          cd ~/cms-epics-containers
+          docker-compose up -d
+          sleep 20
+
+      - name: Start caproto IOC
+        run: |
+          set -vxeuo pipefail
+          source ~/cms-epics-containers/environment.sh
+          echo "\n" | python iocs/spoof_beamline.py --list-pvs
+          sleep 20
+
+      - name: Test the code
+        run: |
+          set -vxeuo pipefail
+          # This is what IPython does internally to load the startup files:
+          command="
+          import os
+          import glob
+          ip = get_ipython()
+          startup_files = sorted(glob.glob(os.path.join(os.getcwd(), 'startup/*.py')))
+          if os.path.isfile('.ci/drop-in.py'):
+              startup_files.append('.ci/drop-in.py')
+          if not startup_files:
+              raise SystemExit(f'Cannot find any startup files in {os.getcwd()}')
+          for f in startup_files:
+              if not os.path.isfile(f):
+                  raise FileNotFoundError(f'File {f} cannot be found.')
+              print(f'Executing {f} in CI')
+              ip.parent._exec_file(f)"
+
+          ipython --profile=test -c "$command"

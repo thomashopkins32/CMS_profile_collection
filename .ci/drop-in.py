@@ -4,3 +4,5 @@ sam = SampleGISAXS('test')
 detselect(pilatus2M)
 
 pilatus2M.cam.num_images.put(1)
+
+RE(bp.count([pilatus2M], num=3))
