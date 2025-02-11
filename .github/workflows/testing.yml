@@ -95,7 +95,7 @@ jobs:
         run: |
           source ~/cms-epics-containers/environment.sh
           conda activate $HOME/${CONDA_ENV_NAME}
-          echo "\n" | python iocs/spoof_beamline.py --list-pvs
+          echo "\n" | python iocs/spoof_beamline.py --list-pvs &
           sleep 20
 
       - name: Test the code
