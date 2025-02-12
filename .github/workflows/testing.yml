@@ -149,4 +149,4 @@ jobs:
         run: |
           ls -laF /nsls2/
           tree -a $HOME/cms-epics-containers/pilatus-data/
-          # tree -a /nsls2/
+          tree -a /nsls2/
