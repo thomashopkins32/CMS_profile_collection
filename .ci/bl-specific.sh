@@ -13,4 +13,4 @@ cp -v startup/.cms_config ~/.ipython/profile_test/startup/
 # Create the /nsls2 dir tree:
 sudo mkdir -v -p /nsls2
 sudo chown -R -v $USER: /nsls2
-sudo ln -sv $HOME/cms-epics-containers/pilatus-data/ /nsls2/data/
+sudo ln -sv $HOME/cms-epics-containers/pilatus-data/ /nsls2/
