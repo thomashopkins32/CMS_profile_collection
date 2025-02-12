@@ -59,7 +59,7 @@ jobs:
       - name: Run beamline-specific setup
         run: |
           .ci/bl-specific.sh
-          sudo systemctl restart systemd-networkd
+          # sudo systemctl restart systemd-networkd
           ping info.cms.nsls2.bnl.gov -t 5
           echo "" | telnet info.cms.nsls2.bnl.gov 6379
 

@@ -11,4 +11,5 @@ mkdir -v -p ~/.ipython/profile_test/startup/
 cp -v startup/.cms_config ~/.ipython/profile_test/startup/
 
 # Create the /nsls2 dir tree:
-mkdir -v -p /nsls2
+sudo mkdir -v -p /nsls2
+sudo chown -R -v $USER: /nsls2
