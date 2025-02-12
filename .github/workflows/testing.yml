@@ -65,6 +65,9 @@ jobs:
           .ci/tiled-config.sh
           .ci/kafka-config.sh
 
+      - name: Install Redis
+        uses: supercharge/redis-github-action@1.0.0
+
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.6.0
 
