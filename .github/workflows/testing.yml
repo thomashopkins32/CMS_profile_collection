@@ -147,6 +147,6 @@ jobs:
       - name: Check dir tree
         if: always()
         run: |
-          tree -a $HOME/cms-epics-containers/pilatus-data/
-          tree -a /nsls2/
           ls -laF /nsls2/
+          tree -a $HOME/cms-epics-containers/pilatus-data/
+          # tree -a /nsls2/
