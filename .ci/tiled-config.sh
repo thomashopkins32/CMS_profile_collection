@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -veo pipefail
+
 # Tiled profile config:
 
 tiled_profiles_dir="$HOME/.config/tiled/profiles/"

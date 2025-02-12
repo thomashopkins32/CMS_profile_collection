@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -veo pipefail
+
 # Kafka config:
 cat << EOF > kafka.yml
 ---

@@ -74,6 +74,14 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.6.0
 
+      - name: Check Docker state
+        run: |
+          docker images
+          docker ps -a
+          docker network ls
+          docker volume ls
+
+
       - uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: ${{ env.REPOSITORY_NAME }}
