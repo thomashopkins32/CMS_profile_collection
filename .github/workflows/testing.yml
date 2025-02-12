@@ -56,18 +56,6 @@ jobs:
           docker-compose up -d
           sleep 20
 
-      - name: Run beamline-specific setup
-        run: |
-          .ci/bl-specific.sh
-          # sudo systemctl restart systemd-networkd
-          ping -c 5 info.cms.nsls2.bnl.gov
-          echo "" | telnet info.cms.nsls2.bnl.gov 6379
-
-      - name: Prepare Tiled and Kafka configs
-        run: |
-          .ci/tiled-config.sh
-          .ci/kafka-config.sh
-
       - name: Start Redis
         uses: supercharge/redis-github-action@1.0.0
 
@@ -81,6 +69,17 @@ jobs:
           docker network ls
           docker volume ls
 
+      - name: Prepare Tiled and Kafka configs
+        run: |
+          .ci/tiled-config.sh
+          .ci/kafka-config.sh
+
+      - name: Run beamline-specific setup
+        run: |
+          .ci/bl-specific.sh
+          # sudo systemctl restart systemd-networkd
+          ping -c 5 info.cms.nsls2.bnl.gov
+          echo "" | telnet info.cms.nsls2.bnl.gov 6379
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
