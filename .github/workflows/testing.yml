@@ -53,6 +53,7 @@ jobs:
           git clone --depth 1 --branch ci-gha-profile https://github.com/mrakitin/epics-containers-example-services.git ~/cms-epics-containers
           source ~/cms-epics-containers/environment.sh
           cd ~/cms-epics-containers
+          mkdir ./pilatus-data/
           docker-compose up -d
           sleep 20
 
