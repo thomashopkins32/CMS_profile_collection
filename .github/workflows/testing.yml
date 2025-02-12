@@ -59,13 +59,16 @@ jobs:
       - name: Run beamline-specific setup
         run: |
           .ci/bl-specific.sh
+          sudo systemctl restart systemd-networkd
+          ping info.cms.nsls2.bnl.gov -t 5
+          echo "" | telnet info.cms.nsls2.bnl.gov 6379
 
       - name: Prepare Tiled and Kafka configs
         run: |
           .ci/tiled-config.sh
           .ci/kafka-config.sh
 
-      - name: Install Redis
+      - name: Start Redis
         uses: supercharge/redis-github-action@1.0.0
 
       - name: Start MongoDB
