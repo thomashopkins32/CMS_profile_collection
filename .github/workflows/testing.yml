@@ -45,29 +45,43 @@ jobs:
           export CONDA_ENV_NAME="${{ matrix.zenodo-deposition.env-version }}-py${PYTHONVER}-tiled"
           echo "CONDA_ENV_NAME=${CONDA_ENV_NAME}" >> $GITHUB_ENV
 
+          export BLUESKY_KAFKA_CONFIG_PATH="$HOME/.config/bluesky/kafka.yml"
+          echo "BLUESKY_KAFKA_CONFIG_PATH=${BLUESKY_KAFKA_CONFIG_PATH}" >> $GITHUB_ENV
+
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y xorg openbox
 
-      - name: Checkout the code
-        uses: actions/checkout@v4
-
-      - name: Start docker service
+      - name: Check Docker version
         run: |
-          # sudo systemctl status docker
-          # sudo systemctl start docker
-          # sudo systemctl status docker
           docker version
           docker compose --version
 
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: Configure epics-containers
+        run: |
+          # git clone --depth 1 --branch CMS-IOCs https://github.com/NSLS2/cms-epics-containers.git $HOME/cms-epics-containers
+          git clone --depth 1 --branch ci-gha-profile https://github.com/mrakitin/epics-containers-example-services.git $HOME/cms-epics-containers
+
+          source $HOME/cms-epics-containers/environment.sh
+          echo "EPICS_CA_ADDR_LIST=${EPICS_CA_ADDR_LIST}" >> $GITHUB_ENV
+          echo "EPICS_CA_AUTO_ADDR_LIST=${EPICS_CA_AUTO_ADDR_LIST}" >> $GITHUB_ENV
+
+      - name: Prepare Tiled and Kafka configs
+        run: |
+          .ci/tiled-config.sh
+          .ci/kafka-config.sh
+
+      - name: Run beamline-specific setup
+        run: |
+          .ci/bl-specific.sh
+
       - name: Start epics-containers
         run: |
-          # git clone --depth 1 --branch CMS-IOCs https://github.com/NSLS2/cms-epics-containers.git ~/cms-epics-containers
-          git clone --depth 1 --branch ci-gha-profile https://github.com/mrakitin/epics-containers-example-services.git ~/cms-epics-containers
-          source ~/cms-epics-containers/environment.sh
-          cd ~/cms-epics-containers
-          mkdir ./pilatus-data/
+          cd $HOME/cms-epics-containers
           docker compose up -d
           sleep 20
 
@@ -83,17 +97,6 @@ jobs:
           docker ps -a
           docker network ls
           docker volume ls
-
-      - name: Prepare Tiled and Kafka configs
-        run: |
-          .ci/tiled-config.sh
-          .ci/kafka-config.sh
-
-      - name: Run beamline-specific setup
-        run: |
-          .ci/bl-specific.sh
-          ping -c 5 info.cms.nsls2.bnl.gov
-          echo "" | telnet info.cms.nsls2.bnl.gov 6379
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
@@ -122,7 +125,7 @@ jobs:
 
       - name: Start caproto IOC
         run: |
-          source ~/cms-epics-containers/environment.sh
+          # source $HOME/cms-epics-containers/environment.sh
           conda activate $HOME/${CONDA_ENV_NAME}
           echo "\n" | python iocs/spoof_beamline.py --list-pvs &
           sleep 20
@@ -152,7 +155,7 @@ jobs:
 
           conda activate $HOME/${CONDA_ENV_NAME}
 
-          source ~/cms-epics-containers/environment.sh
+          # source $HOME/cms-epics-containers/environment.sh
           ipython --profile=test -c "$command"
 
       - name: Show bluesky logs

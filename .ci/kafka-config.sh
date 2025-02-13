@@ -12,6 +12,6 @@ runengine_producer_config:
     security.protocol: PLAINTEXT
 EOF
 
-sudo mkdir -v -p /etc/bluesky/
-sudo mv -v kafka.yml /etc/bluesky/kafka.yml  # TODO: put it into the home directory via an env var
-cat /etc/bluesky/kafka.yml
+mkdir -v -p $HOME/.config/bluesky/
+mv -v kafka.yml $HOME/.config/bluesky/kafka.yml
+cat $HOME/.config/bluesky/kafka.yml
