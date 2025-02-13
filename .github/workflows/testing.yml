@@ -72,10 +72,8 @@ jobs:
           # git clone --depth 1 --branch CMS-IOCs https://github.com/NSLS2/cms-epics-containers.git $HOME/cms-epics-containers
           git clone --depth 1 --branch ci-gha-profile https://github.com/mrakitin/epics-containers-example-services.git $HOME/cms-epics-containers
 
-          source $HOME/cms-epics-containers/environment.sh
-          echo "EPICS_CA_ADDR_LIST=${EPICS_CA_ADDR_LIST}" >> $GITHUB_ENV
-          echo "EPICS_CA_AUTO_ADDR_LIST=NO" >> $GITHUB_ENV
-          echo "DISPLAY=${DISPLAY}" >> $GITHUB_ENV
+          # source $HOME/cms-epics-containers/environment.sh
+          # echo "EPICS_CA_ADDR_LIST=${EPICS_CA_ADDR_LIST}" >> $GITHUB_ENV
 
       - name: Prepare Tiled and Kafka configs
         run: |
