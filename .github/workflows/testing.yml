@@ -58,6 +58,12 @@ jobs:
           docker version
           docker compose --version
 
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.0.0
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.6.0
+
       - name: Checkout the code
         uses: actions/checkout@v4
 
@@ -84,12 +90,6 @@ jobs:
           cd $HOME/cms-epics-containers
           docker compose up -d
           sleep 20
-
-      - name: Start Redis
-        uses: supercharge/redis-github-action@1.0.0
-
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.6.0
 
       - name: Check Docker state
         run: |
