@@ -75,6 +75,7 @@ jobs:
           source $HOME/cms-epics-containers/environment.sh
           echo "EPICS_CA_ADDR_LIST=${EPICS_CA_ADDR_LIST}" >> $GITHUB_ENV
           echo "EPICS_CA_AUTO_ADDR_LIST=NO" >> $GITHUB_ENV
+          echo "DISPLAY=${DISPLAY}" >> $GITHUB_ENV
 
       - name: Prepare Tiled and Kafka configs
         run: |
@@ -97,6 +98,11 @@ jobs:
           docker ps -a
           docker network ls
           docker volume ls
+
+      - name: Check Docker logs
+        run: |
+          cd $HOME/cms-epics-containers
+          docker compose logs
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
