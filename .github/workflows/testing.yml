@@ -89,6 +89,7 @@ jobs:
       - name: Start epics-containers
         run: |
           cd $HOME/cms-epics-containers
+          source $HOME/cms-epics-containers/environment.sh
           docker compose up -d
           sleep 20
 
@@ -131,7 +132,7 @@ jobs:
 
       - name: Start caproto IOC
         run: |
-          # source $HOME/cms-epics-containers/environment.sh
+          source $HOME/cms-epics-containers/environment.sh
           conda activate $HOME/${CONDA_ENV_NAME}
           echo "\n" | python iocs/spoof_beamline.py --list-pvs &
           sleep 20
@@ -161,7 +162,7 @@ jobs:
 
           conda activate $HOME/${CONDA_ENV_NAME}
 
-          # source $HOME/cms-epics-containers/environment.sh
+          source $HOME/cms-epics-containers/environment.sh
           env | grep EPICS
           ipython --profile=test -c "$command"
 
