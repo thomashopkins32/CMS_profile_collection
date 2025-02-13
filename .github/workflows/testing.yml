@@ -155,6 +155,11 @@ jobs:
           source ~/cms-epics-containers/environment.sh
           ipython --profile=test -c "$command"
 
+      - name: Show bluesky logs
+        if: always()
+        run: |
+          cat $HOME/.cache/bluesky/log/bluesky.log
+
       - name: Check dir tree
         if: always()
         run: |
