@@ -14,10 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        conda-env-version: ["2024-3.0"]
-        zenodo-id: ["14019710"]
-        md5-checksum: ["0ec1899a4f5989292e07380f96b97498"]
-        python-version: ["3.10"]  # , "3.11", "3.12"]
+        zenodo-deposition:
+          # https://zenodo.org/records/14019710
+          - env-version: "2024-3.0"
+            zenodo-id: "14019710"
+        artifact:
+          - python-version: "3.10"
+            md5-checksum: "0ec1899a4f5989292e07380f96b97498"
+          - python-version: "3.11"
+            md5-checksum: "016b041ce78a13b1c4b65ef73fa9f85d"
+          - python-version: "3.12"
+            md5-checksum: "29f6bef5fcad82bbdb896a81275e0478"
       fail-fast: false
     env:
       TZ: America/New_York
@@ -32,10 +39,10 @@ jobs:
           export REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}  # just the repo, as opposed to org/repo
           echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
 
-          export PYTHONVER=$(echo ${{ matrix.python-version }} | sed 's/\.//g')
+          export PYTHONVER=$(echo ${{ matrix.artifact.python-version }} | sed 's/\.//g')
           echo "PYTHONVER=${PYTHONVER}" >> $GITHUB_ENV
 
-          export CONDA_ENV_NAME="${{ matrix.conda-env-version }}-py${PYTHONVER}-tiled"
+          export CONDA_ENV_NAME="${{ matrix.zenodo-deposition.env-version }}-py${PYTHONVER}-tiled"
           echo "CONDA_ENV_NAME=${CONDA_ENV_NAME}" >> $GITHUB_ENV
 
       - name: Install system packages
@@ -53,12 +60,6 @@ jobs:
           sudo systemctl status docker
           docker version
           docker compose --version
-
-      # - name: Install docker-compose
-      #   run: |
-      #     sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-      #     sudo chmod +x /usr/local/bin/docker-compose
-      #     docker-compose --version
 
       - name: Start epics-containers
         run: |
@@ -99,21 +100,19 @@ jobs:
           activate-environment: ${{ env.REPOSITORY_NAME }}
           auto-update-conda: true
           miniforge-version: latest
-          python-version: ${{ matrix.python-version }}
-
-      # - name: Setup umamba
-      #   uses: mamba-org/setup-micromamba@v1
+          python-version: ${{ matrix.artifact.python-version }}
+          conda-remove-defaults: true
 
       - name: Create a conda env from Zenodo
         run: |
-          url="https://zenodo.org/record/${{ matrix.zenodo-id }}/files/${CONDA_ENV_NAME}.tar.gz?download=1"
+          url="https://zenodo.org/record/${{ matrix.zenodo-deposition.zenodo-id }}/files/${CONDA_ENV_NAME}.tar.gz?download=1"
           wget --progress=dot:giga ${url} -O ${CONDA_ENV_NAME}.tar.gz
           status=$?
           if [ $status -gt 0 ]; then
               echo "Cannot download from ${url}. Exit code: ${status}"
               exit $status
           fi
-          echo "${{ matrix.md5-checksum }} ${CONDA_ENV_NAME}.tar.gz" > checksum.txt
+          echo "${{ matrix.artifact.md5-checksum }} ${CONDA_ENV_NAME}.tar.gz" > checksum.txt
           md5sum --check checksum.txt
           mkdir -p $HOME/${CONDA_ENV_NAME}
           echo "Unarchiving the tarball..."
