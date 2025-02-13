@@ -15,16 +15,16 @@ jobs:
     strategy:
       matrix:
         zenodo-deposition:
-          # https://zenodo.org/records/14019710
-          - env-version: "2024-3.0"
-            zenodo-id: "14019710"
+          # https://zenodo.org/records/14862443
+          - env-version: "2025-1.0"
+            zenodo-id: "14862443"
         artifact:
           - python-version: "3.10"
-            md5-checksum: "0ec1899a4f5989292e07380f96b97498"
+            md5-checksum: "d031ed24ad7beebb836f93712d8def2e"
           - python-version: "3.11"
-            md5-checksum: "016b041ce78a13b1c4b65ef73fa9f85d"
+            md5-checksum: "3b1074c0827ee3baf0cdcd64917b9afa"
           - python-version: "3.12"
-            md5-checksum: "29f6bef5fcad82bbdb896a81275e0478"
+            md5-checksum: "624239ed0846ef95d8334ea100581b83"
       fail-fast: false
     env:
       TZ: America/New_York
