@@ -156,6 +156,7 @@ jobs:
           conda activate $HOME/${CONDA_ENV_NAME}
 
           # source $HOME/cms-epics-containers/environment.sh
+          env | grep EPICS
           ipython --profile=test -c "$command"
 
       - name: Show bluesky logs
