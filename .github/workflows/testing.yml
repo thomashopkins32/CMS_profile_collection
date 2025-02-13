@@ -55,9 +55,9 @@ jobs:
 
       - name: Start docker service
         run: |
-          sudo systemctl status docker
-          sudo systemctl start docker
-          sudo systemctl status docker
+          # sudo systemctl status docker
+          # sudo systemctl start docker
+          # sudo systemctl status docker
           docker version
           docker compose --version
 
