@@ -5,6 +5,8 @@ pilatus2M.tiff.create_directory.set(-20)
 sam = SampleGISAXS('test')
 detselect(pilatus2M)
 
+RE.md.update({'scan_id': 1})
+
 pilatus2M.cam.num_images.put(1)
 
 uid, = RE(bp.count([pilatus2M], num=3))
