@@ -1097,7 +1097,7 @@ class CMSBeam(object):
 
         # (planck constant * speed of light)/(electronic charge)
 
-        energy_eV = self.hc_over_e / (wavelength_m + 1e-8)
+        energy_eV = self.hc_over_e / wavelength_m
         energy_keV = energy_eV / 1000.0
 
         if verbosity >= 3:
