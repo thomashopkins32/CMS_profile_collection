@@ -29,6 +29,18 @@ from ophyd.areadetector.filestore_mixins import FileStoreHDF5IterativeWrite
 from ophyd.areadetector.plugins import HDF5Plugin #,register_plugin,PluginBase
 
 
+def print_area_detector_port_graph(G):
+    print("\nArea Detector Port Graph:")
+    print("------------------------")
+    print("Nodes:")
+    for node in sorted(G.nodes()):
+        print(f"  • {node}")
+    print("\nConnections:")
+    for edge in sorted(G.edges()):
+        print(f"  • {edge[0]} → {edge[1]}")
+    print("------------------------\n")
+
+
 print(f'Loading {__file__}')
 
 # import filestore.api as fs
@@ -507,16 +519,7 @@ if Camera_on==True:
 
     for fs in all_standard_pros:
         G, port_dict = fs.get_asyn_digraph()
-        print("\nArea Detector Port Graph:")
-        print("------------------------")
-        print("Nodes:")
-        for node in sorted(G.nodes()):
-            print(f"  • {node}")
-        print("\nConnections:")
-        for edge in sorted(G.edges()):
-            print(f"  • {edge[0]} → {edge[1]}")
-        print("------------------------\n")
-        
+        #print_area_detector_port_graph(G)
         cam = port_dict["cam1"]
         for v in port_dict.values():
             try:
