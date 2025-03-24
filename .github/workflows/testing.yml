@@ -135,6 +135,12 @@ jobs:
           echo "\n" | python iocs/spoof_beamline.py --list-pvs &
           sleep 20
 
+      - name: Apply auto settings
+        run: |
+          echo "::group::Applying auto settings"
+          .ci/apply-autosettings.sh
+          echo "::endgroup::"
+
       - name: Test the code
         run: |
           # Start Xvfb
