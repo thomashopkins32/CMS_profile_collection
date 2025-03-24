@@ -517,14 +517,16 @@ if Camera_on==True:
     all_standard_pros = [fs2, fs3, fs4]
 
 
-    for fs in all_standard_pros:
+    for cam_number, fs in zip([2, 3, 4], all_standard_pros):
         G, port_dict = fs.get_asyn_digraph()
-        #print_area_detector_port_graph(G)
-        cam = port_dict["cam1"]
+        print(fs.cam.port_name.get())
+        print_area_detector_port_graph(G)
+        print(port_dict)
+        cam = port_dict["cam{:02}".format(cam_number)]
         for v in port_dict.values():
             try:
                 if v.nd_array_port.get() == "CAM":
-                    v.nd_array_port.set("cam1")
+                    v.nd_array_port.set("cam{:02}".format(cam_number))
             except AttributeError:
                 pass
         fs.validate_asyn_ports()
