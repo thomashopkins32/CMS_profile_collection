@@ -99,15 +99,8 @@ class CMS_IOC(PVGroup):
                 if pattern.search(key):
                     return ChannelString(value=val)
         elif 'ArrayPort' in key:
-            return ChannelString(value="cam1")
+            return ChannelString(value=key)
         elif 'PortName' in key:
-            # Extract port name from key format: <prefix><port-name>:PortName
-            # Use regex to find the last component before :PortName
-            match = re.search(r"[^:}_\-]+(?=:PortName)", key)
-            if match:
-                port_name = match.group(0)
-                return ChannelString(value=port_name)
-            # Fallback if regex doesn't match
             return ChannelString(value=key)
         elif 'name' in key.lower():
             return ChannelString(value=key)
